@@ -20,8 +20,7 @@ The specification, schemas, discovery document, portable workstate capsule, gene
 For a quick project re-entry, follow the repository discovery document:
 
 1. Read [`.awp.json`](.awp.json) to locate the current workstate and specification.
-2. Read [`conversation.awp.md`](conversation.awp.md) for the current goal, decisions, status, constraints, and recommended next action.
-3. Use [`AWP_SPECIFICATION_0.6.0.bundle.md`](AWP_SPECIFICATION_0.6.0.bundle.md) when you need the complete self-contained specification.
+2. Use [`AWP_SPECIFICATION_0.6.0.bundle.md`](AWP_SPECIFICATION_0.6.0.bundle.md) when you need the complete self-contained specification.
 
 If you are evaluating the protocol itself, begin with the concise family overview in [`AWP_SPECIFICATION_0.6.0.md`](AWP_SPECIFICATION_0.6.0.md) and the [`0.6.0 release notes`](AWP_0.6.0_RELEASE_NOTES.md).
 
