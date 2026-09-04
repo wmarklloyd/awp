@@ -25,6 +25,41 @@ For a quick project re-entry, follow the repository discovery document:
 
 If you are evaluating the protocol itself, begin with the concise family overview in [`AWP_SPECIFICATION_0.6.0.md`](AWP_SPECIFICATION_0.6.0.md) and the [`0.6.0 release notes`](AWP_0.6.0_RELEASE_NOTES.md).
 
+## Use AWP from `AGENTS.md`
+
+Projects adopting AWP can add the following guidance to their repository-level `AGENTS.md`:
+
+```markdown
+## Agent Workstate Protocol
+
+This project uses Agent Workstate Protocol 0.6.0.
+
+Before beginning work:
+
+1. Read `.awp.json` from the repository root.
+2. Resolve `current_workstate` relative to the repository root.
+3. Read the current workstate's generated briefing, checkpoint, constraints,
+   authority ceiling, and recommended next action.
+4. Consult the complete specification only when protocol interpretation is
+   necessary:
+
+   https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md
+```
+
+The versioned raw specification URL is:
+
+```text
+https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md
+```
+
+The `v0.6.0` tag keeps this reference stable. To deliberately follow ongoing development on `main`, use:
+
+```text
+https://raw.githubusercontent.com/wmarklloyd/awp/main/AWP_SPECIFICATION_0.6.0.bundle.md
+```
+
+An `AGENTS.md` link is a reference, not an automatic file include. Agents need network access to retrieve the remote specification. Keep routine startup guidance concise and use the local `.awp.json` discovery document and workstate capsule for normal project orientation.
+
 ## Core model
 
 AWP separates:
@@ -110,4 +145,3 @@ Start with coordination awareness rather than live leases or enforcement. The go
 ## Maturity and compatibility
 
 AWP 0.6.0 is experimental and may change based on implementation experience. Coordination 0.2 records are not compatible with Coordination 0.3 through a version-number change alone; preserve historical events and create explicit imported or successor records when migrating.
-
