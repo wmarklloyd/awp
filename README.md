@@ -2,7 +2,7 @@
 
 AWP is an exploratory protocol for preserving portable, semantic work state across human and AI-agent sessions. It gives collaborators a durable, authoritative description of a project's intent, decisions, evidence, progress, and next actions without requiring every new participant to reconstruct that context from the repository or chat history.
 
-AWP is designed to:
+The purpose of AWP is to:
 
 - Enable a user or agent to send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone.
 - Provide a new agent with a clear, shared project orientation before it must inspect the wider repository.
