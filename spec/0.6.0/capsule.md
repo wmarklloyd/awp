@@ -17,6 +17,8 @@ The representations are:
 
 Logical equivalence does not require identical bytes or file layout. The manifest maps logical data to physical locations.
 
+For a project-named Markdown capsule, the default conventional filename is `<project-name>.awp.md`. When the project name is unavailable or ambiguous, producers SHOULD use `project.awp.md`. A producer MAY retain multiple capsule revisions using `<project-name>.v<revision>.awp.md`, for example `awp.v2.awp.md` or `project.v2026-09-04.awp.md`. The filename revision is a human-facing archival label; it is not the AWP protocol version and MUST NOT override `awp_version`, `workstate_id`, `frontier`, `checkpoint`, `generated_digest`, or the `current_workstate` pointer in `.awp.json`. A consumer MUST follow the discovery pointer when one is present.
+
 A workstate using one of these representations MUST declare the Capsule module. It MUST mark Capsule required when no alternative declared representation makes the required Core and module state accessible without Capsule processing.
 
 ## 2. Repository discovery
@@ -28,7 +30,7 @@ A project MAY place a `.awp.json` discovery document at its declared project roo
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "awp_schema": "urn:awp:schema:discovery:0.1.0",
   "awp_discovery_version": "0.1",
-  "current_workstate": "conversation.awp.md",
+  "current_workstate": "project.awp.md",
   "specification": "AWP_SPECIFICATION_0.6.0.bundle.md",
   "fallback_workstates": []
 }

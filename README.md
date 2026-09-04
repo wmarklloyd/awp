@@ -72,6 +72,8 @@ AWP separates:
 
 The preferred exchange representation is a human-readable, single-file Markdown capsule such as `project.awp.md`. Machine-readable JSON sections preserve structured state while generated prose provides rapid human and agent orientation.
 
+For project-named capsules, use `<project-name>.awp.md` by default. A producer may retain versioned archival copies as `<project-name>.v<revision>.awp.md`, such as `project.v2.awp.md`. The filename revision is only a human-facing label; the capsule metadata and `.awp.json` `current_workstate` pointer remain authoritative.
+
 AWP does not require or attempt to preserve private chain-of-thought or hidden runtime state.
 
 ## Specification modules

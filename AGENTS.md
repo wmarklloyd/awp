@@ -30,6 +30,8 @@ The workstate capsule is intended to make project re-entry fast. Preserve its ge
 - `conversation.awp.md` is the current portable project workstate.
 - Older specification families and review documents are historical design input unless a task explicitly concerns migration or protocol evolution.
 
+The conventional filename for a project-named capsule is `<project-name>.awp.md`. Versioned archival copies MAY use `<project-name>.v<revision>.awp.md`; follow `.awp.json` rather than inferring the current workstate from a filename.
+
 For external references, use the pinned 0.6.0 bundle URL:
 
 `https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md`
@@ -56,4 +58,3 @@ Keep generated bundles, recorded artifact digests, and the workstate briefing co
 ## Current implementation direction
 
 The recommended next experiment is the `coordination-awareness` capability bundle described in `AWP_0.6.0_RELEASE_NOTES.md`: compare chat-only, Git-only, and AWP-assisted multi-agent runs using both physical and semantic conflicts. Start with awareness and measurement before attempting live leases or C3 enforcement.
-

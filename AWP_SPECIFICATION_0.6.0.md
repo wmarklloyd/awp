@@ -118,6 +118,8 @@ project.awp.md
   module:security section
 ```
 
+The conventional project-named form is `<project-name>.awp.md`. Producers MAY retain versioned archival copies using `<project-name>.v<revision>.awp.md`, such as `project.v2.awp.md`. This filename revision is only a human-facing label; protocol and workstate identity remain defined by the capsule metadata and the `.awp.json` `current_workstate` pointer.
+
 The manifest is authoritative for physical locations. Module-specific events participate in the unified Core event graph and identify their owning module. This preserves causal ordering across modules without requiring one event log per module.
 
 ## 6. Versioning
