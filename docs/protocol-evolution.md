@@ -8,7 +8,7 @@ Family and module versions are separately declared. A family release identifies 
 
 ## Working drafts
 
-Development occurs under `spec/drafts/<target-version>/`. Draft files may change without compatibility guarantees and must state that they are not releases. A draft may refer to an exact repository commit or local specification copy when used for experiments.
+Development for a future version occurs under `spec/drafts/<target-version>/`. The archived `spec/drafts/0.7.0/` directory is the pre-release source history for the stable 0.7.0 family and must not be edited to change released semantics.
 
 ## Release procedure
 

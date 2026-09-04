@@ -8,16 +8,19 @@ import re
 from pathlib import Path
 
 from jsonschema import Draft202012Validator, FormatChecker
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FAMILY = ROOT / "spec" / "drafts" / "0.7.0" / "index.md"
-SPEC_DIR = ROOT / "spec" / "drafts" / "0.7.0"
+FAMILY = ROOT / "AWP_SPECIFICATION_0.7.0.md"
+SPEC_DIR = ROOT / "spec" / "0.7.0"
 REGISTRY = SPEC_DIR / "modules.json"
 REGISTRY_SCHEMA = ROOT / "schemas" / "awp-module-registry-0.7.schema.json"
 CORE_SCHEMA = ROOT / "schemas" / "awp-core-0.7.schema.json"
 COORDINATION_SCHEMA = ROOT / "schemas" / "awp-coordination-0.4.schema.json"
-DISCOVERY_SCHEMA = ROOT / "schemas" / "awp-discovery-0.2.schema.json"
+CAPSULE_SCHEMA = ROOT / "schemas" / "awp-capsule-0.4.schema.json"
+SECURITY_SCHEMA = ROOT / "schemas" / "awp-security-0.4.schema.json"
+CURRENT_CAPSULE = ROOT / "awp.awp.md"
 
 CORE_RECORD_TYPES = {
     "goal",
@@ -28,6 +31,7 @@ CORE_RECORD_TYPES = {
     "plan",
     "task",
     "question",
+    "consultation",
     "artifact",
     "execution",
     "change",
@@ -199,15 +203,101 @@ def validate_manifest_modules(
             failures.append(f"{location}: module_data contains undeclared {module_id}")
 
 
+def validate_capsule_metadata(failures: list[str]) -> dict | None:
+    schema = json.loads(CAPSULE_SCHEMA.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    text = CURRENT_CAPSULE.read_text(encoding="utf-8")
+    match = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+    if match is None:
+        failures.append("awp.awp.md: missing YAML front matter")
+        return None
+    try:
+        # BaseLoader preserves scalar spelling (notably the trailing ``Z`` in
+        # ISO-8601 timestamps) instead of converting timestamps to datetime
+        # objects before JSON Schema validation.
+        metadata = yaml.load(match.group(1), Loader=yaml.BaseLoader)
+    except yaml.YAMLError as error:
+        failures.append(f"awp.awp.md: invalid YAML front matter: {error}")
+        return None
+    if not isinstance(metadata, dict):
+        failures.append("awp.awp.md: front matter must be a mapping")
+        return None
+    for error in sorted(validator_for(schema).iter_errors(metadata), key=lambda item: list(item.path)):
+        path = "/".join(str(part) for part in error.path) or "<root>"
+        failures.append(f"awp.awp.md front matter at {path}: {error.message}")
+    specification = metadata.get("specification")
+    if isinstance(specification, str) and "://" not in specification and not specification.startswith("urn:"):
+        resolved = (ROOT / specification).resolve()
+        if ROOT.resolve() not in resolved.parents or not resolved.is_file():
+            failures.append(f"awp.awp.md: local specification is missing or outside the repository: {specification}")
+    return metadata
+
+
+def validate_current_capsule(
+    registry: dict, failures: list[str]
+) -> None:
+    metadata = validate_capsule_metadata(failures)
+    if metadata is None:
+        return
+    text = CURRENT_CAPSULE.read_text(encoding="utf-8")
+    generated = re.search(
+        r"<!-- awp:generated:start -->\n(.*?)\n<!-- awp:generated:end -->",
+        text,
+        re.DOTALL,
+    )
+    if generated is None:
+        failures.append("awp.awp.md: missing generated briefing markers")
+    else:
+        declared = str(metadata.get("generated_digest", "")).removeprefix("sha256:")
+        actual = hashlib.sha256(generated.group(1).encode("utf-8")).hexdigest()
+        if declared != actual:
+            failures.append(f"awp.awp.md generated digest declares {declared}, calculated {actual}")
+    boundary = re.escape(str(metadata.get("capsule_boundary", "")))
+    sections: dict[str, dict] = {}
+    for section in ("manifest", "snapshot"):
+        match = re.search(
+            rf'<!-- awp:{boundary}:{section}:start encoding="json" -->\n(.*?)\n'
+            rf'<!-- awp:{boundary}:{section}:end -->',
+            text,
+            re.DOTALL,
+        )
+        if match is None:
+            failures.append(f"awp.awp.md: missing {section} section")
+            continue
+        try:
+            sections[section] = json.loads(match.group(1))
+        except json.JSONDecodeError as error:
+            failures.append(f"awp.awp.md {section} section is invalid JSON: {error.msg}")
+    core_schema = json.loads(CORE_SCHEMA.read_text(encoding="utf-8"))
+    for section, value in sections.items():
+        for error in sorted(validator_for(core_schema, "manifest" if section == "manifest" else "snapshot").iter_errors(value), key=lambda item: list(item.path)):
+            path = "/".join(str(part) for part in error.path) or "<root>"
+            failures.append(f"awp.awp.md {section} at {path}: {error.message}")
+    if "manifest" in sections:
+        validate_manifest_modules(sections["manifest"], registry, "awp.awp.md manifest", failures)
+    manifest = sections.get("manifest")
+    snapshot = sections.get("snapshot")
+    if manifest and snapshot:
+        for field in ("awp_version", "workstate_id"):
+            if metadata.get(field) != manifest.get(field) or manifest.get(field) != snapshot.get(field):
+                failures.append(f"awp.awp.md: {field} differs across front matter, manifest, and snapshot")
+        if metadata.get("frontier") != snapshot.get("frontier"):
+            failures.append("awp.awp.md: frontier differs between front matter and snapshot")
+        checkpoint = metadata.get("checkpoint")
+        checkpoints = snapshot.get("records", {}).get("checkpoints", [])
+        if checkpoint and not any(record.get("id") == checkpoint for record in checkpoints):
+            failures.append(f"awp.awp.md: checkpoint {checkpoint!r} is absent from snapshot")
+
+
 def validate_examples(
     documents: list[Path], registry: dict, failures: list[str]
 ) -> tuple[int, int]:
     core_schema = json.loads(CORE_SCHEMA.read_text(encoding="utf-8"))
     coordination_schema = json.loads(COORDINATION_SCHEMA.read_text(encoding="utf-8"))
-    discovery_schema = json.loads(DISCOVERY_SCHEMA.read_text(encoding="utf-8"))
+    security_schema = json.loads(SECURITY_SCHEMA.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(core_schema)
     Draft202012Validator.check_schema(coordination_schema)
-    Draft202012Validator.check_schema(discovery_schema)
+    Draft202012Validator.check_schema(security_schema)
     checked_json = 0
     checked_digests = 0
 
@@ -220,16 +310,6 @@ def validate_examples(
                 failures.append(
                     f"{document.relative_to(ROOT)} JSON block {block_index} is invalid: {error.msg}"
                 )
-                continue
-            if isinstance(value, dict) and "awp_discovery_version" in value:
-                checked_json += 1
-                location = f"{document.relative_to(ROOT)} JSON block {block_index}"
-                for error in sorted(
-                    validator_for(discovery_schema).iter_errors(value),
-                    key=lambda item: list(item.path),
-                ):
-                    path = "/".join(str(part) for part in error.path) or "<root>"
-                    failures.append(f"{location} (discovery) at {path}: {error.message}")
                 continue
             if isinstance(value, dict) and value.get("type") in MODULE_RECORD_OWNERS:
                 checked_json += 1
@@ -266,6 +346,15 @@ def validate_examples(
                     f"{location} ({kind}) at {path}: "
                     f"{error.message}"
                 )
+            if kind == "coreRecord" and value.get("type") == "constraint":
+                guardrail = value.get("modules", {}).get("urn:awp:security", {}).get("guardrail")
+                if guardrail is not None:
+                    for error in sorted(
+                        validator_for(security_schema, "guardrail").iter_errors(guardrail),
+                        key=lambda item: list(item.path),
+                    ):
+                        path = "/".join(str(part) for part in error.path) or "<root>"
+                        failures.append(f"{location} (security guardrail) at {path}: {error.message}")
             if kind == "event" and value.get("module") == "urn:awp:coordination":
                 for error in sorted(
                     validator_for(coordination_schema, "coordinationEvent").iter_errors(value),
@@ -300,7 +389,8 @@ def validate_examples(
 def main() -> int:
     failures: list[str] = []
     registry = validate_registry(failures)
-    documents = [FAMILY, *sorted(SPEC_DIR.glob("*.md"))]
+    documents = [CURRENT_CAPSULE, FAMILY, *sorted(SPEC_DIR.glob("*.md"))]
+    validate_current_capsule(registry, failures)
     validate_markdown_links(documents, failures)
     checked_json, checked_digests = validate_examples(documents, registry, failures)
 

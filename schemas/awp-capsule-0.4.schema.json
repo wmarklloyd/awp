@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:awp:schema:capsule:0.4.0",
+  "title": "AWP Capsule 0.4 metadata",
+  "description": "Structural schema for the front matter of an AWP 0.7 self-contained Markdown capsule.",
+  "type": "object",
+  "required": [
+    "awp_version",
+    "specification",
+    "format",
+    "discovery",
+    "capsule_boundary",
+    "workstate_id",
+    "frontier",
+    "generated_at",
+    "generated_digest"
+  ],
+  "properties": {
+    "awp_version": { "type": "string", "pattern": "^0\\.7\\.[0-9]+$" },
+    "specification": { "type": "string", "minLength": 1, "pattern": "^\\S+$" },
+    "format": { "const": "single-file-capsule" },
+    "discovery": { "const": "self" },
+    "capsule_boundary": { "type": "string", "pattern": "^[0-9a-f]{32,}$" },
+    "workstate_id": { "type": "string", "minLength": 1, "pattern": "^\\S+$" },
+    "frontier": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "pattern": "^\\S+$" },
+      "uniqueItems": true
+    },
+    "checkpoint": { "type": "string", "minLength": 1, "pattern": "^\\S+$" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "generated_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  },
+  "additionalProperties": true
+}

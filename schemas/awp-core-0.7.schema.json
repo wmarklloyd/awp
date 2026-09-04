@@ -170,6 +170,7 @@
             "plan",
             "task",
             "question",
+            "consultation",
             "artifact",
             "execution",
             "change",
@@ -258,6 +259,36 @@
           }
         },
         {
+          "if": { "properties": { "type": { "const": "consultation" } }, "required": ["type"] },
+          "then": {
+            "required": ["question", "status", "requested_action", "context", "read_first"],
+            "properties": {
+              "question": { "type": "string", "minLength": 1 },
+              "status": { "enum": ["proposed", "open", "answered", "declined", "cancelled", "superseded"] },
+              "requested_action": { "type": "string", "minLength": 1 },
+              "context": { "type": "object", "minProperties": 1 },
+              "read_first": { "$ref": "#/$defs/referenceArray" },
+              "desired_output": { "type": "string", "minLength": 1 },
+              "answer": { "type": "string", "minLength": 1 },
+              "responded_by": { "$ref": "#/$defs/identifier" },
+              "responded_at": { "$ref": "#/$defs/timestamp" },
+              "response_evidence": { "$ref": "#/$defs/referenceArray" },
+              "uncertainty": { "type": "string", "minLength": 1 },
+              "disposition": { "type": "string", "minLength": 1 }
+            },
+            "allOf": [
+              {
+                "if": { "properties": { "status": { "const": "answered" } }, "required": ["status"] },
+                "then": { "required": ["answer", "responded_by", "responded_at"] }
+              },
+              {
+                "if": { "properties": { "status": { "enum": ["declined", "cancelled"] } }, "required": ["status"] },
+                "then": { "required": ["disposition"] }
+              }
+            ]
+          }
+        },
+        {
           "if": { "properties": { "type": { "const": "artifact" } }, "required": ["type"] },
           "then": { "required": ["name"] }
         },
@@ -330,4 +361,3 @@
     }
   }
 }
-

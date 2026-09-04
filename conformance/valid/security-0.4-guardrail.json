@@ -1,0 +1,16 @@
+{
+  "profile": "awp-security-guardrail-v1",
+  "effect": "deny",
+  "applies_to": "all_actors",
+  "operation_classes": ["third_party_api_call", "security_sensitive", "external_write"],
+  "resources": ["resource:third-party-systems"],
+  "conditions": ["Only explicitly authorized resources are in scope."],
+  "policy_owner": "actor:project-owner",
+  "provenance": {
+    "issued_by": "actor:project-owner",
+    "basis": "authority:project-security-policy",
+    "authority_evidence": "evidence:security-policy-approval"
+  },
+  "enforcement": "receiver_policy",
+  "propagation": "mandatory"
+}

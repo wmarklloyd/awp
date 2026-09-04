@@ -1,0 +1,15 @@
+{
+  "id": "consultation:debug-auth-timeout",
+  "type": "consultation",
+  "revision": 1,
+  "question": "Why does the login request time out only after the service has been idle?",
+  "status": "open",
+  "requested_action": "Rank likely causes and propose safe diagnostic steps; do not modify files or contact external services.",
+  "context": {
+    "observed_behavior": "The first request after approximately 15 minutes fails after 30 seconds; retrying succeeds.",
+    "attempts": ["Confirmed the client timeout is 30 seconds", "Reproduced against the local test service"],
+    "constraints": ["Read-only analysis", "Do not expose credentials or personal data"]
+  },
+  "read_first": [],
+  "desired_output": "A short hypothesis ranking, missing evidence, and a next-step diagnostic plan."
+}

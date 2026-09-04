@@ -21,34 +21,19 @@ The representations are:
 
 Logical equivalence does not require identical bytes or file layout. The manifest maps logical data to physical locations.
 
-For a project-named Markdown capsule, the default conventional filename is `<project-name>.awp.md`. When the project name is unavailable or ambiguous, producers SHOULD use `project.awp.md`. A producer MAY retain multiple capsule revisions using `<project-name>.v<revision>.awp.md`, for example `awp.v2.awp.md` or `project.v2026-09-04.awp.md`. The filename revision is a human-facing archival label; it is not the AWP protocol version and MUST NOT override `awp_version`, `workstate_id`, `frontier`, `checkpoint`, `generated_digest`, or the `current_workstate` pointer in `.awp.json`. A consumer MUST follow the discovery pointer when one is present.
+For a project-named Markdown capsule, the default conventional filename is `<project-name>.awp.md`. When the project name is unavailable or ambiguous, producers SHOULD use `project.awp.md`. A producer MAY retain multiple capsule revisions using `<project-name>.v<revision>.awp.md`, for example `awp.v2.awp.md` or `project.v2026-09-04.awp.md`. The filename is a human-facing locator; it is not the AWP protocol version and MUST NOT override the capsule metadata.
 
 A workstate using one of these representations MUST declare the Capsule module. It MUST mark Capsule required when no alternative declared representation makes the required Core and module state accessible without Capsule processing.
 
-## 2. Repository discovery
+## 2. Embedded discovery
 
-A project MAY place a `.awp.json` discovery document at its declared project root so that an AWP-aware agent or tool can locate the current workstate without scanning the project. The discovery document is a pointer, not a workstate, trust assertion, or authority grant.
+A single-file Markdown capsule is the portable discovery unit. It MUST carry the metadata needed to interpret itself; a companion `.awp.json` pointer is neither required nor part of the portable capsule.
 
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "awp_schema": "urn:awp:schema:discovery:0.2.0",
-  "awp_discovery_version": "0.2",
-  "current_workstate": "project.awp.md",
-  "specification": "https://example.org/awp/0.7.0/AWP-0.7.0.bundle.md",
-  "fallback_workstates": []
-}
-```
+The front matter of a self-contained capsule MUST include `format: single-file-capsule` and `discovery: self`. The file supplied by a host, user, or agent is the current workstate; no `current_workstate` pointer or fallback file list is needed. The capsule's `specification` metadata identifies the exact specification artifact governing the workstate.
 
-`awp_schema`, `awp_discovery_version`, `current_workstate`, and `specification` are REQUIRED. `awp_schema` identifies this AWP discovery schema without assuming that a copied project contains AWP's source tree. `fallback_workstates` is optional. `specification` identifies the exact specification artifact governing the current workstate. It SHOULD be an immutable, version-pinned URI when the specification is hosted remotely, such as a tagged GitHub raw URL. It MUST NOT use a moving branch URL as though it were version-pinned. A sandboxed or offline project MAY point `specification` to a repository-relative local copy instead.
+An AWP-aware project-entry implementation SHOULD accept an explicitly supplied capsule path. When no path is supplied, it MAY look for the conventional `<project-name>.awp.md` or `project.awp.md` in the project root. It MUST NOT silently choose among multiple candidate capsules. A filename is only a locator and MUST NOT be used to infer protocol compatibility. Discovering a declared URI MUST NOT trigger automatic network access.
 
-Relative paths are resolved from the directory containing `.awp.json`. A local path MUST be relative, normalized, remain within the project root after resolution, and identify a regular file. A URI MAY be used only by a binding that defines retrieval and security behavior; discovering a URI MUST NOT trigger automatic network access.
-
-An AWP-aware project-entry implementation SHOULD look for `.awp.json` in the project root supplied by its host, repository binding, invocation, or configuration. It MUST NOT search above that root. When the file is present, it MUST validate [the discovery schema](../../../schemas/awp-discovery-0.2.schema.json) before following a pointer. It then opens `current_workstate` using the normal Capsule and Core procedures. It MUST verify that the capsule declares the same `specification` reference. A mismatch is invalid discovery and MUST NOT be resolved by silently choosing either reference.
-
-If `.awp.json` is missing, invalid, unsafe, or points to unavailable content, the implementation reports discovery as `absent`, `invalid`, `unsafe`, or `unavailable`. It MAY accept an explicitly supplied capsule instead. It MUST NOT silently select a fallback whose identity conflicts with an already selected workstate.
-
-Agent-specific instruction files such as `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md` are outside AWP. They MAY point to `.awp.json` or directly to a capsule, but their presence is not required for AWP conformance.
+Agent-specific instruction files such as `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md` are outside AWP. They MAY point directly to a capsule, but their presence is not required for AWP conformance.
 
 ## 3. Root briefing
 
@@ -58,6 +43,7 @@ The briefing MUST begin with metadata containing:
 
 - `awp_version`;
 - `specification`;
+- `format: single-file-capsule` and `discovery: self` for a self-contained Markdown capsule;
 - `workstate_id`;
 - `frontier`;
 - current `checkpoint`, if one exists;
@@ -70,6 +56,8 @@ Generated content MUST occur inside exactly one marker pair:
 ---
 awp_version: 0.7.0
 specification: https://example.org/awp/0.7.0/AWP-0.7.0.bundle.md
+format: single-file-capsule
+discovery: self
 workstate_id: urn:uuid:596ae918-e7da-4e6f-a226-b13f8b084727
 frontier:
   - evt:01K4M4VYB9
@@ -89,7 +77,7 @@ Human notes may be edited here.
 <!-- awp:notes:end -->
 ```
 
-`specification` identifies the exact specification artifact that governs the workstate. It follows the same version-pinned URI and repository-relative local-path rules as repository discovery. A reader MUST NOT silently substitute another specification. An unavailable or unsupported declared specification makes the workstate `unverifiable` for protocol interpretation.
+`specification` identifies the exact specification artifact that governs the workstate. It SHOULD be an immutable, version-pinned URI when the specification is hosted remotely, such as a tagged GitHub raw URL. It MUST NOT use a moving branch URL as though it were version-pinned. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate. A reader MUST NOT silently substitute another specification. An unavailable or unsupported declared specification makes the workstate `unverifiable` for protocol interpretation.
 
 The digest uses `sha256:{lowercase-hex}` over the UTF-8 content beginning after the LF terminating the start marker and ending before the LF preceding the end marker, after CRLF-to-LF normalization.
 
@@ -210,6 +198,4 @@ Module placement does not create a separate causal history. Module events always
 
 A Capsule reader MUST validate the representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures.
 
-A Capsule writer MUST create an unambiguous representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A writer that emits `.awp.json` MUST produce a schema-valid, traversal-safe discovery document.
-
-
+A Capsule writer MUST create an unambiguous representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A self-contained Markdown writer MUST include its discovery mode and governing specification in the capsule metadata.

@@ -182,9 +182,8 @@ An upgrader from 0.5.0 MUST update declared module versions. Coordination 0.2 re
 - [Module registry](spec/0.6.0/modules.json)
 - [Open issue register](spec/0.6.0/open-issues.md)
 - [Validation tool](tools/validate_spec_0_6.py)
-- [Project purpose](docs/project-scope.md)
-- [0.6.0 release notes](docs/releases/0.6.0.md)
-- [Coordination state-of-the-art review](research/model-assisted-reviews/awp-0.5-multi-agent-coordination-review.md)
+- [Project purpose](purpose.txt)
+- [0.6.0 release notes](AWP_0.6.0_RELEASE_NOTES.md)
+- [Coordination state-of-the-art review](AWP_0.5.0_MULTI_AGENT_COORDINATION_REVIEW.md)
 
 The 0.3.0 monolithic draft, 0.4.0 modular draft, and 0.5.0 family remain available as historical design input. The documents listed in Section 2, their normative schemas, and the module registry constitute the AWP 0.6.0 specification family.
-

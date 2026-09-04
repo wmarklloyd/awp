@@ -1,0 +1,16 @@
+{
+  "schema": "schemas/awp-security-0.4.schema.json",
+  "definition": "guardrail",
+  "cases": [
+    {
+      "document": "conformance/valid/security-0.4-guardrail.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/security-0.4-guardrail-no-provenance.json",
+      "valid": false,
+      "expected_keywords": ["provenance", "required"]
+    }
+  ]
+}

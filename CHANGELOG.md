@@ -2,11 +2,12 @@
 
 This file records protocol-family changes. Released artifacts remain immutable; detailed module changes belong in versioned release notes.
 
-## 0.7.0 — Working Draft
+## 0.7.0 — 2026-09-04
 
-- Makes the exact governing specification explicit in shared capsules and repository discovery.
-- Advances repository discovery to 0.2.0 and the draft modules to versions compatible with the 0.7 family.
-- Establishes immutable-release, governance, conformance, and reproducibility policies.
+- Makes the exact governing specification and discovery mode explicit in self-contained capsules.
+- Generalizes coordination to shared work products and arbitrary state-space adapters.
+- Adds portable cross-model consultations and model-independent shared guardrails.
+- Publishes schemas, fixtures, a frozen requirement inventory, release notes, checksums, and reproducible bundles.
 
 ## 0.6.0 — 2026-09-03
 

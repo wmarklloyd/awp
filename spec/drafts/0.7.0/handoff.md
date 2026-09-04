@@ -44,6 +44,7 @@ Semantic resumption requires:
 - material claims, uncertainty, and evidence;
 - accepted decisions and rejected alternatives relevant to continuation;
 - open tasks and questions;
+- open consultations and the portable context required to answer them;
 - required artifact references and availability;
 - recommended next action.
 
@@ -109,11 +110,12 @@ The Resume Profile standardizes project re-entry after an actor or runtime leave
     "task:deploy"
   ],
   "required_artifacts": ["artifact:source-tree-91ab"],
-  "repository_state": [
+  "state_bindings": [
     {
-      "repository": "repo:application",
-      "source_revision": "git:91ab4e7",
-      "path_scope": ["src/", "tests/"]
+      "state_space": "repo:application",
+      "revision": "git:91ab4e7",
+      "profile": "git-state-v1",
+      "scope": ["src/", "tests/"]
     }
   ],
   "recommended_next_action": "Continue release preparation without deploying.",
@@ -135,9 +137,9 @@ When both a Resume and referenced Handoff record are present, the Resume record 
 
 `on_stale` is `refresh_workstate`, `report_and_stop`, or `read_only_orientation`. A receiver MUST NOT interpret any value as permission to perform an external side effect from stale or unverifiable state.
 
-`repository_state`, when present, binds a resume checkpoint to the repository and immutable source revision against which it was prepared. Each entry requires `repository` and `source_revision` and MAY narrow comparison using `path_scope`. A `project_reentry` record that depends on source-controlled artifacts MUST include each repository state required to assess safe continuation.
+`state_bindings`, when present, bind a resume checkpoint to the state spaces and immutable revisions against which it was prepared. Each entry requires `state_space` and `revision` and MAY identify an adapter `profile` and narrower `scope`. A `project_reentry` record that depends on external or source-controlled work products MUST include each state binding required to assess safe continuation. A Git repository and source revision are one possible binding; they are not required for non-code work products.
 
-A receiver that can identify the local repository revision MUST compare it with `source_revision`. A mismatch makes the repository binding stale. When it can obtain a diff, claims, evidence, change sets, and verification results scoped to changed paths MUST be treated as stale until reverified or explicitly re-scoped. When the receiver cannot identify or compare the repository revision, the binding is unverifiable rather than current. A matching revision does not establish that remote services, credentials, or other dependencies remain current.
+A receiver that can identify the local state-space revision MUST compare it with `revision`. A mismatch makes the binding stale. When it can obtain a difference, claims, evidence, change sets, and verification results scoped to changed objects MUST be treated as stale until reverified or explicitly re-scoped. When the receiver cannot identify or compare the state-space revision, the binding is unverifiable rather than current. A matching revision does not establish that remote services, credentials, or other dependencies remain current.
 
 `read_first` is an ordered presentation hint, not causal ordering or authority. A receiver MAY load additional records required to interpret dependencies, evidence, conflicts, or safety constraints. It MUST NOT omit relevant required state merely to meet a context budget. Optional context-selection metadata MAY state a token or byte budget, priority groups, and deferred artifacts, but it cannot weaken completeness, freshness, or authority requirements.
 
@@ -195,5 +197,3 @@ Reports SHOULD record capsule size where applicable, token usage, author and rec
 ## 9. Conformance
 
 A Handoff reader implements the receiver procedure and exposes limitations. A Handoff writer implements the producer procedure and makes accurate claims. A Resume Profile reader additionally implements Section 5 and declares the `resume-profile` capability. A system MAY support handoff and resume records without supporting the Capsule module; repository discovery requires Capsule support.
-
-

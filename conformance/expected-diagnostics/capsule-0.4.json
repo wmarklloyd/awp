@@ -1,0 +1,15 @@
+{
+  "schema": "schemas/awp-capsule-0.4.schema.json",
+  "cases": [
+    {
+      "document": "conformance/valid/capsule-0.4-metadata.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/capsule-0.4-metadata-no-discovery.json",
+      "valid": false,
+      "expected_keywords": ["discovery", "required"]
+    }
+  ]
+}

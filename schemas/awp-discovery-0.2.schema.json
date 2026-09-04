@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:awp:schema:discovery:0.2.0",
   "title": "AWP Repository Discovery 0.2",
-  "description": "Locates the current AWP workstate and its governing specification bundle from a project root.",
+  "description": "Historical draft schema for a companion repository discovery document.",
   "type": "object",
   "required": ["awp_schema", "awp_discovery_version", "current_workstate", "specification"],
   "properties": {

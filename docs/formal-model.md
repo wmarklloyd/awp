@@ -36,7 +36,7 @@ Epistemic state and authority are separate projections. Evidence may change the 
 
 ## Coordination overlap
 
-Let (S_a) and (S_b) be revision-pinned declared scopes with access modes. A physical overlap exists when their selectors resolve to intersecting repository objects at the declared bases. A semantic overlap exists when they reference the same semantic definition or when a registered relation connects their definitions. Material conflict is a policy function of overlap, access modes, relied-upon reads, accepted contracts, ordering constraints, and uncertainty.
+Let (S_a) and (S_b) be revision-pinned declared scopes with access modes. A physical overlap exists when their selectors resolve to intersecting objects in the declared state spaces. A semantic overlap exists when they reference the same semantic definition or when a registered relation connects their definitions. Material conflict is a policy function of overlap, access modes, relied-upon reads, accepted contracts, ordering constraints, and uncertainty.
 
 The base specification does not claim that arbitrary semantic equivalence is decidable. Language-specific selectors, relation registries, and analyzer confidence require named profiles and empirical calibration.
 

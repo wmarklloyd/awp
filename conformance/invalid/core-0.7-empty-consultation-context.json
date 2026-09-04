@@ -1,0 +1,10 @@
+{
+  "id": "consultation:empty",
+  "type": "consultation",
+  "revision": 1,
+  "question": "What should be investigated?",
+  "status": "open",
+  "requested_action": "Analyze the issue.",
+  "context": {},
+  "read_first": []
+}

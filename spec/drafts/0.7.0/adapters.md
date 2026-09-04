@@ -38,9 +38,9 @@ A future Git binding should map:
 
 | AWP concept | Candidate Git representation |
 |---|---|
-| workstate base | repository ID plus immutable commit |
+| workstate base | state-space ID plus immutable revision (a repository and commit are one possible mapping) |
 | work intent | branch, worktree, issue, or binding-owned note |
-| coordination scope | path plus optional symbol/contract metadata |
+| coordination scope | domain-specific selector for a path, model element, spatial region, interface, or contract |
 | change set | commit range, patch, branch tip, or pull request |
 | artifact version | blob ID plus AWP digest |
 | integration result | merge/rebase commit and verification evidence |
@@ -71,5 +71,4 @@ Private runtime state should use a namespaced module or artifact type and identi
 A future registry entry should contain binding ID, version, publisher, external protocol range, AWP module ranges, specification URI, schemas, security profile, test vectors, and stability.
 
 Private bindings use collision-resistant IDs. An unknown binding may be ignored only when every resulting module and field is optional and preserved or its loss disclosed.
-
 

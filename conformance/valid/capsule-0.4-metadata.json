@@ -1,0 +1,12 @@
+{
+  "awp_version": "0.7.0",
+  "specification": "dist/drafts/0.7.0/AWP-0.7.0-draft.bundle.md",
+  "format": "single-file-capsule",
+  "discovery": "self",
+  "capsule_boundary": "89e5d09a47714dcfaa5734d1f155a4e8",
+  "workstate_id": "urn:uuid:example",
+  "frontier": ["evt:example"],
+  "checkpoint": "checkpoint:example",
+  "generated_at": "2026-09-04T18:00:00Z",
+  "generated_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+}

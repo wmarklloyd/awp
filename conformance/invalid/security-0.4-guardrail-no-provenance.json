@@ -1,0 +1,9 @@
+{
+  "profile": "awp-security-guardrail-v1",
+  "effect": "deny",
+  "applies_to": "all_actors",
+  "operation_classes": ["third_party_api_call"],
+  "resources": ["resource:third-party-systems"],
+  "enforcement": "receiver_policy",
+  "propagation": "mandatory"
+}

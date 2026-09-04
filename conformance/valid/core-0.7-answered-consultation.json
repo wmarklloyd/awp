@@ -1,0 +1,19 @@
+{
+  "id": "consultation:debug-auth-timeout",
+  "type": "consultation",
+  "revision": 2,
+  "question": "Why does the login request time out only after the service has been idle?",
+  "status": "answered",
+  "requested_action": "Rank likely causes and propose safe diagnostic steps; do not modify files or contact external services.",
+  "context": {
+    "observed_behavior": "The first request after approximately 15 minutes fails after 30 seconds; retrying succeeds.",
+    "attempts": ["Confirmed the client timeout is 30 seconds", "Reproduced against the local test service"]
+  },
+  "read_first": ["evidence:local-reproduction"],
+  "desired_output": "A short hypothesis ranking, missing evidence, and a next-step diagnostic plan.",
+  "answer": "The leading hypothesis is an idle connection or connection-pool expiry that is not surfaced before the client timeout.",
+  "responded_by": "actor:consulted-model",
+  "responded_at": "2026-09-04T18:00:00Z",
+  "uncertainty": "The service-side idle timeout and pool configuration still need direct confirmation.",
+  "response_evidence": ["evidence:local-reproduction"]
+}

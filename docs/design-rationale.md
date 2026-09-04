@@ -4,6 +4,8 @@
 
 Chat transcripts and repositories contain useful evidence but do not provide a compact, typed statement of current goals, constraints, decisions, uncertainty, authority, and resumable next actions. AWP represents those concepts directly while retaining links to their evidence.
 
+A first-class consultation record makes a bounded request for another model, human, or specialist explicit. It packages the question, portable context, prior attempts, requested response, and authority limits without confusing advice with delegation or authorization.
+
 ## Events and projections
 
 Events preserve causal history and concurrent contributions. Snapshots make that history practical to inspect. Treating snapshots as projections avoids making a convenient summary silently override the evidence from which it was derived.
@@ -23,6 +25,10 @@ Imported workstate describes authority claims but cannot authorize itself. The r
 ## User-mediated conflict resolution
 
 Concurrent agents sometimes produce changes whose interaction cannot be resolved mechanically or by the agents' declared authority. AWP therefore records an escalation as a bounded arbitration request: the user receives alternatives, consequences, reversibility, evidence, and blocked scopes; a trusted user decision selects only a named option for an exact request revision. Pending arbitration freezes dependent writes while allowing explicitly safe interim work. This preserves both branches and makes the human intervention auditable without treating a chat message, silence, or one agent's preference as protocol authority.
+
+## Domain-neutral work products
+
+Coordination is not limited to source code or repository files. A shared work product may be a building model, a room boundary, a roof assembly, a drawing sheet, a schedule, a dataset, or a physical component. Scopes identify physical and semantic regions through domain-specific selector profiles; overlaps capture relationships such as adjacency, containment, shared interfaces, load paths, or common performance constraints. Source control is one adapter and one revision space, not the definition of the work product.
 
 ## Exact specification binding
 

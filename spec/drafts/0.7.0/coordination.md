@@ -12,7 +12,7 @@
 
 ## 1. Purpose and scope
 
-AWP Coordination defines durable semantic coordination for multiple actors working on a shared project or codebase. It records intended work before integration, dependencies between work, physical and semantic overlap, negotiated commitments, candidate changes, integration preconditions, and verification evidence.
+AWP Coordination defines durable semantic coordination for multiple actors working on a shared project or work product. A work product may be digital, physical, spatial, documentary, analytical, or mixed: source code, a building information model, a room, a roof assembly, a drawing set, a dataset, a schedule, or a manufactured component. It records intended work before integration, dependencies between work, physical and semantic overlap, negotiated commitments, candidate changes, integration preconditions, and verification evidence.
 
 The module is designed so that a different agent on a different host can determine:
 
@@ -125,7 +125,7 @@ A record reference has one of these forms:
 
 Safety-relevant references in contracts, preconditions, readiness decisions, verification, overlaps, and integration plans MUST be revision-pinned. A missing, superseded, or contested pinned revision remains historically addressable but MUST NOT be silently replaced by another revision. An unpinned reference that is absent, contested, or ambiguous is unresolved.
 
-Repository revisions use adapter-qualified immutable identifiers such as a full Git object ID. Record revisions and repository revisions are different namespaces.
+State-space revisions use adapter-qualified immutable identifiers. A Git object ID is one example; a BIM model revision, CAD vault revision, drawing-issue identifier, survey snapshot, or controlled physical-inspection record are other possible bases. Record revisions and state-space revisions are different namespaces.
 
 ### 4.2 Time and authority
 
@@ -199,7 +199,7 @@ C2 implementations maintain stable project-scoped definitions for semantic coord
   "aliases": ["contract:session-store"],
   "owners": ["actor:auth-team"],
   "selectors": [
-    {"kind": "symbol", "repository": "repo:app", "path": "src/session/store.ts", "symbol": "SessionStore"}
+    {"kind": "symbol", "repository": "repo:app", "base_revision": "git:91ab4e7896d820c29ff5b9bd2a1f8d5ef67f734a", "path": "src/session/store.ts", "symbol": "SessionStore"}
   ]
 }
 ```
@@ -210,7 +210,7 @@ Within one workstate, an active alias MUST resolve to at most one semantic defin
 
 Changing the meaning of a definition requires a new revision. Reusing an identifier for unrelated meaning is invalid.
 
-Selector comparison across repository revisions is a C2 correctness operation. An analyzer MUST resolve both selectors against their pinned bases and attempt to relate moved, renamed, extracted, or replaced targets using a declared selector profile. Resolution results are `same`, `related`, `different`, `unresolvable`, or `ambiguous`, with evidence and confidence. `unresolvable` or `ambiguous` forces overlap classification `unknown`; it MUST NOT yield `none`.
+Selector comparison across pinned state-space revisions is a C2 correctness operation. An analyzer MUST resolve both selectors against their pinned bases and attempt to relate moved, renamed, subdivided, aggregated, or replaced targets using a declared selector profile. Resolution results are `same`, `related`, `different`, `unresolvable`, or `ambiguous`, with evidence and confidence. `unresolvable` or `ambiguous` forces overlap classification `unknown`; it MUST NOT yield `none`.
 
 Language-specific selector syntax and drift algorithms belong to registered adapter profiles. The initial reference implementation SHOULD provide Python AST and TypeScript compiler-symbol profiles, but their identifiers and outputs remain usable by agents implemented in any language.
 
@@ -239,13 +239,78 @@ A scope is a first-class record selecting a physical or semantic region. Intents
 }
 ```
 
-Physical selector kinds include `repository`, `directory`, `file`, `symbol`, `syntax_node`, `configuration_key`, `schema_object`, `generated_output`, `test`, and `fixture`. Line ranges are hints and MUST NOT be the only selector for a safety-relevant claim.
+Physical selector kinds include `repository`, `directory`, `file`, `symbol`, `syntax_node`, `configuration_key`, `schema_object`, `generated_output`, `test`, `fixture`, `spatial_region`, `model_element`, `assembly`, `document_region`, `domain_object`, and `interface`. A selector profile defines how a domain resolves fields such as `state_space`, `object_id`, geometry, containment, adjacency, or document coordinates. Coordinates or line ranges are hints and MUST NOT be the only selector for a safety-relevant claim.
 
 Access is `observe`, `read`, `relied_upon_read`, `write`, `create`, `delete`, `propose_change`, `integrate`, or `verify`.
 
 A `relied_upon_read` asserts that the actor's result depends on the selected state remaining compatible. It participates in overlap analysis against relevant writes, deletes, contract revisions, and semantic changes.
 
 Authors SHOULD declare relied-upon reads only for assumptions whose incompatible change could invalidate the output, not every file or symbol inspected. Tools may propose candidates from dependency traces, but the published set SHOULD be summarized at stable interface, invariant, schema, or behavior boundaries. Fine-grained automatic reads MAY remain evidence behind that summary. This keeps the reverse index useful rather than turning ordinary repository browsing into conflicts.
+
+### 6.1 Domain-neutral work-product example
+
+In a building-design project, agents may coordinate against the same model or document state while owning different portions of the work product:
+
+```json
+[
+  {
+    "id": "scope:room-204",
+    "type": "scope",
+    "module": "urn:awp:coordination",
+    "revision": 1,
+    "status": "active",
+    "created_by": "actor:architect-a",
+    "created_at": "2026-09-04T16:00:00Z",
+    "selector": {
+      "kind": "spatial_region",
+      "state_space": "bim:building-model",
+      "base_revision": "bim:issue-18",
+      "object_id": "room:204",
+      "profile": "ifc-spatial-v1"
+    },
+    "access": "write",
+    "semantic_targets": ["semantic:room-boundary@1"]
+  },
+  {
+    "id": "scope:room-205",
+    "type": "scope",
+    "module": "urn:awp:coordination",
+    "revision": 1,
+    "status": "active",
+    "created_by": "actor:architect-b",
+    "created_at": "2026-09-04T16:00:00Z",
+    "selector": {
+      "kind": "spatial_region",
+      "state_space": "bim:building-model",
+      "base_revision": "bim:issue-18",
+      "object_id": "room:205",
+      "profile": "ifc-spatial-v1"
+    },
+    "access": "write",
+    "semantic_targets": ["semantic:shared-wall-fire-rating@2"]
+  },
+  {
+    "id": "scope:main-roof",
+    "type": "scope",
+    "module": "urn:awp:coordination",
+    "revision": 1,
+    "status": "active",
+    "created_by": "actor:engineer-c",
+    "created_at": "2026-09-04T16:00:00Z",
+    "selector": {
+      "kind": "assembly",
+      "state_space": "bim:building-model",
+      "base_revision": "bim:issue-18",
+      "object_id": "assembly:main-roof",
+      "profile": "ifc-element-v1"
+    },
+    "access": "write",
+    "semantic_targets": ["semantic:roof-load-path@1", "semantic:roof-penetration-zone@1"]
+  }
+]
+```
+
+The first two scopes may overlap at their shared wall even though they are different rooms. The roof scope may overlap the rooms through load paths, ceiling interfaces, drainage, fire separation, or service penetrations. Coordination records the relationship and the required agreement; it does not assume that a file merge, model export, or separate agent ownership resolves it.
 
 ## 7. Work intent
 
@@ -310,6 +375,7 @@ An observed scope is tool-produced evidence about actual work. It does not overw
   "created_by": "actor:scope-analyzer",
   "created_at": "2026-09-03T21:00:00Z",
   "subject": "changeset:auth-refresh-v1@2",
+  "repository": "repo:app",
   "base_revision": "git:91ab4e7896d820c29ff5b9bd2a1f8d5ef67f734a",
   "result_revision": "git:5b7e912ba94d32ddf03778b63a751a06d920f399",
   "analyzer": {"id": "tool:scope-analyzer", "version": "1.0.0"},
@@ -374,7 +440,7 @@ Overlap lifecycle:
 
 `unknown` MUST NOT be treated as `compatible`. The configured policy determines whether it warns, negotiates, or blocks.
 
-`superseded` is the only terminal overlap state. `resolved` is quiescent but may reopen when its basis changes. The overlap record's `policy_action` is the evaluated result of the module configuration plus any identified scope, repository, or organization policy. More specific applicable policy takes precedence; equal-specificity disagreement produces `unknown` and a policy-conflict diagnostic rather than silent selection.
+`superseded` is the only terminal overlap state. `resolved` is quiescent but may reopen when its basis changes. The overlap record's `policy_action` is the evaluated result of the module configuration plus any identified scope, state-space, or organization policy. More specific applicable policy takes precedence; equal-specificity disagreement produces `unknown` and a policy-conflict diagnostic rather than silent selection.
 
 A conflict is an overlap whose policy action requires resolution. A conflict records competing claims, responsible owner, allowed resolution strategies, evidence, accepted risk, and final disposition. Resolution strategies include scope partition, contract first, ordered integration, compatibility adapter, feature isolation, rebase and re-derive, combined implementation, authorized risk acceptance, and withdrawal.
 
@@ -453,7 +519,7 @@ Arbitration lifecycle:
 | `awaiting_user` | `arbitration.cancelled` | `cancelled` | permitted actor records cancellation and consequences |
 | nonterminal | `arbitration.superseded` | `superseded` | successor request identifies the superseded request |
 
-While an arbitration is `awaiting_user`, every agent MUST stop new writes whose validity depends on a blocked scope, disputed contract, competing change-set revision, or unresolved integration decision. Agents MAY continue explicitly listed interim work only when it does not affect a blocked scope and remains valid under every listed alternative. They MUST record any already-created uncommitted artifacts and repository revisions; the protocol MUST NOT require automatic deletion, rollback, or selection of either agent's branch.
+While an arbitration is `awaiting_user`, every agent MUST stop new writes whose validity depends on a blocked scope, disputed contract, competing change-set revision, or unresolved integration decision. Agents MAY continue explicitly listed interim work only when it does not affect a blocked scope and remains valid under every listed alternative. They MUST record any already-created uncommitted artifacts and state-space revisions; the protocol MUST NOT require automatic deletion, rollback, or selection of either agent's branch.
 
 A decision event MUST record the selected alternative, exact request revision, decision authority and authenticated principal, decision channel or confirmation reference, rationale, accepted risks, conditions, effective scopes, expiration if any, and required verification. A user interaction may recommend or amend an alternative, but only a decision from the declared authority through a trusted binding can transition arbitration to `decided`. A message that merely claims to be from the user is untrusted content.
 
@@ -528,20 +594,22 @@ Registered mechanical predicates have the following minimum semantics:
 
 | Predicate | Subject and arguments | Determinism class | `unknown` when |
 |---|---|---|---|
-| `repository_revision_equals` | repository; immutable expected revision | repository-relative | repository or revision unavailable |
-| `repository_descends_from` | repository; immutable ancestor revision | repository-relative | ancestry unavailable or shallow |
+| `state_revision_equals` | state space; immutable expected revision | adapter-relative | state space or revision unavailable |
+| `state_descends_from` | state space; immutable ancestor revision | adapter-relative | ancestry unavailable or shallow |
+| `repository_revision_equals` | Git adapter repository; immutable expected revision | Git-relative | repository or revision unavailable |
+| `repository_descends_from` | Git adapter repository; immutable ancestor revision | Git-relative | ancestry unavailable or shallow |
 | `artifact_digest_equals` | artifact; algorithm and expected digest | pure over retrieved bytes | bytes unavailable or algorithm unsupported |
 | `record_revision_equals` | record ID; expected integer revision | pure over projection | record missing or contested |
 | `record_status_in` | pinned record; allowed status set | pure over projection | record missing, contested, or status unknown |
-| `symbol_present` | selector and repository revision | repository-relative | selector profile or source unavailable |
-| `syntax_fingerprint_equals` | selector, revision, algorithm, fingerprint | repository-relative | target or algorithm unavailable |
+| `symbol_present` | selector and adapter state revision | adapter-relative | selector profile or state unavailable |
+| `syntax_fingerprint_equals` | selector, revision, algorithm, fingerprint | adapter-relative | target or algorithm unavailable |
 | `dependency_state_in` | pinned dependency edge/target; allowed states | pure over projection | target or edge unresolved |
 | `test_baseline_equals` | test ID; base revision and expected result digest | repository/environment-relative | baseline evidence unavailable |
 | `toolchain_satisfies` | tool ID; version constraint and environment selector | host-relative | environment or version cannot be observed |
 | `schema_version_satisfies` | schema ID/revision; registered version constraint | pure over identified schema | schema or constraint profile unavailable |
 | `verification_passed_for` | pinned subject; verification policy | projection/environment-relative | valid bound verification unavailable |
 
-`pure` evaluators read only the identified AWP projection or supplied bytes. Repository-relative and host-relative results MUST record the repository or environment they observed. All evaluators MUST be side-effect-free with respect to the project, deterministic for identical declared inputs, bounded by an explicit timeout, and return `error` rather than partial success after timeout or internal failure. Constraint syntax is owned by the registered evaluator-interface version; an implementation MUST NOT guess unsupported syntax.
+`pure` evaluators read only the identified AWP projection or supplied bytes. Adapter-relative and host-relative results MUST record the state space or environment they observed. All evaluators MUST be side-effect-free with respect to the project, deterministic for identical declared inputs, bounded by an explicit timeout, and return `error` rather than partial success after timeout or internal failure. Constraint syntax is owned by the registered evaluator-interface version; an implementation MUST NOT guess unsupported syntax.
 
 An asserted precondition records a natural-language statement, asserting actor, scope, epistemic status, evidence if any, and required reviewer or authority. It MUST NOT be presented as machine-verified.
 
@@ -685,7 +753,7 @@ A verification result MUST bind the claim being checked to exact inputs.
 
 Verification lifecycle status is `final` or `superseded`; outcome is `pass`, `fail`, `inconclusive`, or `error`. An agent's statement that tests passed is `reported` evidence unless the execution and outputs are independently inspectable under the declared policy.
 
-Verification becomes stale when its subject revision, tested repository revision, relevant contract, required tool/environment constraint, or relied-upon baseline changes. A verifier's approval does not grant integration authority unless separately authorized.
+Verification becomes stale when its subject revision, tested state-space revision, relevant contract, required tool/environment constraint, or relied-upon baseline changes. A verifier's approval does not grant integration authority unless separately authorized.
 
 ## 15. Dependency graph and staleness
 
@@ -707,7 +775,7 @@ Cycles in `requires` or `orders_before` are diagnostic `AWP-COORD-DEPENDENCY-CYC
 
 ## 16. Integration plan and result
 
-An integration plan identifies owner, target repository and base, exact change-set revisions, dependency-derived order, shared contracts, required precondition evaluations, verification plan, rollback, authority requirements, and `atomicity`.
+An integration plan identifies owner, target state space and base revision, exact change-set revisions, dependency-derived order, shared contracts, required precondition evaluations, verification plan, rollback, authority requirements, and `atomicity`. A repository and commit are one possible adapter representation of the target state space.
 
 `atomicity` is:
 
@@ -715,7 +783,7 @@ An integration plan identifies owner, target repository and base, exact change-s
 - `stepwise`: each ordered input may commit independently and remains integrated if a later step fails unless rollback policy reverses it;
 - `best_effort`: independent inputs may integrate in any dependency-valid subset, with an explicit disposition for every input.
 
-An adapter MUST reject `atomic` when its repository or transaction mechanism cannot supply the claimed atomic boundary. Rollback is a separately recorded operation and MUST NOT be assumed successful.
+An adapter MUST reject `atomic` when its state-space transaction mechanism cannot supply the claimed atomic boundary. Rollback is a separately recorded operation and MUST NOT be assumed successful.
 
 Before starting integration, the owner MUST refresh available coordination events, compare the target base, re-evaluate expiring or base-bound preconditions, confirm contract revisions, and re-open any invalidated overlap dispositions.
 
@@ -727,15 +795,15 @@ Integration lifecycle:
 | `proposed` | `integration.approved` | `approved` | required policy/authority approves exact plan revision |
 | `approved` | `integration.started` | `integrating` | current readiness and concurrency checks pass |
 | `integrating` | `integration.completed` | `completed` | result revision, transformations, and required verification recorded |
-| `integrating` | `integration.failed` | `failed` | failure evidence and repository disposition recorded |
+| `integrating` | `integration.failed` | `failed` | failure evidence and state-space disposition recorded |
 | `proposed`, `approved` | `integration.cancelled` | `cancelled` | permitted actor and reason recorded |
 | nonterminal | `integration.superseded` | `superseded` | successor plan present |
 
-An integration result identifies exact plan revision, inputs, target base, resulting repository revision, merge/rebase/manual transformations, resolved conflicts, contract revisions, verification results, deviations, output artifact digests, responsible actors, and rollback status.
+An integration result identifies exact plan revision, inputs, target base, resulting state-space revision, adapter transformations, resolved conflicts, contract revisions, verification results, deviations, output artifact digests, responsible actors, and rollback status.
 
-The result contains one disposition per planned input: `integrated`, `not_attempted`, `failed`, `rolled_back`, `rollback_failed`, or `superseded`, plus any intermediate and final repository revisions. After partial failure, each change set transitions according to its own disposition; the plan may be `failed` even though stepwise inputs remain `integrated`. An atomic plan that fails leaves no change set integrated unless the enforcing adapter records an atomicity violation.
+The result contains one disposition per planned input: `integrated`, `not_attempted`, `failed`, `rolled_back`, `rollback_failed`, or `superseded`, plus any intermediate and final state-space revisions. After partial failure, each change set transitions according to its own disposition; the plan may be `failed` even though stepwise inputs remain `integrated`. An atomic plan that fails leaves no change set integrated unless the enforcing adapter records an atomicity violation.
 
-A successful source-control merge MUST NOT by itself transition an integration to `completed` when combined semantic verification is required.
+A successful adapter transaction or source-control merge MUST NOT by itself transition an integration to `completed` when combined semantic verification is required.
 
 Terminal integration states are `completed`, `failed`, `cancelled`, and `superseded`. `proposed`, `approved`, and `integrating` are nonterminal.
 
@@ -886,7 +954,7 @@ Minimum C1 payload requirements supplement the common event rules in Section 4.3
 | verification completion | pinned subjects, base/result revision, procedure, environment, outcome, evidence |
 | staleness | subject, invalidated dependency/read-set entry, causal path, prior valid evidence |
 | reconciliation | last uncontested revision, all known competing events and tips, replacement, dispositions, authority evaluation |
-| integration completion/failure | pinned plan, per-input dispositions, repository revisions, verification and rollback outcomes |
+| integration completion/failure | pinned plan, per-input dispositions, state-space revisions, verification and rollback outcomes |
 | arbitration request | pinned subjects, question, alternatives, decision authority, deadline, blocked scopes, interim-work policy, evidence, and escalation basis |
 | arbitration decision | exact request revision, selected alternative, authenticated authority, confirmation reference, rationale, accepted risks, conditions, effective scopes, expiration, and verification requirements |
 
@@ -912,7 +980,7 @@ MCP tools may read, validate, project, query, or append AWP data. Tool availabil
 
 ### MPAC
 
-[MPAC, arXiv:2604.09744 version 1](https://arxiv.org/abs/2604.09744v1) session, intent, operation, conflict, and governance objects may map to corresponding AWP records. AWP retains repository-specific semantic scopes, contracts, preconditions, verification binding, persistent project history, and resume/handoff state. A mapping MUST identify information loss and MUST NOT equate MPAC transport/session acceptance with AWP integration readiness.
+[MPAC, arXiv:2604.09744 version 1](https://arxiv.org/abs/2604.09744v1) session, intent, operation, conflict, and governance objects may map to corresponding AWP records. AWP retains domain-specific semantic scopes, contracts, preconditions, verification binding, persistent project history, and resume/handoff state. A mapping MUST identify information loss and MUST NOT equate MPAC transport/session acceptance with AWP integration readiness.
 
 ## 23. Reference procedure
 

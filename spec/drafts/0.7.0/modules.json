@@ -19,6 +19,7 @@
       "version": "0.4.0",
       "status": "optional",
       "document": "capsule.md",
+      "schema": "../../../schemas/awp-capsule-0.4.schema.json",
       "dependencies": [
         { "id": "urn:awp:core", "version": "0.7.x" }
       ]
@@ -71,6 +72,7 @@
       "version": "0.4.0",
       "status": "optional",
       "document": "security.md",
+      "schema": "../../../schemas/awp-security-0.4.schema.json",
       "dependencies": [
         { "id": "urn:awp:core", "version": "0.7.x" }
       ],
@@ -96,4 +98,3 @@
     }
   ]
 }
-

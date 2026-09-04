@@ -13,4 +13,4 @@ A shared capsule and its repository discovery document identify the same exact g
 
 ## Consequences
 
-Capsule advances to 0.4.0 and repository discovery advances to 0.2.0 in the AWP 0.7.0 working draft. Discovery 0.1 and AWP 0.6.0 remain unchanged historical protocols.
+Capsule advances to 0.4.0 in the AWP 0.7.0 working draft. The later single-file discovery decision records that this binding belongs in the capsule itself; the 0.6.0 and Discovery 0.1 formats remain unchanged historical protocols.

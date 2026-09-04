@@ -1,0 +1,10 @@
+{
+  "id": "consultation:incomplete",
+  "type": "consultation",
+  "revision": 1,
+  "question": "What is wrong?",
+  "status": "answered",
+  "requested_action": "Give advice.",
+  "context": {"problem": "A failure occurred."},
+  "read_first": []
+}

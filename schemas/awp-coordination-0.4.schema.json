@@ -31,29 +31,43 @@
       "items": { "$ref": "#/$defs/pinnedReference" },
       "uniqueItems": true
     },
-    "repositoryState": {
+    "stateReference": {
       "type": "object",
-      "required": ["repository", "revision"],
+      "required": ["revision"],
+      "oneOf": [
+        { "required": ["repository"] },
+        { "required": ["state_space"] }
+      ],
       "properties": {
         "repository": { "$ref": "#/$defs/identifier" },
-        "revision": { "$ref": "#/$defs/identifier" }
+        "state_space": { "$ref": "#/$defs/identifier" },
+        "revision": { "$ref": "#/$defs/identifier" },
+        "profile": { "$ref": "#/$defs/identifier" }
       },
       "additionalProperties": true
     },
     "selector": {
       "type": "object",
-      "required": ["kind"],
+      "required": ["kind", "base_revision"],
+      "oneOf": [
+        { "required": ["repository"] },
+        { "required": ["state_space"] }
+      ],
       "properties": {
         "kind": {
           "enum": [
             "repository", "directory", "file", "symbol", "syntax_node",
-            "configuration_key", "schema_object", "generated_output", "test", "fixture"
+            "configuration_key", "schema_object", "generated_output", "test", "fixture",
+            "spatial_region", "model_element", "assembly", "document_region", "domain_object", "interface", "custom"
           ]
         },
         "repository": { "$ref": "#/$defs/identifier" },
+        "state_space": { "$ref": "#/$defs/identifier" },
         "base_revision": { "$ref": "#/$defs/identifier" },
         "path": { "type": "string", "minLength": 1 },
-        "symbol": { "type": "string", "minLength": 1 }
+        "symbol": { "type": "string", "minLength": 1 },
+        "object_id": { "$ref": "#/$defs/identifier" },
+        "profile": { "$ref": "#/$defs/identifier" }
       },
       "additionalProperties": true
     },
@@ -150,7 +164,7 @@
                   "status": { "enum": ["proposed", "active", "waiting", "completed", "withdrawn", "abandoned", "superseded"] },
                   "goal": { "$ref": "#/$defs/identifier" },
                   "summary": { "type": "string", "minLength": 1 },
-                  "base": { "$ref": "#/$defs/repositoryState" },
+                  "base": { "$ref": "#/$defs/stateReference" },
                   "declared_scopes": { "$ref": "#/$defs/pinnedReferenceArray" },
                   "expected_effects": { "$ref": "#/$defs/pinnedReferenceArray" },
                   "preserves": { "$ref": "#/$defs/pinnedReferenceArray" }
@@ -161,7 +175,13 @@
               "if": { "properties": { "type": { "const": "observed_scope" } }, "required": ["type"] },
               "then": {
                 "required": ["subject", "base_revision", "result_revision", "analyzer", "method", "outcome", "observed", "comparison"],
+                "oneOf": [
+                  { "required": ["repository"] },
+                  { "required": ["state_space"] }
+                ],
                 "properties": {
+                  "repository": { "$ref": "#/$defs/identifier" },
+                  "state_space": { "$ref": "#/$defs/identifier" },
                   "status": { "enum": ["final", "superseded"] },
                   "subject": { "$ref": "#/$defs/pinnedReference" },
                   "outcome": { "enum": ["complete", "partial", "error"] },
@@ -284,7 +304,7 @@
                 "properties": {
                   "status": { "enum": ["proposed", "in_progress", "ready", "stale", "integrating", "integrated", "failed", "withdrawn", "superseded"] },
                   "intent": { "$ref": "#/$defs/pinnedReference" },
-                  "base": { "$ref": "#/$defs/repositoryState" },
+                  "base": { "$ref": "#/$defs/stateReference" },
                   "declared_scopes": { "$ref": "#/$defs/pinnedReferenceArray" },
                   "preconditions": { "$ref": "#/$defs/pinnedReferenceArray" },
                   "observed_scope": { "$ref": "#/$defs/pinnedReference" },
@@ -295,7 +315,11 @@
             {
               "if": { "properties": { "type": { "const": "verification_result" } }, "required": ["type"] },
               "then": {
-                "required": ["subjects", "repository", "base_revision", "result_revision", "procedure", "environment", "outcome", "observations"],
+                "required": ["subjects", "base_revision", "result_revision", "procedure", "environment", "outcome", "observations"],
+                "anyOf": [
+                  { "required": ["repository"] },
+                  { "required": ["state_space"] }
+                ],
                 "properties": {
                   "status": { "enum": ["final", "superseded"] },
                   "subjects": { "$ref": "#/$defs/pinnedReferenceArray" },
@@ -330,8 +354,14 @@
               "if": { "properties": { "type": { "const": "integration_result" } }, "required": ["type"] },
               "then": {
                 "required": ["plan", "base_revision", "result_revision", "input_dispositions", "verification", "rollback_status"],
+                "oneOf": [
+                  { "required": ["repository"] },
+                  { "required": ["state_space"] }
+                ],
                 "properties": {
-                  "plan": { "$ref": "#/$defs/pinnedReference" }
+                  "plan": { "$ref": "#/$defs/pinnedReference" },
+                  "repository": { "$ref": "#/$defs/identifier" },
+                  "state_space": { "$ref": "#/$defs/identifier" }
                 }
               }
             },

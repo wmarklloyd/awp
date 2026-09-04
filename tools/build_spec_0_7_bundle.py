@@ -26,15 +26,16 @@ ASSETS = (
         "spec/drafts/0.7.0/requirements.json",
     ),
     ("Core schema — `schemas/awp-core-0.7.schema.json`", "schemas/awp-core-0.7.schema.json"),
+    ("Capsule schema — `schemas/awp-capsule-0.4.schema.json`", "schemas/awp-capsule-0.4.schema.json"),
     (
         "Coordination schema — `schemas/awp-coordination-0.4.schema.json`",
         "schemas/awp-coordination-0.4.schema.json",
     ),
+    ("Security schema — `schemas/awp-security-0.4.schema.json`", "schemas/awp-security-0.4.schema.json"),
     (
         "Module-registry schema — `schemas/awp-module-registry-0.7.schema.json`",
         "schemas/awp-module-registry-0.7.schema.json",
     ),
-    ("Discovery schema — `schemas/awp-discovery-0.2.schema.json`", "schemas/awp-discovery-0.2.schema.json"),
 )
 
 

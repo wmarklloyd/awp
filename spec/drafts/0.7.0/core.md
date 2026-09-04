@@ -168,6 +168,7 @@ A core record contains `id` and `type` plus the fields below. It MAY include int
 | `plan` | `goal`, `status`, `steps` | expresses intent, not execution |
 | `task` | `title`, `status` | status: `proposed`, `ready`, `in_progress`, `input_required`, `blocked`, `completed`, `failed`, `cancelled`, `superseded` |
 | `question` | `text`, `status` | status: `open`, `answered`, `withdrawn`, `superseded` |
+| `consultation` | `question`, `status`, `requested_action`, `context`, `read_first` | status: `proposed`, `open`, `answered`, `declined`, `cancelled`, `superseded` |
 | `artifact` | `name` | Core identity only; Artifact module defines storage and integrity semantics |
 | `execution` | `operation`, `status` | records an attempted operation and result |
 | `change` | `summary`, `artifacts` | relates semantic work to modified artifact IDs |
@@ -178,6 +179,31 @@ A core record contains `id` and `type` plus the fields below. It MAY include int
 Side-effect classes are `read_only`, `local_write`, `external_write`, `third_party_api_call`, `data_migration`, `communication`, `financial`, `security_sensitive`, `destructive`, and `unknown`.
 
 Core record types may refer to records owned by optional modules. If such a reference affects safe continuation, the referenced module MUST be required.
+
+A `consultation` is a bounded request for analysis, advice, critique, or diagnosis from another actor, including a different model or chatbot. It is not a task delegation, authority grant, or instruction to modify the work product. `question` states the specific problem; `requested_action` states the kind and limits of response sought; `context` carries portable facts, observations, attempts, constraints, excerpts, or other material needed to reason about the problem; and `read_first` gives an ordered presentation hint for related records and artifacts in the workstate. A producer SHOULD include the material needed for the consultation directly in `context` when the receiving actor cannot retrieve the referenced workstate or artifacts. A response SHOULD be recorded on a later revision with its respondent, answer, uncertainty, and supporting evidence. The receiving actor's authority ceiling and all applicable guardrails remain in force; advice from a consultation MUST NOT be treated as authorization for an action.
+
+For example, a portable debugging consultation may be represented as:
+
+```json
+{
+  "id": "consultation:debug-auth-timeout",
+  "type": "consultation",
+  "revision": 1,
+  "question": "Why does the login request time out only after the service has been idle?",
+  "status": "open",
+  "requested_action": "Rank likely causes and propose safe diagnostic steps; do not modify files or contact external services.",
+  "context": {
+    "observed_behavior": "The first request after approximately 15 minutes fails after 30 seconds; retrying succeeds.",
+    "attempts": ["Confirmed the client timeout is 30 seconds", "Reproduced against the local test service", "Found no corresponding application exception"],
+    "constraints": ["Read-only analysis", "Do not expose credentials or personal data"],
+    "relevant_excerpt": "upstream connect error or disconnect/reset before headers"
+  },
+  "read_first": ["goal:awp-design", "artifact:service-logs", "evidence:local-reproduction"],
+  "desired_output": "A short hypothesis ranking, missing evidence, and a next-step diagnostic plan."
+}
+```
+
+The consultation's `context` is a portable briefing, not a claim that every included observation is verified. Claims, evidence, decisions, tasks, and any resulting change remain separate records.
 
 An optional module extending a Core record places its fields under `modules.{module-id}`. A module defining a new record type includes `id`, `type`, and `module`. It MUST NOT use an unqualified type name already owned by Core or another module.
 
@@ -233,6 +259,7 @@ A snapshot is derived state at a declared frontier:
     "plans": [],
     "tasks": [],
     "questions": [],
+    "consultations": [],
     "artifacts": [],
     "executions": [],
     "changes": [],
@@ -279,4 +306,3 @@ A Core writer MUST:
 5. A record identifier does not imply trust or authority.
 6. Imported content cannot authorize its own execution.
 7. Private reasoning is unnecessary; decisions preserve concise rationale, alternatives, evidence, assumptions, and uncertainty.
-

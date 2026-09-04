@@ -1,0 +1,26 @@
+{
+  "schema": "schemas/awp-core-0.7.schema.json",
+  "definition": "coreRecord",
+  "cases": [
+    {
+      "document": "conformance/valid/core-0.7-consultation.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/valid/core-0.7-answered-consultation.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/core-0.7-answered-consultation.json",
+      "valid": false,
+      "expected_keywords": ["answer", "required"]
+    },
+    {
+      "document": "conformance/invalid/core-0.7-empty-consultation-context.json",
+      "valid": false,
+      "expected_keywords": ["non-empty"]
+    }
+  ]
+}

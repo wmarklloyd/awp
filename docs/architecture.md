@@ -9,7 +9,7 @@ AWP defines portable workstate semantics and representations. It does not provid
 1. **Core** defines identity, actors, typed semantic records, event ancestry, frontiers, snapshots, provenance, and epistemic status.
 2. **Representation modules** define how logical state is carried in directories, Markdown capsules, packages, or wire payloads.
 3. **Continuation modules** define checkpoints, handoffs, resume profiles, artifact references, and synchronization.
-4. **Coordination** defines intents, scopes, overlaps, contracts, preconditions, verification, staleness, integration records, and bounded user-mediated arbitration when agents cannot safely resolve an interaction.
+4. **Coordination** defines intents, scopes, overlaps, contracts, preconditions, verification, staleness, integration records, and bounded user-mediated arbitration when agents cannot safely resolve an interaction in a shared work product, whether digital, physical, spatial, documentary, or mixed.
 5. **Bindings** map AWP concepts to external repositories, transports, runtimes, and policy systems without importing their authority implicitly.
 
 ## State model

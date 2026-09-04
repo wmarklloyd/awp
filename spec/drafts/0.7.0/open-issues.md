@@ -55,5 +55,5 @@ These questions are intentionally unresolved. A module must not imply that an op
 
 ## Resume and discovery questions
 
-28. Which agent runtimes will adopt `.awp.json` discovery directly, and which will require an agent-specific instruction shim or launcher integration?
+28. Which agent runtimes will recognize the conventional `.awp.md` filename directly, and which will require an agent-specific instruction shim or launcher integration?
 29. What context-selection benchmark demonstrates that Resume Profile loading reduces tokens and startup time without omitting safety-critical state?

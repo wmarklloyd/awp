@@ -8,6 +8,11 @@
       "expected_keywords": []
     },
     {
+      "document": "conformance/valid/coordination-0.4-state-space-scope.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
       "document": "conformance/valid/coordination-0.4-intent.json",
       "valid": true,
       "expected_keywords": []
