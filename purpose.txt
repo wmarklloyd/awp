@@ -1,6 +1,6 @@
 AWP provides a common format for agents that already have their own working environments. It is intended to:
 
 1. Help a user or agent send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone.
-2. Give a new agent canonical project orientation before it must inspect the wider repository.
-3. Let an agent or user return to a project and resume from a canonical checkpoint rather than reconstructing its state from scratch.
+2. Give a new agent a clear, shared project orientation before it must inspect the wider repository.
+3. Let an agent or user return to a project and resume from a recorded checkpoint rather than reconstructing its state from scratch.
 4. Help multiple agents negotiate interdependent code work above the byte-level coordination provided by Git or similar source-control systems.
