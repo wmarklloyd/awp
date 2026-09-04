@@ -1,2 +1,116 @@
 # awp
 Agent Workstate Protocol
+
+# Agent Workstate Protocol (AWP)
+
+AWP is an exploratory protocol for preserving portable, semantic work state across human and AI-agent sessions. It gives collaborators a canonical description of a project's intent, decisions, evidence, progress, and next actions without requiring every new participant to reconstruct that context from the repository or chat history.
+
+AWP is designed for four related use cases:
+
+1. Rich handoff between agents and people.
+2. Fast orientation for an agent entering an existing project.
+3. Reliable re-entry after a session or context boundary.
+4. Multi-agent coordination above source control, including work that is interdependent even when it touches different files.
+
+## Current status
+
+The current release is **AWP 0.6.0**, an exploratory modular specification. It includes Coordination 0.3.0 as a normative but experimental module.
+
+The specification, schemas, discovery document, portable workstate capsule, generated bundle, and validators are present and internally validated. This repository does **not** yet contain a production reader/writer, semantic-scope analyzer, test harness, or live coordination service.
+
+## Start here
+
+For a quick project re-entry, follow the repository discovery document:
+
+1. Read [`.awp.json`](.awp.json) to locate the current workstate and specification.
+2. Read [`conversation.awp.md`](conversation.awp.md) for the current goal, decisions, status, constraints, and recommended next action.
+3. Use [`AWP_SPECIFICATION_0.6.0.bundle.md`](AWP_SPECIFICATION_0.6.0.bundle.md) when you need the complete self-contained specification.
+
+If you are evaluating the protocol itself, begin with the concise family overview in [`AWP_SPECIFICATION_0.6.0.md`](AWP_SPECIFICATION_0.6.0.md) and the [`0.6.0 release notes`](AWP_0.6.0_RELEASE_NOTES.md).
+
+## Core model
+
+AWP separates:
+
+- intent and authority;
+- execution and evidence;
+- observations, inferences, and conclusions;
+- causal event history and generated snapshots;
+- source-control conflicts and higher-level semantic coordination.
+
+The preferred exchange representation is a human-readable, single-file Markdown capsule such as `project.awp.md`. Machine-readable JSON sections preserve structured state while generated prose provides rapid human and agent orientation.
+
+AWP does not require or attempt to preserve private chain-of-thought or hidden runtime state.
+
+## Specification modules
+
+The 0.6.0 family is split into independently versioned modules under [`spec/0.6.0`](spec/0.6.0):
+
+- **Core** — records, events, identity, provenance, and epistemic status.
+- **Capsule** — portable representations and repository discovery.
+- **Handoff** — checkpoints, resume profiles, and continuation semantics.
+- **Artifact** — artifact identity, location, integrity, and availability.
+- **Synchronization** — event exchange and state reconciliation.
+- **Coordination** — intents, scopes, conflicts, contracts, verification, and integration.
+- **Security** — trust boundaries, authority, and safe import behavior.
+- **Adapters** — mappings between AWP and external systems.
+
+The module registry is [`spec/0.6.0/modules.json`](spec/0.6.0/modules.json). Normative JSON Schemas are in [`schemas`](schemas).
+
+## Validation
+
+Validation requires Python 3 and the [`jsonschema`](https://pypi.org/project/jsonschema/) package.
+
+```powershell
+python -m pip install jsonschema
+python tools/validate_spec_0_6.py
+```
+
+Historical specification families and examples have separate validators:
+
+```powershell
+python tools/validate_spec_examples.py
+python tools/validate_spec_0_4.py
+python tools/validate_spec_0_5.py
+```
+
+To regenerate the self-contained 0.6.0 bundle from its source files:
+
+```powershell
+python tools/build_spec_0_6_bundle.py
+python tools/validate_spec_0_6.py
+```
+
+Do not edit `AWP_SPECIFICATION_0.6.0.bundle.md` directly; it is a generated distribution artifact.
+
+## Repository layout
+
+```text
+.awp.json                           Repository discovery document
+conversation.awp.md                Current portable project workstate
+AWP_SPECIFICATION_0.6.0.md         Current family overview
+AWP_SPECIFICATION_0.6.0.bundle.md  Complete generated specification bundle
+AWP_0.6.0_RELEASE_NOTES.md         Current release notes and test guidance
+spec/0.6.0/                        Source specification modules
+schemas/                           Normative JSON Schemas
+tools/                             Bundle builder and validators
+```
+
+Older specifications and review documents are retained as historical design input. Unless you are investigating protocol evolution, use the 0.6.0 family as the current source.
+
+## Recommended next experiment
+
+The next milestone is a test environment for the `coordination-awareness` capability bundle:
+
+1. Give two agents the same repository base.
+2. Have each publish an intent and revision-pinned physical and semantic scopes.
+3. Introduce both same-file physical conflicts and different-file semantic conflicts.
+4. Compare chat-only, Git-only, and AWP-assisted runs.
+5. Measure conflicts caught before implementation, false alarms, authoring overhead, coordination delay, successful integration, and stale-state recovery.
+
+Start with coordination awareness rather than live leases or enforcement. The goal is to test whether AWP's scope and overlap model is usable before building stronger coordination machinery.
+
+## Maturity and compatibility
+
+AWP 0.6.0 is experimental and may change based on implementation experience. Coordination 0.2 records are not compatible with Coordination 0.3 through a version-number change alone; preserve historical events and create explicit imported or successor records when migrating.
+
