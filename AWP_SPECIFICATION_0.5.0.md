@@ -15,10 +15,10 @@ The family has one required foundation, AWP Core. Every other subspecification i
 
 AWP is intended for agents and users that already have their own working environments. It provides a common, portable format for four related cases:
 
-1. sending another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
-2. giving a new agent a canonical project orientation before it must inspect the wider repository;
-3. letting an agent or user return to a project and resume from a canonical checkpoint rather than reconstructing state from scratch; and
-4. helping multiple agents negotiate interdependent code work above the byte-level coordination supplied by Git or similar source control.
+1. Sending another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
+2. Giving a new agent a canonical project orientation before it must inspect the wider repository;
+3. Letting an agent or user return to a project and resume from a canonical checkpoint rather than reconstructing state from scratch; and
+4. Helping multiple agents negotiate interdependent code work above the byte-level coordination supplied by Git or similar source control.
 
 AWP does not replace an agent runtime, source control, artifact storage, or an agent-specific startup convention. Its purpose is to provide portable semantic state and coordination information that those systems can consume.
 
