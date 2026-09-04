@@ -186,4 +186,3 @@ An upgrader from 0.4.0 MUST update declared module versions. It MAY add a discov
 - [0.3.0 feedback evaluation](../../research/model-assisted-reviews/awp-feedback-evaluation.md)
 
 The 0.3.0 monolithic draft and 0.4.0 modular draft remain available as historical design input. The documents listed in Section 2 constitute the AWP 0.5.0 specification family.
-
