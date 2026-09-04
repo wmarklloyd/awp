@@ -88,7 +88,7 @@
         "type": {
           "enum": [
             "semantic_definition", "scope", "intent", "observed_scope", "overlap",
-            "conflict", "negotiation", "commitment", "contract", "precondition",
+            "conflict", "negotiation", "arbitration", "commitment", "contract", "precondition",
             "precondition_result", "change_set", "verification_result", "dependency",
             "integration_plan", "integration_result", "lease"
           ]
@@ -188,6 +188,39 @@
                 "properties": {
                   "status": { "enum": ["open", "accepted", "rejected", "timed_out", "cancelled", "escalated"] },
                   "decision_policy": { "$ref": "#/$defs/decisionPolicy" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "arbitration" } }, "required": ["type"] },
+              "then": {
+                "required": ["subjects", "participants", "question", "alternatives", "decision_authority", "response_deadline", "blocked_scopes", "allowed_interim_work"],
+                "properties": {
+                  "status": { "enum": ["awaiting_user", "decided", "declined", "expired", "cancelled", "superseded"] },
+                  "subjects": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "participants": { "$ref": "#/$defs/referenceArray" },
+                  "question": { "type": "string", "minLength": 1 },
+                  "alternatives": {
+                    "type": "array",
+                    "minItems": 2,
+                    "items": {
+                      "type": "object",
+                      "required": ["id", "summary", "consequences", "reversible"],
+                      "properties": {
+                        "id": { "$ref": "#/$defs/identifier" },
+                        "summary": { "type": "string", "minLength": 1 },
+                        "consequences": { "type": "string", "minLength": 1 },
+                        "reversible": { "type": "boolean" },
+                        "risk": { "type": "string" }
+                      },
+                      "additionalProperties": true
+                    }
+                  },
+                  "decision_authority": { "$ref": "#/$defs/identifier" },
+                  "response_deadline": { "$ref": "#/$defs/timestamp" },
+                  "blocked_scopes": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "allowed_interim_work": { "type": "array", "items": { "type": "string" } },
+                  "evidence": { "$ref": "#/$defs/referenceArray" }
                 }
               }
             },

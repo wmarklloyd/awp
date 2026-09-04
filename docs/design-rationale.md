@@ -20,6 +20,10 @@ Reported, inferred, observed, verified, disputed, stale, and refuted states are 
 
 Imported workstate describes authority claims but cannot authorize itself. The receiving environment evaluates identity, scope, expiration, revocation, and local policy before an external action.
 
+## User-mediated conflict resolution
+
+Concurrent agents sometimes produce changes whose interaction cannot be resolved mechanically or by the agents' declared authority. AWP therefore records an escalation as a bounded arbitration request: the user receives alternatives, consequences, reversibility, evidence, and blocked scopes; a trusted user decision selects only a named option for an exact request revision. Pending arbitration freezes dependent writes while allowing explicitly safe interim work. This preserves both branches and makes the human intervention auditable without treating a chat message, silence, or one agent's preference as protocol authority.
+
 ## Exact specification binding
 
 A shared workstate identifies the specification artifact governing its interpretation. This permits exploratory protocol evolution without guessing compatibility. Published releases remain immutable; incompatible `0.x` changes increment the minor version.

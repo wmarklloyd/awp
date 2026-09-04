@@ -37,7 +37,7 @@ These questions are intentionally unresolved. A module must not imply that an op
 16. Which semantic effects can tools infer reliably, how should confidence be calibrated, and which effects must remain actor assertions?
 17. Which verification procedures provide adequate evidence for particular contract and invariant classes?
 18. Which Git, worktree, CI, and forge mappings should become standard adapter profiles?
-19. What policy-composition rules resolve multiple organization-specific contract decision policies without silently weakening a required party?
+19. What policy-composition rules resolve multiple organization-specific contract decision policies without silently weakening a required party, including when user arbitration is required?
 20. What measured false-positive rate makes semantic overlap useful rather than disruptive?
 
 ## Security and governance questions
@@ -57,4 +57,3 @@ These questions are intentionally unresolved. A module must not imply that an op
 
 28. Which agent runtimes will adopt `.awp.json` discovery directly, and which will require an agent-specific instruction shim or launcher integration?
 29. What context-selection benchmark demonstrates that Resume Profile loading reduces tokens and startup time without omitting safety-critical state?
-

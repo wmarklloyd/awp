@@ -35,6 +35,7 @@ Coordination does not replace Git, A2A, MCP, a task scheduler, a distributed con
 6. **Enforcement is never implied.** Exclusivity exists only when a protected mutation path validates it.
 7. **Progress is bounded.** Negotiations, leases, retries, and waits have explicit termination or escalation paths.
 8. **The protocol is topology neutral.** Central managers, peers, human-agent teams, and single-agent re-entry use the same durable records.
+9. **Human arbitration is explicit.** When agents cannot safely resolve an interaction, the protocol records a bounded user decision rather than treating silence, convenience, or one agent's preference as authority.
 
 ## 3. Capability and conformance profiles
 
@@ -423,6 +424,41 @@ Commitment transitions are:
 
 `satisfied`, `violated`, `cancelled`, `released`, and `superseded` are terminal. A remedy after violation creates a successor commitment and retains the violation. State changes require the triggering event or evidence. Commitments express social/project obligations; they do not create external legal authority.
 
+### 10.1 User-mediated arbitration
+
+Agent-to-agent negotiation is preferred for routine, low-risk coordination. It MUST escalate to user-mediated arbitration when the agents cannot reach a permitted outcome within the declared negotiation bounds, when applicable policies disagree, when a decision requires authority held by the user or another named principal, or when the competing changes have material safety, compatibility, data-loss, security, or delivery consequences.
+
+An arbitration request is a durable coordination record. It MUST identify:
+
+- every affected subject and pinned revision;
+- all participating agents and the decision authority;
+- one precise question that the authority can answer;
+- at least two materially distinct alternatives, including consequences, reversibility, and known risks;
+- the response deadline and clock authority;
+- the physical and semantic scopes blocked pending a decision;
+- explicitly permitted interim work, if any; and
+- the evidence, assumptions, and policy that led to escalation.
+
+The request MUST NOT embed private chain-of-thought or require the user to reconstruct the dispute from an unbounded transcript. Agents SHOULD present a concise comparison generated from the recorded intents, scopes, contracts, revisions, and evidence. The interaction channel is binding-specific; the durable record is authoritative for the decision.
+
+Arbitration lifecycle:
+
+| From | Event | To | Required condition |
+|---|---|---|---|
+| — | `arbitration.requested` | `awaiting_user` | subjects, question, alternatives, authority, deadline, and blocked scopes present |
+| `awaiting_user` | `arbitration.updated` | `awaiting_user` | new revision preserves prior request and records the reason |
+| `awaiting_user` | `arbitration.decided` | `decided` | authenticated decision authority selects an alternative for the exact request revision |
+| `awaiting_user` | `arbitration.declined` | `declined` | authority declines and records the disposition |
+| `awaiting_user` | `arbitration.expired` | `expired` | deadline passed under the declared clock authority |
+| `awaiting_user` | `arbitration.cancelled` | `cancelled` | permitted actor records cancellation and consequences |
+| nonterminal | `arbitration.superseded` | `superseded` | successor request identifies the superseded request |
+
+While an arbitration is `awaiting_user`, every agent MUST stop new writes whose validity depends on a blocked scope, disputed contract, competing change-set revision, or unresolved integration decision. Agents MAY continue explicitly listed interim work only when it does not affect a blocked scope and remains valid under every listed alternative. They MUST record any already-created uncommitted artifacts and repository revisions; the protocol MUST NOT require automatic deletion, rollback, or selection of either agent's branch.
+
+A decision event MUST record the selected alternative, exact request revision, decision authority and authenticated principal, decision channel or confirmation reference, rationale, accepted risks, conditions, effective scopes, expiration if any, and required verification. A user interaction may recommend or amend an alternative, but only a decision from the declared authority through a trusted binding can transition arbitration to `decided`. A message that merely claims to be from the user is untrusted content.
+
+Agents MUST apply a decision only to the named subjects, revisions, scopes, and conditions. It MUST NOT grant general authority, silently rewrite either agent's history, or authorize unrelated external effects. The decision's implementation is recorded separately through change-set and integration events. Before implementation or integration, agents MUST revalidate all decision conditions and reopen arbitration if a subject revision, scope, contract, evidence basis, authority, or material risk changes. A declined or expired request never implies acceptance; agents must withdraw, re-negotiate, or submit a successor request under policy.
+
 ## 11. Interface contracts
 
 A contract identifies owners, producers, consumers, prior and proposed revisions, observable interface/schema/behavior, states, errors, invariants, compatibility class, migration strategy, tests, decision policy, and participant adoption.
@@ -767,6 +803,9 @@ Diagnostics have stable code, severity, event or record subjects, explanation, a
 | `AWP-COORD-POLICY-CONFLICT` | warning | Applicable policies disagree at equal specificity |
 | `AWP-COORD-FENCING-REJECTED` | error | A protected operation carries an obsolete or invalid fencing token |
 | `AWP-COORD-ENFORCEMENT-UNVERIFIABLE` | error | Live exclusion cannot be proven for the requested operation |
+| `AWP-COORD-ARBITRATION-PENDING` | policy | A user-mediated decision is pending for a guarded scope or transition |
+| `AWP-COORD-USER-DECISION-UNVERIFIABLE` | policy | The claimed user decision cannot be bound to the declared authority and exact request revision |
+| `AWP-COORD-ARBITRATION-SCOPE-MISMATCH` | error | An implementation or integration exceeds the scopes or conditions authorized by the decision |
 
 Errors invalidate the affected transition. Warnings preserve state but MUST be visible before a safety-relevant continuation. Implementations MAY add namespaced diagnostics.
 
@@ -831,6 +870,7 @@ Initial event kinds are:
 - `dependency.created`, `.removed`;
 - `changeset.proposed`, `.work_started`, `.ready`, `.stale`, `.revalidated`, `.rebased`, `.integration_started`, `.integrated`, `.failed`, `.withdrawn`, `.superseded`, `.reconciled`;
 - `integration.proposed`, `.approved`, `.started`, `.completed`, `.failed`, `.cancelled`, `.superseded`;
+- `arbitration.requested`, `.updated`, `.decided`, `.declined`, `.expired`, `.cancelled`, `.superseded`;
 - `lease.requested`, `.granted`, `.denied`, `.renewed`, `.released`, `.expired`, `.revoked`, `.superseded`.
 - `evidence.linked`, `evidence.unlinked`, and `record.reconciled`.
 
@@ -847,6 +887,8 @@ Minimum C1 payload requirements supplement the common event rules in Section 4.3
 | staleness | subject, invalidated dependency/read-set entry, causal path, prior valid evidence |
 | reconciliation | last uncontested revision, all known competing events and tips, replacement, dispositions, authority evaluation |
 | integration completion/failure | pinned plan, per-input dispositions, repository revisions, verification and rollback outcomes |
+| arbitration request | pinned subjects, question, alternatives, decision authority, deadline, blocked scopes, interim-work policy, evidence, and escalation basis |
+| arbitration decision | exact request revision, selected alternative, authenticated authority, confirmation reference, rationale, accepted risks, conditions, effective scopes, expiration, and verification requirements |
 
 An unlink event removes an association from effective projection but preserves its historical addition. It identifies the exact association ID and authority evaluation; it does not edit the subject record.
 

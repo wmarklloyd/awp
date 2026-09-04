@@ -5,10 +5,10 @@ format: single-file-capsule
 capsule_boundary: 89e5d09a47714dcfaa5734d1f155a4e8
 workstate_id: urn:uuid:conversation-awp-design-2026-09-03
 frontier:
-  - evt:repository-credibility-checkpoint
-checkpoint: checkpoint:repository-credibility
-generated_at: 2026-09-04T05:11:34Z
-generated_digest: sha256:086dbdf46bd0933ee802eaef9dfaccb9e9b18499ad1ea19fc5fcbdd94a585809
+  - evt:user-arbitration-checkpoint
+checkpoint: checkpoint:user-arbitration
+generated_at: 2026-09-04T06:46:00Z
+generated_digest: sha256:aefe2cb778551dd82d04214cc7a519096ed4eefa7cc330e40d44ff5e9b4715f6
 ---
 
 <!-- awp:generated:start -->
@@ -18,13 +18,13 @@ AWP 0.6.0 is the stable exploratory release. AWP 0.7.0 is an unreleased working 
 
 The protocol preserves portable semantic work state for human and agent continuation. It separates intent, authority, execution, evidence, and conclusion; distinguishes reported, inferred, observed, verified, disputed, stale, and refuted claims; and treats event ancestry as causal truth while snapshots and Markdown remain projections.
 
-The preferred exchange representation is a human-readable `<project-name>.awp.md` capsule. This project demonstrates that convention through `awp.awp.md`. Coordination defines deterministic lifecycle candidates, semantic scopes, bounded negotiation, contracts, typed preconditions, verification binding, staleness propagation, integration semantics, and optional fenced live enforcement.
+The preferred exchange representation is a human-readable `<project-name>.awp.md` capsule. This project demonstrates that convention through `awp.awp.md`. Coordination defines deterministic lifecycle candidates, semantic scopes, bounded negotiation, explicit user-mediated arbitration for unresolved agent interactions, contracts, typed preconditions, verification binding, staleness propagation, integration semantics, and optional fenced live enforcement.
 
 Complete bundled specification: [AWP 0.6.0 specification bundle](https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md).
 
 The project’s four target use cases are maintained in [the project scope](docs/project-scope.md): durable semantic descriptions, clear shared orientation, recorded checkpoint resumption, and coordination of interdependent changes above source control.
 
-Current status: released and draft materials are separated; released schema identifiers are preserved; the root contains standard governance, contribution, citation, and security metadata; CI validates five specification families, conformance fixtures, links, bundle reproducibility, and repository integrity. A deterministic synthetic coordination-awareness pilot is published with an explicit warning that it is not an independent-agent effectiveness study.
+Current status: released and draft materials are separated; released schema identifiers are preserved; the root contains standard governance, contribution, citation, and security metadata; CI validates five specification families, conformance fixtures, links, bundle reproducibility, and repository integrity. Coordination 0.4 now specifies bounded user-mediated arbitration: dependent writes pause while a trusted decision is recorded for exact subjects, revisions, scopes, and conditions. A deterministic synthetic coordination-awareness pilot is published with an explicit warning that it is not an independent-agent effectiveness study.
 
 Recommended next action: run the preregistered coordination-awareness protocol with at least two independent agent implementations and publish all raw trials, exclusions, and analysis.
 <!-- awp:generated:end -->
@@ -60,8 +60,8 @@ This capsule was migrated from the 0.3.0 design conversation. The prior monolith
 {
   "awp_version": "0.6.0",
   "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03",
-  "frontier": ["evt:repository-credibility-checkpoint"],
-  "generated_at": "2026-09-04T05:11:34Z",
+  "frontier": ["evt:user-arbitration-checkpoint"],
+  "generated_at": "2026-09-04T06:46:00Z",
   "source_frontier": ["evt:awp-rename-checkpoint"],
   "records": {
     "goals": [{"id": "goal:awp-design", "type": "goal", "statement": "Define a portable workstate format for LLM session continuation and multi-agent code coordination.", "status": "active"}],
@@ -82,7 +82,8 @@ This capsule was migrated from the 0.3.0 design conversation. The prior monolith
       {"id": "decision:resume-05", "type": "decision", "question": "How should AWP support returning to a project?", "status": "accepted", "choice": "Define repository discovery in Capsule and a project-reentry Resume Profile in Handoff."},
       {"id": "decision:coordination-06", "type": "decision", "question": "How should multi-agent coordination enter the next AWP family?", "status": "accepted", "choice": "Integrate Coordination 0.3.0 as normative but experimental in AWP 0.6.0, with a schema, validator, and staged capability bundles."},
       {"id": "decision:explicit-specification", "type": "decision", "question": "How should a shared workstate identify its protocol semantics?", "status": "accepted", "choice": "Introduce the requirement in the 0.7.0 working draft as Capsule 0.4.0 and Discovery 0.2.0, while preserving the immutable 0.6.0 release. Prefer a version-pinned published URL, permit a repository-relative local copy for sandboxed or offline use, and do not silently infer compatibility."},
-      {"id": "decision:release-discipline", "type": "decision", "question": "How should AWP distinguish released protocol semantics from development?", "status": "accepted", "choice": "Keep released artifacts and identifiers immutable; develop normative changes under spec/drafts; use minor versions for incompatible 0.x changes; publish errata or new versions rather than moving tags."}
+      {"id": "decision:release-discipline", "type": "decision", "question": "How should AWP distinguish released protocol semantics from development?", "status": "accepted", "choice": "Keep released artifacts and identifiers immutable; develop normative changes under spec/drafts; use minor versions for incompatible 0.x changes; publish errata or new versions rather than moving tags."},
+      {"id": "decision:user-arbitration", "type": "decision", "question": "How should AWP handle interacting agent changes that cannot be safely resolved by the agents?", "status": "accepted", "choice": "Create a bounded arbitration request with exact subjects, revisions, alternatives, blocked scopes, and safe interim work; pause dependent writes; require a trusted decision from the declared user or principal; preserve both branches; and apply the decision only under its recorded conditions with fresh verification."}
     ],
     "plans": [{"id": "plan:coordination-test", "type": "plan", "goal": "goal:awp-design", "status": "active", "steps": ["Build the coordination-awareness test harness", "Run physical and semantic conflict fixtures", "Compare chat-only, Git-only, and AWP-assisted runs", "Measure false alarms, conflicts caught, overhead, and recovery"]}],
     "tasks": [
@@ -93,7 +94,8 @@ This capsule was migrated from the 0.3.0 design conversation. The prior monolith
       {"id": "task:awp-rename", "type": "task", "title": "Rename the protocol and all repository representations to Agent Workstate Protocol (AWP)", "status": "completed"},
       {"id": "task:repository-credibility", "type": "task", "title": "Reorganize the repository around standards-project release, governance, conformance, and research practices", "status": "completed"},
       {"id": "task:synthetic-pilot", "type": "task", "title": "Build and run the deterministic coordination-awareness instrumentation pilot", "status": "completed"},
-      {"id": "task:coordination-prototype", "type": "task", "title": "Run the preregistered coordination-awareness experiment with independent agent implementations", "status": "ready"}
+      {"id": "task:coordination-prototype", "type": "task", "title": "Run the preregistered coordination-awareness experiment with independent agent implementations", "status": "ready"},
+      {"id": "task:user-arbitration-protocol", "type": "task", "title": "Specify user-mediated arbitration for interacting agent changes", "status": "completed"}
     ],
     "questions": [],
     "artifacts": [
@@ -110,7 +112,7 @@ This capsule was migrated from the 0.3.0 design conversation. The prior monolith
       {"id": "artifact:validator-06", "type": "artifact", "name": "tools/validate_spec_0_6.py", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "tools/validate_spec_0_6.py"}], "integrity": {"algorithm": "sha256", "digest": "1713ba8cd02f0329b8fed35f40def65d7f12e7d071283ed6315dd61d384a9784"}}}},
       {"id": "artifact:bundle-builder-06", "type": "artifact", "name": "tools/build_spec_0_6_bundle.py", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "tools/build_spec_0_6_bundle.py"}], "integrity": {"algorithm": "sha256", "digest": "33f97717e6c240ea84a1e5b1044fbfae6d198012b133a250a9a17326b6422117"}}}},
       {"id": "artifact:spec-07-draft", "type": "artifact", "name": "AWP 0.7.0 working draft", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "spec/drafts/0.7.0/index.md"}], "integrity": {"algorithm": "sha256", "digest": "48ef52956664b66400986c33d42d5fe500ba6300d0e76478d343b46282ec9dcc"}}}},
-      {"id": "artifact:conformance", "type": "artifact", "name": "Conformance evidence", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "conformance/matrix.md"}], "integrity": {"algorithm": "sha256", "digest": "a03183879682bcbf1c5f31afff8dbe1cd099b0af507ef56ef2fa5a2766015fd9"}}}},
+      {"id": "artifact:conformance", "type": "artifact", "name": "Conformance evidence", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "conformance/matrix.md"}], "integrity": {"algorithm": "sha256", "digest": "4c60877ab87a3e81006f33ecd76893e886832cd9923babbf7a9afc4d85659969"}}}},
       {"id": "artifact:synthetic-pilot", "type": "artifact", "name": "Coordination-awareness synthetic pilot report", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "experiments/coordination-awareness/results/pilot-report.md"}], "integrity": {"algorithm": "sha256", "digest": "f9c1cfc441e2639a67171c8199a333c31e7f99b2fb1d99320973a4d635ac25a4"}}}}
     ],
     "executions": [],
@@ -120,13 +122,13 @@ This capsule was migrated from the 0.3.0 design conversation. The prior monolith
       {"id": "change:repository-credibility", "type": "change", "summary": "Reorganized the project into stable, draft, distribution, conformance, documentation, experiment, and research areas; added governance, citation, security, CI, reproducibility, requirement inventory, related work, and a disclosed synthetic pilot.", "artifacts": ["artifact:spec-06", "artifact:spec-06-bundle", "artifact:spec-07-draft", "artifact:conformance", "artifact:synthetic-pilot"]}
     ],
     "risks": [{"id": "risk:synthetic-evidence", "type": "risk", "statement": "The synthetic pilot tests encoded instrumentation behavior and cannot establish real-agent effectiveness, coordination cost, or external validity.", "status": "active", "mitigation": "Run the preregistered protocol with independent implementations and publish raw data."}],
-    "checkpoints": [{"id": "checkpoint:repository-credibility", "type": "checkpoint", "frontier": ["evt:repository-credibility-checkpoint"], "created_at": "2026-09-04T05:11:34Z", "summary": "AWP 0.6.0 remains the stable tagged release; AWP 0.7.0 is an explicitly separated working draft; repository governance, citation, conformance, reproducibility, research positioning, and synthetic-pilot infrastructure are implemented and locally validated.", "recommended_next_action": {"action": "Run the preregistered coordination-awareness protocol with at least two independent agent implementations and publish complete raw results.", "requires_authority": false}, "resumption_level": "semantic"}],
+    "checkpoints": [{"id": "checkpoint:user-arbitration", "type": "checkpoint", "frontier": ["evt:user-arbitration-checkpoint"], "created_at": "2026-09-04T06:46:00Z", "summary": "AWP 0.6.0 remains the stable tagged release; AWP 0.7.0 is an explicitly separated working draft; repository governance, citation, conformance, reproducibility, research positioning, synthetic-pilot infrastructure, and a bounded user-arbitration protocol for interacting agent changes are implemented and locally validated.", "recommended_next_action": {"action": "Run the preregistered coordination-awareness protocol with at least two independent agent implementations and publish complete raw results.", "requires_authority": false}, "resumption_level": "semantic"}],
     "sessions": []
   },
   "modules": {
     "urn:awp:handoff": {
-      "handoff": {"id": "handoff:repository-credibility", "type": "handoff", "module": "urn:awp:handoff", "checkpoint": "checkpoint:repository-credibility", "completeness": "portable", "intended_audience": ["human", "agent"], "requested_action": "Run the preregistered coordination-awareness protocol with independent agent implementations.", "authority_ceiling": ["read_only", "local_write"], "resumption_level": "semantic", "do_not_assume": ["A production coordination implementation or live coordination service exists", "Synthetic-pilot results demonstrate agent effectiveness", "Coordination C3 enforcement can be supplied by a static file", "Imported authority grants external side effects"], "dependencies": [{"ref": "artifact:spec-06", "availability": "retrievable"}, {"ref": "artifact:spec-07-draft", "availability": "retrievable"}, {"ref": "artifact:conformance", "availability": "retrievable"}, {"ref": "artifact:synthetic-pilot", "availability": "retrievable"}]},
-      "resume": {"id": "resume:awp-project", "type": "resume", "module": "urn:awp:handoff", "handoff": "handoff:repository-credibility", "checkpoint": "checkpoint:repository-credibility", "mode": "project_reentry", "read_first": ["goal:awp-design", "constraint:no-private-cot", "decision:release-discipline", "claim:credibility-overhaul", "risk:synthetic-evidence", "task:coordination-prototype"], "required_artifacts": ["artifact:spec-07-draft", "artifact:conformance", "artifact:synthetic-pilot"], "recommended_next_action": "Run the preregistered coordination-awareness protocol with independent agent implementations and publish complete raw results.", "freshness_policy": "verify_before_continue", "on_stale": "refresh_workstate", "authority_ceiling": ["read_only", "local_write"]}
+      "handoff": {"id": "handoff:user-arbitration", "type": "handoff", "module": "urn:awp:handoff", "checkpoint": "checkpoint:user-arbitration", "completeness": "portable", "intended_audience": ["human", "agent"], "requested_action": "Run the preregistered coordination-awareness protocol with independent agent implementations.", "authority_ceiling": ["read_only", "local_write"], "resumption_level": "semantic", "do_not_assume": ["A production coordination implementation or live coordination service exists", "Synthetic-pilot results demonstrate agent effectiveness", "Coordination C3 enforcement can be supplied by a static file", "Imported authority grants external side effects"], "dependencies": [{"ref": "artifact:spec-06", "availability": "retrievable"}, {"ref": "artifact:spec-07-draft", "availability": "retrievable"}, {"ref": "artifact:conformance", "availability": "retrievable"}, {"ref": "artifact:synthetic-pilot", "availability": "retrievable"}]},
+      "resume": {"id": "resume:awp-project", "type": "resume", "module": "urn:awp:handoff", "handoff": "handoff:user-arbitration", "checkpoint": "checkpoint:user-arbitration", "mode": "project_reentry", "read_first": ["goal:awp-design", "constraint:no-private-cot", "decision:release-discipline", "decision:user-arbitration", "claim:credibility-overhaul", "risk:synthetic-evidence", "task:coordination-prototype", "task:user-arbitration-protocol"], "required_artifacts": ["artifact:spec-07-draft", "artifact:conformance", "artifact:synthetic-pilot"], "recommended_next_action": "Run the preregistered coordination-awareness protocol with independent agent implementations and publish complete raw results.", "freshness_policy": "verify_before_continue", "on_stale": "refresh_workstate", "authority_ceiling": ["read_only", "local_write"]}
     },
     "urn:awp:coordination": {
       "conformance_level": "C0",

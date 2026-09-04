@@ -26,6 +26,16 @@
       "document": "conformance/invalid/coordination-0.4-unpinned-overlap.json",
       "valid": false,
       "expected_keywords": ["subjects", "does not match"]
+    },
+    {
+      "document": "conformance/valid/coordination-0.4-arbitration.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/coordination-0.4-arbitration-missing-authority.json",
+      "valid": false,
+      "expected_keywords": ["decision_authority"]
     }
   ]
 }

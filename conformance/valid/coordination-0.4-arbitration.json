@@ -1,0 +1,33 @@
+{
+  "id": "arbitration:config-contract",
+  "type": "arbitration",
+  "module": "urn:awp:coordination",
+  "revision": 1,
+  "status": "awaiting_user",
+  "created_by": "actor:agent-coordinator",
+  "created_at": "2026-09-04T12:00:00Z",
+  "subjects": ["intent:config-writer-a@1", "intent:config-writer-b@1"],
+  "participants": ["actor:agent-a", "actor:agent-b"],
+  "question": "Which compatible contract should both agents implement?",
+  "alternatives": [
+    {
+      "id": "option:preserve-a",
+      "summary": "Adopt agent A's contract",
+      "consequences": "Agent B must re-derive its change set.",
+      "reversible": true,
+      "risk": "Agent B's requested behavior is deferred."
+    },
+    {
+      "id": "option:combine",
+      "summary": "Define a combined contract",
+      "consequences": "Both agents revise their implementations and add compatibility tests.",
+      "reversible": true,
+      "risk": "Integration takes longer."
+    }
+  ],
+  "decision_authority": "principal:user",
+  "response_deadline": "2026-09-05T12:00:00Z",
+  "blocked_scopes": ["scope:config-contract@3"],
+  "allowed_interim_work": ["Add isolated tests that remain valid under every alternative."],
+  "evidence": ["evidence:overlap-analysis"]
+}

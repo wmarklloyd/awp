@@ -1,0 +1,19 @@
+{
+  "id": "arbitration:missing-authority",
+  "type": "arbitration",
+  "module": "urn:awp:coordination",
+  "revision": 1,
+  "status": "awaiting_user",
+  "created_by": "actor:agent-coordinator",
+  "created_at": "2026-09-04T12:00:00Z",
+  "subjects": ["intent:config-writer-a@1", "intent:config-writer-b@1"],
+  "participants": ["actor:agent-a", "actor:agent-b"],
+  "question": "Which contract should be used?",
+  "alternatives": [
+    {"id": "option:a", "summary": "Use A", "consequences": "B revises.", "reversible": true},
+    {"id": "option:b", "summary": "Use B", "consequences": "A revises.", "reversible": true}
+  ],
+  "response_deadline": "2026-09-05T12:00:00Z",
+  "blocked_scopes": ["scope:config-contract@3"],
+  "allowed_interim_work": []
+}

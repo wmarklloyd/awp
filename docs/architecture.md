@@ -9,7 +9,7 @@ AWP defines portable workstate semantics and representations. It does not provid
 1. **Core** defines identity, actors, typed semantic records, event ancestry, frontiers, snapshots, provenance, and epistemic status.
 2. **Representation modules** define how logical state is carried in directories, Markdown capsules, packages, or wire payloads.
 3. **Continuation modules** define checkpoints, handoffs, resume profiles, artifact references, and synchronization.
-4. **Coordination** defines intents, scopes, overlaps, contracts, preconditions, verification, staleness, and integration records.
+4. **Coordination** defines intents, scopes, overlaps, contracts, preconditions, verification, staleness, integration records, and bounded user-mediated arbitration when agents cannot safely resolve an interaction.
 5. **Bindings** map AWP concepts to external repositories, transports, runtimes, and policy systems without importing their authority implicitly.
 
 ## State model
@@ -20,7 +20,7 @@ An [informative formal model](formal-model.md) states the event DAG, frontier, p
 
 ## Trust model
 
-Structure, provenance, integrity, trust, and authority are distinct. A digest establishes byte identity. A signature may establish control of a key. Neither establishes truth, safety, current authorization, or permission for an external side effect.
+Structure, provenance, integrity, trust, and authority are distinct. A digest establishes byte identity. A signature may establish control of a key. Neither establishes truth, safety, current authorization, or permission for an external side effect. A user decision is similarly scoped: it authorizes only the named subjects, revisions, scopes, and conditions through a trusted binding.
 
 ## Conformance boundary
 

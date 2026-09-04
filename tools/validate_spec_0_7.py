@@ -48,6 +48,7 @@ COORDINATION_RECORD_TYPES = {
     "overlap",
     "conflict",
     "negotiation",
+    "arbitration",
     "commitment",
     "contract",
     "precondition",
@@ -316,4 +317,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

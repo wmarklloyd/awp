@@ -56,7 +56,8 @@ AWP separates:
 - execution from evidence and conclusion;
 - reported, inferred, observed, verified, disputed, stale, and refuted claims;
 - causal event history from generated snapshots and prose;
-- byte-level source-control conflicts from semantic coordination conflicts.
+- byte-level source-control conflicts from semantic coordination conflicts;
+- agent negotiation from bounded user-mediated arbitration when an interaction cannot be safely resolved by the agents.
 
 Core is required. Capsule, Handoff, Artifact, Synchronization, Coordination, and Security are separately declared modules. The [architecture overview](docs/architecture.md) describes their boundaries, the [informative formal model](docs/formal-model.md) states the underlying event and projection structure, and the [design rationale](docs/design-rationale.md) explains the principal choices.
 
