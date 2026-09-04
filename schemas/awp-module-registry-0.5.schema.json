@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:awp:schema:module-registry:0.5.0",
+  "title": "AWP 0.5 Module Registry",
+  "type": "object",
+  "required": ["family", "family_version", "event_schema_versions", "modules"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "family": { "const": "AWP" },
+    "family_version": { "const": "0.5.0" },
+    "event_schema_versions": {
+      "type": "array",
+      "contains": { "const": "0.2" },
+      "items": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+      "uniqueItems": true
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/module" }
+    },
+    "informative_documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "version", "document"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "version": { "$ref": "#/$defs/semver" },
+          "document": { "$ref": "#/$defs/relativePath" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "versionRange": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+|\\.x)$"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z]:)(?!/).+$"
+    },
+    "dependency": {
+      "type": "object",
+      "required": ["id", "version"],
+      "properties": {
+        "id": { "type": "string", "format": "uri" },
+        "version": { "$ref": "#/$defs/versionRange" }
+      },
+      "additionalProperties": false
+    },
+    "module": {
+      "type": "object",
+      "required": ["id", "name", "version", "status", "document", "dependencies"],
+      "properties": {
+        "id": { "type": "string", "format": "uri" },
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/semver" },
+        "status": { "enum": ["required", "optional", "experimental", "deprecated"] },
+        "document": { "$ref": "#/$defs/relativePath" },
+        "schema": { "$ref": "#/$defs/relativePath" },
+        "dependencies": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/dependency" }
+        },
+        "conditional_dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["when_capability", "id", "version"],
+            "properties": {
+              "when_capability": { "type": "string", "minLength": 1 },
+              "id": { "type": "string", "format": "uri" },
+              "version": { "$ref": "#/$defs/versionRange" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+

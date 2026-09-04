@@ -1,0 +1,563 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:awp:schema:core:0.3.0",
+  "title": "AWP 0.3 Core Profile",
+  "description": "Normative structural schema for AWP 0.3.x core manifests, event envelopes, snapshots, and semantic records. Cross-record and security invariants remain normative prose requirements.",
+  "oneOf": [
+    { "$ref": "#/$defs/manifest" },
+    { "$ref": "#/$defs/event" },
+    { "$ref": "#/$defs/snapshot" },
+    { "$ref": "#/$defs/coreRecord" },
+    { "$ref": "#/$defs/actor" },
+    { "$ref": "#/$defs/authority" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S+$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "referenceArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/identifier" },
+      "uniqueItems": true
+    },
+    "integrity": {
+      "type": "object",
+      "required": ["algorithm", "digest"],
+      "properties": {
+        "algorithm": { "type": "string", "minLength": 1 },
+        "digest": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "profiles": {
+      "type": "object",
+      "required": ["core"],
+      "properties": {
+        "core": { "const": "required" }
+      },
+      "additionalProperties": {
+        "enum": ["required", "optional"]
+      }
+    },
+    "representations": {
+      "type": "object",
+      "required": ["briefing"],
+      "properties": {
+        "briefing": { "type": "string", "minLength": 1 },
+        "events": { "type": "string", "minLength": 1 },
+        "snapshot": { "type": "string", "minLength": 1 }
+      },
+      "anyOf": [
+        { "required": ["events"] },
+        { "required": ["snapshot"] }
+      ],
+      "additionalProperties": true
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "awp_version",
+        "workstate_id",
+        "title",
+        "created_at",
+        "created_by",
+        "completeness",
+        "profiles",
+        "representations"
+      ],
+      "properties": {
+        "awp_version": { "type": "string", "pattern": "^0\\.3\\.[0-9]+$" },
+        "workstate_id": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string", "minLength": 1 },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "created_by": { "$ref": "#/$defs/identifier" },
+        "completeness": { "enum": ["summary", "portable", "full"] },
+        "profiles": { "$ref": "#/$defs/profiles" },
+        "representations": { "$ref": "#/$defs/representations" },
+        "default_language": { "type": "string", "minLength": 2 },
+        "extensions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "classification": { "type": "string", "minLength": 1 },
+            "contains_secrets": { "type": "boolean" },
+            "secret_scan": {
+              "type": "object",
+              "required": ["status"],
+              "properties": {
+                "status": { "enum": ["passed", "findings", "not_run", "unknown"] },
+                "scanned_at": { "$ref": "#/$defs/timestamp" },
+                "policy": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": true
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "secret_scan": {
+                    "properties": { "status": { "enum": ["findings", "not_run", "unknown"] } },
+                    "required": ["status"]
+                  }
+                },
+                "required": ["secret_scan"]
+              },
+              "then": {
+                "properties": { "contains_secrets": { "const": true } }
+              }
+            }
+          ],
+          "additionalProperties": true
+        },
+        "coordination": {
+          "type": "object",
+          "required": ["status", "lease_enforcement"],
+          "properties": {
+            "status": { "const": "experimental" },
+            "lease_enforcement": { "enum": ["advisory", "enforced"] },
+            "coordinator": { "$ref": "#/$defs/identifier" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "profiles": { "required": ["coordination"] } },
+            "required": ["profiles"]
+          },
+          "then": { "required": ["coordination"] }
+        },
+        {
+          "if": { "required": ["coordination"] },
+          "then": {
+            "properties": { "profiles": { "required": ["coordination"] } }
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "event_schema_version",
+        "kind",
+        "event_id",
+        "workstate_id",
+        "parents",
+        "occurred_at",
+        "actor",
+        "payload"
+      ],
+      "properties": {
+        "event_schema_version": { "const": "0.1" },
+        "kind": { "type": "string", "minLength": 1 },
+        "event_id": { "$ref": "#/$defs/identifier" },
+        "workstate_id": { "$ref": "#/$defs/identifier" },
+        "parents": { "$ref": "#/$defs/referenceArray" },
+        "occurred_at": { "$ref": "#/$defs/timestamp" },
+        "recorded_at": { "$ref": "#/$defs/timestamp" },
+        "actor": { "$ref": "#/$defs/identifier" },
+        "payload": { "type": "object" },
+        "extensions": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "recordBase": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "goal": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["statement", "status"],
+          "properties": {
+            "type": { "const": "goal" },
+            "statement": { "type": "string", "minLength": 1 },
+            "status": { "enum": ["proposed", "active", "satisfied", "abandoned", "blocked", "superseded"] },
+            "success_criteria": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        }
+      ]
+    },
+    "constraint": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["statement", "strength", "status"],
+          "properties": {
+            "type": { "const": "constraint" },
+            "statement": { "type": "string", "minLength": 1 },
+            "strength": { "enum": ["required", "preferred", "advisory"] },
+            "status": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "claim": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["statement", "epistemic_status"],
+          "properties": {
+            "type": { "const": "claim" },
+            "statement": { "type": "string", "minLength": 1 },
+            "epistemic_status": { "enum": ["reported", "inferred", "observed", "verified", "disputed", "unknown", "stale", "refuted", "superseded"] },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "evidence": { "$ref": "#/$defs/referenceArray" }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["evidence_type"],
+          "properties": {
+            "type": { "const": "evidence" },
+            "evidence_type": { "type": "string", "minLength": 1 },
+            "supports": { "$ref": "#/$defs/referenceArray" },
+            "contradicts": { "$ref": "#/$defs/referenceArray" },
+            "integrity": { "$ref": "#/$defs/integrity" }
+          }
+        }
+      ]
+    },
+    "decision": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["question", "status"],
+          "properties": {
+            "type": { "const": "decision" },
+            "question": { "type": "string", "minLength": 1 },
+            "status": { "enum": ["proposed", "accepted", "rejected", "deferred", "reopened", "superseded"] },
+            "choice": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "plan": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["goal", "status", "steps"],
+          "properties": {
+            "type": { "const": "plan" },
+            "goal": { "$ref": "#/$defs/identifier" },
+            "status": { "type": "string", "minLength": 1 },
+            "steps": { "$ref": "#/$defs/referenceArray" }
+          }
+        }
+      ]
+    },
+    "task": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["title", "status"],
+          "properties": {
+            "type": { "const": "task" },
+            "title": { "type": "string", "minLength": 1 },
+            "status": { "enum": ["proposed", "ready", "in_progress", "input_required", "blocked", "completed", "failed", "cancelled", "superseded"] },
+            "side_effect_class": { "enum": ["read_only", "local_write", "external_write", "third_party_api_call", "data_migration", "communication", "financial", "security_sensitive", "destructive", "unknown"] },
+            "depends_on": { "$ref": "#/$defs/referenceArray" },
+            "blocked_by": { "$ref": "#/$defs/referenceArray" }
+          }
+        }
+      ]
+    },
+    "question": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["text", "status"],
+          "properties": {
+            "type": { "const": "question" },
+            "text": { "type": "string", "minLength": 1 },
+            "status": { "enum": ["open", "answered", "withdrawn", "superseded"] }
+          }
+        }
+      ]
+    },
+    "artifactLocation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "section_id"],
+          "properties": { "kind": { "const": "embedded" }, "section_id": { "type": "string", "minLength": 1 }, "encoding": { "type": "string" } },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["kind", "path"],
+          "properties": { "kind": { "const": "package" }, "path": { "type": "string", "minLength": 1 } },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["kind", "path"],
+          "properties": { "kind": { "const": "local" }, "path": { "type": "string", "minLength": 1 }, "absolute": { "type": "boolean" } },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["kind", "uri"],
+          "properties": { "kind": { "const": "remote" }, "uri": { "type": "string", "format": "uri" }, "expires_at": { "$ref": "#/$defs/timestamp" } },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["kind", "repository", "revision", "path"],
+          "properties": {
+            "kind": { "const": "repository_relative" },
+            "repository": { "$ref": "#/$defs/identifier" },
+            "revision": { "type": "string", "minLength": 1 },
+            "path": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["kind", "reason"],
+          "properties": { "kind": { "const": "unavailable" }, "reason": { "type": "string", "minLength": 1 } },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": { "kind": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9+.-]*:.+$" } },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "artifact": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["name"],
+          "properties": {
+            "type": { "const": "artifact" },
+            "name": { "type": "string", "minLength": 1 },
+            "status": { "enum": ["available", "unavailable", "redacted", "superseded"] },
+            "media_type": { "type": "string", "minLength": 1 },
+            "size": { "type": "integer", "minimum": 0 },
+            "integrity": { "$ref": "#/$defs/integrity" },
+            "locations": { "type": "array", "items": { "$ref": "#/$defs/artifactLocation" } },
+            "instructional_content": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "execution": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["operation", "status"],
+          "properties": {
+            "type": { "const": "execution" },
+            "operation": { "type": "string", "minLength": 1 },
+            "status": { "type": "string", "minLength": 1 },
+            "started_at": { "$ref": "#/$defs/timestamp" },
+            "ended_at": { "$ref": "#/$defs/timestamp" },
+            "inputs": { "$ref": "#/$defs/referenceArray" },
+            "outputs": { "$ref": "#/$defs/referenceArray" }
+          }
+        }
+      ]
+    },
+    "change": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["summary", "artifacts"],
+          "properties": {
+            "type": { "const": "change" },
+            "summary": { "type": "string", "minLength": 1 },
+            "artifacts": { "type": "array", "items": { "type": "object" } },
+            "implements": { "$ref": "#/$defs/referenceArray" },
+            "verification": { "$ref": "#/$defs/referenceArray" }
+          }
+        }
+      ]
+    },
+    "risk": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["statement", "status"],
+          "properties": {
+            "type": { "const": "risk" },
+            "statement": { "type": "string", "minLength": 1 },
+            "status": { "type": "string", "minLength": 1 },
+            "mitigations": { "$ref": "#/$defs/referenceArray" }
+          }
+        }
+      ]
+    },
+    "checkpoint": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["frontier", "created_at", "summary", "recommended_next_action", "resumption_level"],
+          "properties": {
+            "type": { "const": "checkpoint" },
+            "frontier": { "$ref": "#/$defs/referenceArray" },
+            "created_at": { "$ref": "#/$defs/timestamp" },
+            "summary": { "type": "string", "minLength": 1 },
+            "recommended_next_action": {
+              "type": "object",
+              "required": ["action", "requires_authority"],
+              "properties": {
+                "action": { "type": "string", "minLength": 1 },
+                "requires_authority": { "type": "boolean" }
+              },
+              "additionalProperties": true
+            },
+            "resumption_level": { "enum": ["semantic", "operational", "exact"] }
+          }
+        }
+      ]
+    },
+    "session": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["started_at", "participants"],
+          "properties": {
+            "type": { "const": "session" },
+            "started_at": { "$ref": "#/$defs/timestamp" },
+            "ended_at": { "$ref": "#/$defs/timestamp" },
+            "participants": { "$ref": "#/$defs/referenceArray" }
+          }
+        }
+      ]
+    },
+    "handoff": {
+      "allOf": [
+        { "$ref": "#/$defs/recordBase" },
+        {
+          "type": "object",
+          "required": ["checkpoint", "intended_audience", "requested_action", "authority_ceiling"],
+          "properties": {
+            "type": { "const": "handoff" },
+            "checkpoint": { "$ref": "#/$defs/identifier" },
+            "intended_audience": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "requested_action": { "type": "string", "minLength": 1 },
+            "authority_ceiling": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          }
+        }
+      ]
+    },
+    "coreRecord": {
+      "oneOf": [
+        { "$ref": "#/$defs/goal" },
+        { "$ref": "#/$defs/constraint" },
+        { "$ref": "#/$defs/claim" },
+        { "$ref": "#/$defs/evidence" },
+        { "$ref": "#/$defs/decision" },
+        { "$ref": "#/$defs/plan" },
+        { "$ref": "#/$defs/task" },
+        { "$ref": "#/$defs/question" },
+        { "$ref": "#/$defs/artifact" },
+        { "$ref": "#/$defs/execution" },
+        { "$ref": "#/$defs/change" },
+        { "$ref": "#/$defs/risk" },
+        { "$ref": "#/$defs/checkpoint" },
+        { "$ref": "#/$defs/session" },
+        { "$ref": "#/$defs/handoff" }
+      ]
+    },
+    "actor": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "enum": ["human", "agent", "model", "service", "automation", "organization", "unknown"] },
+        "display_name": { "type": "string", "minLength": 1 },
+        "authenticated": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "authority": {
+      "type": "object",
+      "required": ["authority_id", "granted_by", "grantee", "actions", "resources", "requires_confirmation"],
+      "properties": {
+        "authority_id": { "$ref": "#/$defs/identifier" },
+        "granted_by": { "$ref": "#/$defs/identifier" },
+        "grantee": { "$ref": "#/$defs/identifier" },
+        "actions": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "resources": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "requires_confirmation": { "type": "boolean" },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": true
+    },
+    "snapshot": {
+      "type": "object",
+      "required": ["awp_version", "workstate_id", "frontier", "generated_at", "records"],
+      "properties": {
+        "awp_version": { "type": "string", "pattern": "^0\\.3\\.[0-9]+$" },
+        "workstate_id": { "$ref": "#/$defs/identifier" },
+        "frontier": { "$ref": "#/$defs/referenceArray" },
+        "generated_at": { "$ref": "#/$defs/timestamp" },
+        "records": {
+          "type": "object",
+          "properties": {
+            "actors": { "type": "array", "items": { "$ref": "#/$defs/actor" } },
+            "authorities": { "type": "array", "items": { "$ref": "#/$defs/authority" } },
+            "goals": { "type": "array", "items": { "$ref": "#/$defs/goal" } },
+            "constraints": { "type": "array", "items": { "$ref": "#/$defs/constraint" } },
+            "claims": { "type": "array", "items": { "$ref": "#/$defs/claim" } },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+            "decisions": { "type": "array", "items": { "$ref": "#/$defs/decision" } },
+            "plans": { "type": "array", "items": { "$ref": "#/$defs/plan" } },
+            "tasks": { "type": "array", "items": { "$ref": "#/$defs/task" } },
+            "questions": { "type": "array", "items": { "$ref": "#/$defs/question" } },
+            "artifacts": { "type": "array", "items": { "$ref": "#/$defs/artifact" } },
+            "executions": { "type": "array", "items": { "$ref": "#/$defs/execution" } },
+            "changes": { "type": "array", "items": { "$ref": "#/$defs/change" } },
+            "risks": { "type": "array", "items": { "$ref": "#/$defs/risk" } },
+            "checkpoints": { "type": "array", "items": { "$ref": "#/$defs/checkpoint" } },
+            "sessions": { "type": "array", "items": { "$ref": "#/$defs/session" } },
+            "handoffs": { "type": "array", "items": { "$ref": "#/$defs/handoff" } }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

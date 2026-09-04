@@ -1,0 +1,57 @@
+# AWP 0.6.0 Release Notes
+
+**Published:** 2026-09-03  
+**Status:** Exploratory modular specification
+
+AWP 0.6.0 integrates the redesigned Coordination 0.3.0 module and provides schemas and validation assets suitable for building the first coordination test environment.
+
+## Principal change
+
+Coordination is now a deterministic, tiered protocol rather than only a descriptive coordination vocabulary. It remains experimental so implementations can test usability, false-positive rates, interoperability, and failure recovery before the module is declared stable.
+
+Coordination 0.3.0 adds:
+
+- C0–C3 conformance levels and three adoption-oriented capability bundles;
+- durable intents, revision-pinned physical and semantic scopes, and relied-upon reads;
+- a project semantic registry and cross-revision selector outcomes;
+- declared-versus-observed scope comparison;
+- explicit overlap records, acknowledgements, bounded negotiation, and commitments;
+- machine-readable contract decision policies and participant adoption;
+- typed mechanical and asserted preconditions with explicit evaluator read sets;
+- verification results bound to exact inputs, repository revisions, procedures, and environments;
+- change-set readiness rules, dependency-driven staleness, revalidation, and deterministic reconciliation;
+- integration atomicity modes and per-input partial-failure dispositions;
+- common diagnostics with deterministic severity rules;
+- optional C3 OCC, coordinator epochs, leases, fencing tokens, and governance requirements;
+- non-normative mappings to Git, A2A, MCP, and MPAC.
+
+## Family version alignment
+
+Core advances to 0.6.0. Capsule, Handoff, Artifact, Synchronization, Security, and the Adapter Framework advance to 0.3.0 to declare compatibility with Core 0.6. Their principal behavior is carried forward from AWP 0.5.0.
+
+The common event envelope remains version 0.2. Repository discovery remains version 0.1.
+
+## New implementation assets
+
+- `schemas/awp-coordination-0.3.schema.json`
+- `schemas/awp-core-0.6.schema.json`
+- `schemas/awp-module-registry-0.6.schema.json`
+- `tools/validate_spec_0_6.py`
+- `tools/build_spec_0_6_bundle.py`
+- `spec/0.6.0/coordination.md`
+
+## Migration caution
+
+Coordination 0.2 records cannot be upgraded by changing their declared version alone. Coordination 0.3 changes record names, reference rules, lifecycle behavior, readiness semantics, and conflict recovery. Implementations should preserve historical 0.2 events and emit explicit imported or successor 0.3 records, including diagnostics for information that cannot be mapped.
+
+## Recommended first test
+
+Start with the `coordination-awareness` bundle rather than live leases:
+
+1. give two agents the same repository base;
+2. have each publish an intent and revision-pinned scopes;
+3. introduce both physical and different-file semantic conflicts;
+4. compare chat-only, Git-only, and AWP-assisted runs;
+5. measure conflicts caught before implementation, false alarms, authoring overhead, coordination delay, successful integration, and recovery after stale state.
+
+The integration-assurance and live-enforcement bundles should be added after this first experiment reveals whether the scope and overlap model is usable.

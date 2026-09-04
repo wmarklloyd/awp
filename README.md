@@ -1,6 +1,3 @@
-# awp
-Agent Workstate Protocol
-
 # Agent Workstate Protocol (AWP)
 
 AWP is an exploratory protocol for preserving portable, semantic work state across human and AI-agent sessions. It gives collaborators a canonical description of a project's intent, decisions, evidence, progress, and next actions without requiring every new participant to reconstruct that context from the repository or chat history.

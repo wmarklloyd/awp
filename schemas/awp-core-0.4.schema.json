@@ -1,0 +1,327 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:awp:schema:core:0.4.0",
+  "title": "AWP Core 0.4",
+  "description": "Structural schema for AWP 0.4 manifests, event envelopes, snapshots, actors, authority declarations, and Core records.",
+  "oneOf": [
+    { "$ref": "#/$defs/manifest" },
+    { "$ref": "#/$defs/event" },
+    { "$ref": "#/$defs/snapshot" },
+    { "$ref": "#/$defs/actor" },
+    { "$ref": "#/$defs/authority" },
+    { "$ref": "#/$defs/coreRecord" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S+$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "referenceArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/identifier" },
+      "uniqueItems": true
+    },
+    "moduleDeclaration": {
+      "type": "object",
+      "required": ["id", "version", "required"],
+      "properties": {
+        "id": { "type": "string", "format": "uri" },
+        "version": { "$ref": "#/$defs/semver" },
+        "required": { "type": "boolean" },
+        "schema": { "type": "string", "minLength": 1 },
+        "representation": {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "enum": ["package-path", "capsule-section", "remote", "events-only"] }
+          },
+          "additionalProperties": true
+        },
+        "capabilities": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "configuration": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "awp_version",
+        "workstate_id",
+        "title",
+        "created_at",
+        "created_by",
+        "modules",
+        "representations"
+      ],
+      "properties": {
+        "awp_version": { "type": "string", "pattern": "^0\\.4\\.[0-9]+$" },
+        "workstate_id": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string", "minLength": 1 },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "created_by": { "$ref": "#/$defs/identifier" },
+        "modules": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/moduleDeclaration" },
+          "contains": {
+            "type": "object",
+            "required": ["id", "version", "required"],
+            "properties": {
+              "id": { "const": "urn:awp:core" },
+              "version": { "type": "string", "pattern": "^0\\.4\\.[0-9]+$" },
+              "required": { "const": true }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        "representations": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": true
+        },
+        "module_data": {
+          "type": "object",
+          "propertyNames": { "format": "uri" },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "event_schema_version",
+        "module",
+        "kind",
+        "event_id",
+        "workstate_id",
+        "parents",
+        "occurred_at",
+        "actor",
+        "payload"
+      ],
+      "properties": {
+        "event_schema_version": { "const": "0.2" },
+        "module": { "type": "string", "format": "uri" },
+        "kind": { "type": "string", "minLength": 1 },
+        "event_id": { "$ref": "#/$defs/identifier" },
+        "workstate_id": { "$ref": "#/$defs/identifier" },
+        "parents": { "$ref": "#/$defs/referenceArray" },
+        "occurred_at": { "$ref": "#/$defs/timestamp" },
+        "recorded_at": { "$ref": "#/$defs/timestamp" },
+        "actor": { "$ref": "#/$defs/identifier" },
+        "payload": { "type": "object" },
+        "extensions": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "actor": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": { "enum": ["human", "agent", "model", "service", "automation", "organization", "unknown"] },
+        "display_name": { "type": "string", "minLength": 1 },
+        "authenticated": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "authority": {
+      "type": "object",
+      "required": ["authority_id", "granted_by", "grantee", "actions", "resources", "requires_confirmation"],
+      "properties": {
+        "authority_id": { "$ref": "#/$defs/identifier" },
+        "granted_by": { "$ref": "#/$defs/identifier" },
+        "grantee": { "$ref": "#/$defs/identifier" },
+        "actions": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "resources": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "requires_confirmation": { "type": "boolean" },
+        "expires_at": { "$ref": "#/$defs/timestamp" }
+      },
+      "additionalProperties": true
+    },
+    "coreRecord": {
+      "type": "object",
+      "required": ["id", "type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": {
+          "enum": [
+            "goal",
+            "constraint",
+            "claim",
+            "evidence",
+            "decision",
+            "plan",
+            "task",
+            "question",
+            "artifact",
+            "execution",
+            "change",
+            "risk",
+            "checkpoint",
+            "session"
+          ]
+        },
+        "modules": {
+          "type": "object",
+          "propertyNames": { "format": "uri" },
+          "additionalProperties": true
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "goal" } }, "required": ["type"] },
+          "then": {
+            "required": ["statement", "status"],
+            "properties": {
+              "statement": { "type": "string", "minLength": 1 },
+              "status": { "enum": ["proposed", "active", "satisfied", "abandoned", "blocked", "superseded"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "constraint" } }, "required": ["type"] },
+          "then": {
+            "required": ["statement", "strength", "status"],
+            "properties": {
+              "statement": { "type": "string", "minLength": 1 },
+              "strength": { "enum": ["required", "preferred", "advisory"] },
+              "status": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "claim" } }, "required": ["type"] },
+          "then": {
+            "required": ["statement", "epistemic_status"],
+            "properties": {
+              "statement": { "type": "string", "minLength": 1 },
+              "epistemic_status": { "enum": ["reported", "inferred", "observed", "verified", "disputed", "unknown", "stale", "refuted", "superseded"] },
+              "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+              "evidence": { "$ref": "#/$defs/referenceArray" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "evidence" } }, "required": ["type"] },
+          "then": { "required": ["evidence_type"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "decision" } }, "required": ["type"] },
+          "then": {
+            "required": ["question", "status"],
+            "properties": {
+              "question": { "type": "string", "minLength": 1 },
+              "status": { "enum": ["proposed", "accepted", "rejected", "deferred", "reopened", "superseded"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "plan" } }, "required": ["type"] },
+          "then": { "required": ["goal", "status", "steps"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "task" } }, "required": ["type"] },
+          "then": {
+            "required": ["title", "status"],
+            "properties": {
+              "title": { "type": "string", "minLength": 1 },
+              "status": { "enum": ["proposed", "ready", "in_progress", "input_required", "blocked", "completed", "failed", "cancelled", "superseded"] },
+              "side_effect_class": { "enum": ["read_only", "local_write", "external_write", "third_party_api_call", "data_migration", "communication", "financial", "security_sensitive", "destructive", "unknown"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "question" } }, "required": ["type"] },
+          "then": {
+            "required": ["text", "status"],
+            "properties": {
+              "text": { "type": "string", "minLength": 1 },
+              "status": { "enum": ["open", "answered", "withdrawn", "superseded"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "artifact" } }, "required": ["type"] },
+          "then": { "required": ["name"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "execution" } }, "required": ["type"] },
+          "then": { "required": ["operation", "status"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "change" } }, "required": ["type"] },
+          "then": { "required": ["summary", "artifacts"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "risk" } }, "required": ["type"] },
+          "then": { "required": ["statement", "status"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "checkpoint" } }, "required": ["type"] },
+          "then": {
+            "required": ["frontier", "created_at", "summary", "recommended_next_action", "resumption_level"],
+            "properties": {
+              "frontier": { "$ref": "#/$defs/referenceArray" },
+              "created_at": { "$ref": "#/$defs/timestamp" },
+              "summary": { "type": "string", "minLength": 1 },
+              "recommended_next_action": {
+                "type": "object",
+                "required": ["action", "requires_authority"],
+                "properties": {
+                  "action": { "type": "string", "minLength": 1 },
+                  "requires_authority": { "type": "boolean" }
+                },
+                "additionalProperties": true
+              },
+              "resumption_level": { "enum": ["semantic", "operational", "exact"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "session" } }, "required": ["type"] },
+          "then": { "required": ["started_at", "participants"] }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "snapshot": {
+      "type": "object",
+      "required": ["awp_version", "workstate_id", "frontier", "generated_at", "records", "modules"],
+      "properties": {
+        "awp_version": { "type": "string", "pattern": "^0\\.4\\.[0-9]+$" },
+        "workstate_id": { "$ref": "#/$defs/identifier" },
+        "frontier": { "$ref": "#/$defs/referenceArray" },
+        "generated_at": { "$ref": "#/$defs/timestamp" },
+        "records": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/coreRecord" }
+          }
+        },
+        "modules": {
+          "type": "object",
+          "propertyNames": { "format": "uri" },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

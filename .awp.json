@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "awp_schema": "urn:awp:schema:discovery:0.1.0",
+  "awp_discovery_version": "0.1",
+  "current_workstate": "conversation.awp.md",
+  "specification": "AWP_SPECIFICATION_0.6.0.bundle.md",
+  "fallback_workstates": []
+}
