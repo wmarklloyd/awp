@@ -15,14 +15,16 @@ The current release is **AWP 0.6.0**, an exploratory modular specification. It i
 
 The specification, schemas, discovery document, portable workstate capsule, generated bundle, and validators are present and internally validated. This repository does **not** yet contain a production reader/writer, semantic-scope analyzer, test harness, or live coordination service.
 
-## Start here
+## Agent bootstrap
 
-For a quick project re-entry, follow the repository discovery document:
+An AWP-aware agent should be able to orient itself from the repository without asking a user to reconstruct the project context:
 
 1. Read [`.awp.json`](.awp.json) to locate the current workstate and specification.
-2. Use [`AWP_SPECIFICATION_0.6.0.bundle.md`](AWP_SPECIFICATION_0.6.0.bundle.md) when you need the complete self-contained specification.
+2. Follow those pointers relative to the repository root.
+3. Read the workstate briefing and checkpoint before continuing project work.
+4. Consult [`AWP_SPECIFICATION_0.6.0.bundle.md`](AWP_SPECIFICATION_0.6.0.bundle.md) when protocol interpretation is necessary.
 
-If you are evaluating the protocol itself, begin with the concise family overview in [`AWP_SPECIFICATION_0.6.0.md`](AWP_SPECIFICATION_0.6.0.md) and the [`0.6.0 release notes`](AWP_0.6.0_RELEASE_NOTES.md).
+In this repository, `conversation.awp.md` is the current workstate and records the AWP design conversation. It is project infrastructure for agent re-entry; most users do not need to read it unless they are working on the protocol itself.
 
 ## Use AWP from `AGENTS.md`
 
