@@ -4,9 +4,9 @@ AWP is an exploratory protocol for preserving portable, semantic work state acro
 
 AWP is designed to:
 
-- Enable a user or agent to send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
-- Provide a new agent with a clear, shared project orientation before it must inspect the wider repository;
-- Allow an agent or user to return to a project and resume from a recorded checkpoint rather than reconstructing its state from scratch; and
+- Enable a user or agent to send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone.
+- Provide a new agent with a clear, shared project orientation before it must inspect the wider repository.
+- Allow an agent or user to return to a project and resume from a recorded checkpoint rather than reconstructing its state from scratch.
 - Enable multiple agents to negotiate interdependent code changes above the byte-level coordination provided by Git or similar source-control systems.
 
 ## Current status
