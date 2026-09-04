@@ -1,5 +1,6 @@
-The purpose  of awp  is to allow agents that already have their own environment otherwise working, is  to provide a common format so:
-1. An agent or user can send another agent a description of a project  way beyond a standard markdown file is done now. 
-2 A  new agent in a project and it can get context from a canonical source before having to scrape the whole project to discover the full context and goals of a project.
-3. Provide a way for agent to re-enter a project and have a canonical way to get up the speed without scraping the whole project.
-4. Allow multiple agents to work on a single project and have a layer higher than git, or similar source control, to negotiate working together on code that may be interdependent
+AWP provides a common format for agents that already have their own working environments. It is intended to:
+
+1. Help a user or agent send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone.
+2. Give a new agent canonical project orientation before it must inspect the wider repository.
+3. Let an agent or user return to a project and resume from a canonical checkpoint rather than reconstructing its state from scratch.
+4. Help multiple agents negotiate interdependent code work above the byte-level coordination provided by Git or similar source-control systems.

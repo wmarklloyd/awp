@@ -2,12 +2,12 @@
 
 AWP is an exploratory protocol for preserving portable, semantic work state across human and AI-agent sessions. It gives collaborators a canonical description of a project's intent, decisions, evidence, progress, and next actions without requiring every new participant to reconstruct that context from the repository or chat history.
 
-AWP is designed for four related use cases:
+AWP is designed to:
 
-1. Rich handoff between agents and people.
-2. Fast orientation for an agent entering an existing project.
-3. Reliable re-entry after a session or context boundary.
-4. Multi-agent coordination above source control, including work that is interdependent even when it touches different files.
+- help a user or agent send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
+- give a new agent canonical project orientation before it must inspect the wider repository;
+- let an agent or user return to a project and resume from a canonical checkpoint rather than reconstructing its state from scratch; and
+- help multiple agents negotiate interdependent code work above the byte-level coordination provided by Git or similar source-control systems.
 
 ## Current status
 
