@@ -67,7 +67,7 @@ Every AWP 0.6 manifest MUST contain a `modules` array. It MUST declare exactly o
 A module entry has:
 
 - `id`: collision-resistant module identifier;
-- `version`: semantic version of that module;
+- `version`: version identifier of that module;
 - `required`: whether understanding the module is necessary for the declared use of this workstate;
 - optional `schema`: schema identifier or packaged schema location;
 - optional `representation`: module-owned data location in this representation;
@@ -122,16 +122,15 @@ The conventional project-named form is `<project-name>.awp.md`. Producers MAY re
 
 The manifest is authoritative for physical locations. Module-specific events participate in the unified Core event graph and identify their owning module. This preserves causal ordering across modules without requiring one event log per module.
 
-## 6. Versioning
+## 6. Versioning and specification binding
 
-The family version and module versions are independent semantic versions:
+Every shared AWP workstate MUST identify the exact specification artifact that governs it. A repository discovery document and its current capsule MUST carry an explicit `specification` reference. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate.
 
-- the family version identifies a tested set of module releases;
-- a module major version may introduce incompatible semantics;
-- a module minor version may add backward-compatible fields or event kinds;
-- a module patch version may clarify wording or fix non-semantic errors.
+A reader MUST interpret a workstate according to its declared specification and module versions. It MUST NOT silently substitute a newer, older, or otherwise different specification, infer compatibility from a filename, or treat a moving branch URL as version-pinned. If the declared specification is unavailable or unsupported, the reader MUST report that condition rather than guess.
 
-A later AWP family release may reuse an unchanged module version. Implementations MUST negotiate module compatibility by module ID and version, not by comparing only `awp_version`.
+AWP `0.x` is exploratory. A new family or module release MAY make incompatible changes, including at a minor or patch version. Explicit specification binding allows protocol development to proceed without requiring backward compatibility between exploratory releases. Implementations MAY support multiple versions or provide explicit migrations, but conformance to one version does not imply support for another.
+
+The family version and module versions remain independent. The family version identifies a tested set of module releases, and a later family release may reuse an unchanged module version. Writers that change protocol semantics MUST publish a new versioned specification artifact and update affected workstates deliberately. Implementations MUST determine support by the declared specification, module ID, and module version, not by comparing only `awp_version`.
 
 The common event envelope is versioned independently because events may outlive a family release. AWP 0.6.0 uses event-envelope version `0.2`.
 

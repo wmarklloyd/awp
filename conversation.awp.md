@@ -1,5 +1,6 @@
 ---
 awp_version: 0.6.0
+specification: https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md
 format: single-file-capsule
 capsule_boundary: 89e5d09a47714dcfaa5734d1f155a4e8
 workstate_id: urn:uuid:conversation-awp-design-2026-09-03
@@ -7,7 +8,7 @@ frontier:
   - evt:awp-rename-checkpoint
 checkpoint: checkpoint:awp-rename-current
 generated_at: 2026-09-04T02:45:11Z
-generated_digest: sha256:f8f9fe656796f040460256c227bea5fa387585a19d37d5fc9323530ba52bfe5f
+generated_digest: sha256:cd50dff86cfb4a92440919bcdab3b098ac1553d5f99f15c80e18bae68a2e46e7
 ---
 
 <!-- awp:generated:start -->
@@ -17,9 +18,9 @@ AWP 0.6.0 is the current exploratory modular specification. It preserves reposit
 
 The protocol preserves portable semantic work state for human and agent continuation. It separates intent, authority, execution, evidence, and conclusion; distinguishes reported, inferred, observed, verified, disputed, stale, and refuted claims; and treats event ancestry as causal truth while snapshots and Markdown remain projections.
 
-The preferred exchange representation is a human-readable `project.awp.md` capsule. Coordination 0.3.0 adds deterministic lifecycles and reconciliation, semantic scopes, bounded negotiation, contracts, typed preconditions, verification binding, staleness propagation, integration semantics, and optional fenced live enforcement.
+The preferred exchange representation is a human-readable `<project-name>.awp.md` capsule. Each shared workstate explicitly identifies the exact specification artifact that governs it. Coordination 0.3.0 adds deterministic lifecycles and reconciliation, semantic scopes, bounded negotiation, contracts, typed preconditions, verification binding, staleness propagation, integration semantics, and optional fenced live enforcement.
 
-Complete bundled specification: [AWP_SPECIFICATION_0.6.0.bundle.md](AWP_SPECIFICATION_0.6.0.bundle.md).
+Complete bundled specification: [AWP 0.6.0 specification bundle](https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md).
 
 The project’s four target use cases are maintained in [purpose.txt](purpose.txt): durable semantic descriptions, clear shared orientation, recorded checkpoint resumption, and coordination of interdependent changes above source control.
 
@@ -77,7 +78,8 @@ This capsule was migrated from the 0.3.0 design conversation. The prior monolith
       {"id": "decision:single-file", "type": "decision", "question": "What is the preferred exchange representation?", "status": "accepted", "choice": "Markdown-first self-contained project.awp.md capsule"},
       {"id": "decision:modular-04", "type": "decision", "question": "How should the 0.4 design be organized?", "status": "accepted", "choice": "Required Core plus independently versioned optional modules; Coordination remains experimental."},
       {"id": "decision:resume-05", "type": "decision", "question": "How should AWP support returning to a project?", "status": "accepted", "choice": "Define repository discovery in Capsule and a project-reentry Resume Profile in Handoff."},
-      {"id": "decision:coordination-06", "type": "decision", "question": "How should multi-agent coordination enter the next AWP family?", "status": "accepted", "choice": "Integrate Coordination 0.3.0 as normative but experimental in AWP 0.6.0, with a schema, validator, and staged capability bundles."}
+      {"id": "decision:coordination-06", "type": "decision", "question": "How should multi-agent coordination enter the next AWP family?", "status": "accepted", "choice": "Integrate Coordination 0.3.0 as normative but experimental in AWP 0.6.0, with a schema, validator, and staged capability bundles."},
+      {"id": "decision:explicit-specification", "type": "decision", "question": "How should a shared workstate identify its protocol semantics?", "status": "accepted", "choice": "Require the capsule and repository discovery document to identify the same exact governing specification artifact. Prefer a version-pinned published URL, permit a repository-relative local copy for sandboxed or offline use, and do not assume backward compatibility between exploratory AWP versions."}
     ],
     "plans": [{"id": "plan:coordination-test", "type": "plan", "goal": "goal:awp-design", "status": "active", "steps": ["Build the coordination-awareness test harness", "Run physical and semantic conflict fixtures", "Compare chat-only, Git-only, and AWP-assisted runs", "Measure false alarms, conflicts caught, overhead, and recovery"]}],
     "tasks": [
@@ -90,20 +92,24 @@ This capsule was migrated from the 0.3.0 design conversation. The prior monolith
     ],
     "questions": [],
     "artifacts": [
-      {"id": "artifact:spec-06", "type": "artifact", "name": "AWP_SPECIFICATION_0.6.0.md", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "AWP_SPECIFICATION_0.6.0.md"}], "integrity": {"algorithm": "sha256", "digest": "a331e189ea755aad3565b6584177ccd7ea78ca9fa2306cb9cfad0bda55cc303c"}}}},
-      {"id": "artifact:spec-06-bundle", "type": "artifact", "name": "AWP_SPECIFICATION_0.6.0.bundle.md", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "AWP_SPECIFICATION_0.6.0.bundle.md"}], "integrity": {"algorithm": "sha256", "digest": "2691978145fb4b04223f57a127ea385d2efe862bd3162f74abce45f2723e4319"}}}},
+      {"id": "artifact:spec-06", "type": "artifact", "name": "AWP_SPECIFICATION_0.6.0.md", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "AWP_SPECIFICATION_0.6.0.md"}], "integrity": {"algorithm": "sha256", "digest": "114e062d58ee351d44ba196a665a9f47b0ae13d5650ee100ab82e99287433de6"}}}},
+      {"id": "artifact:spec-06-bundle", "type": "artifact", "name": "AWP_SPECIFICATION_0.6.0.bundle.md", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "AWP_SPECIFICATION_0.6.0.bundle.md"}], "integrity": {"algorithm": "sha256", "digest": "6a1ee211d9fe5b159ef940df3808d4e7980875ed0fd953fbed050f97d24bfb7e"}}}},
       {"id": "artifact:core-06", "type": "artifact", "name": "spec/0.6.0/core.md", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "spec/0.6.0/core.md"}], "integrity": {"algorithm": "sha256", "digest": "c19fb982626cb4d8215432b410866cc801d667829df45e62d2835dfbf532a064"}}}},
       {"id": "artifact:coordination-03", "type": "artifact", "name": "spec/0.6.0/coordination.md", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "spec/0.6.0/coordination.md"}], "integrity": {"algorithm": "sha256", "digest": "b97114aee7d0e33faa5426067bb0f235cbd801106bb5d1e2b792ac9c9fc9b4cd"}}}},
       {"id": "artifact:coordination-schema-03", "type": "artifact", "name": "schemas/awp-coordination-0.3.schema.json", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "schemas/awp-coordination-0.3.schema.json"}], "integrity": {"algorithm": "sha256", "digest": "554f53980a0f84c2d01e0c927264832dbd966e69d016f83267435afc84d56562"}}}},
       {"id": "artifact:module-registry-06", "type": "artifact", "name": "spec/0.6.0/modules.json", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "spec/0.6.0/modules.json"}], "integrity": {"algorithm": "sha256", "digest": "b83b68469b1ccb3ce3c07914b086c81b16f9fd339e102ce1e97bf708cf8f5b4c"}}}},
       {"id": "artifact:purpose", "type": "artifact", "name": "purpose.txt", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "purpose.txt"}], "integrity": {"algorithm": "sha256", "digest": "25b5b1f25d5e04f9ac6ed50b827b72f056058171eff5f699aa9c964213298f63"}}}},
-      {"id": "artifact:discovery", "type": "artifact", "name": ".awp.json", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": ".awp.json"}], "integrity": {"algorithm": "sha256", "digest": "12a876bdd43701e6b4d566b8751f206bdceff60b5a933b067e6c355fe2981633"}}}},
+      {"id": "artifact:discovery", "type": "artifact", "name": ".awp.json", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": ".awp.json"}], "integrity": {"algorithm": "sha256", "digest": "76118e6481f42aa310b9509f7c7296c05f52a364505bec50a3638f6b228d7823"}}}},
+      {"id": "artifact:discovery-schema", "type": "artifact", "name": "schemas/awp-discovery-0.1.schema.json", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "schemas/awp-discovery-0.1.schema.json"}], "integrity": {"algorithm": "sha256", "digest": "5d4e846993a35c595e1e4e33fe8939f2fa4dee2fff20336480c8433162ba9a4d"}}}},
       {"id": "artifact:release-notes-06", "type": "artifact", "name": "AWP_0.6.0_RELEASE_NOTES.md", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "AWP_0.6.0_RELEASE_NOTES.md"}], "integrity": {"algorithm": "sha256", "digest": "989e3174003387111ddfd8f6d9a0d185fde7d0ad05afc754864f3252dc881486"}}}},
       {"id": "artifact:validator-06", "type": "artifact", "name": "tools/validate_spec_0_6.py", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "tools/validate_spec_0_6.py"}], "integrity": {"algorithm": "sha256", "digest": "814d061a413d5294df31a90248fd9022baed4dfe0c684ca52446c67091b0e81f"}}}},
       {"id": "artifact:bundle-builder-06", "type": "artifact", "name": "tools/build_spec_0_6_bundle.py", "modules": {"urn:awp:artifact": {"status": "retrievable", "locations": [{"kind": "local", "path": "tools/build_spec_0_6_bundle.py"}], "integrity": {"algorithm": "sha256", "digest": "a85ee2e85e420986528c013c7f51ef9215f2d2eee5f1c26a64cf9d7597bc31bd"}}}}
     ],
     "executions": [],
-    "changes": [{"id": "change:awp-rename", "type": "change", "summary": "Renamed the protocol repository-wide from its former name to Agent Workstate Protocol (AWP) and refreshed generated artifacts and integrity metadata.", "artifacts": ["artifact:spec-06", "artifact:spec-06-bundle", "artifact:core-06", "artifact:coordination-03", "artifact:coordination-schema-03", "artifact:module-registry-06", "artifact:discovery"]}],
+    "changes": [
+      {"id": "change:awp-rename", "type": "change", "summary": "Renamed the protocol repository-wide from its former name to Agent Workstate Protocol (AWP) and refreshed generated artifacts and integrity metadata.", "artifacts": ["artifact:spec-06", "artifact:spec-06-bundle", "artifact:core-06", "artifact:coordination-03", "artifact:coordination-schema-03", "artifact:module-registry-06", "artifact:discovery"]},
+      {"id": "change:explicit-specification", "type": "change", "summary": "Required shared workstates and repository discovery to bind explicitly to the exact governing specification, with version-pinned remote references by default, local-copy support for constrained environments, and no assumed compatibility between exploratory releases.", "artifacts": ["artifact:spec-06", "artifact:spec-06-bundle", "artifact:discovery", "artifact:discovery-schema"]}
+    ],
     "risks": [],
     "checkpoints": [{"id": "checkpoint:awp-rename-current", "type": "checkpoint", "frontier": ["evt:awp-rename-checkpoint"], "created_at": "2026-09-04T02:45:11Z", "summary": "AWP 0.6.0 and Coordination 0.3.0 are complete as specifications; the repository-wide AWP rename, discovery entry, bundle, schemas, examples, validators, and portable workstate have been validated.", "recommended_next_action": {"action": "Build and run the coordination-awareness test environment described in the 0.6 release notes.", "requires_authority": false}, "resumption_level": "semantic"}],
     "sessions": []

@@ -36,6 +36,8 @@ For external references, use the pinned 0.6.0 bundle URL:
 
 `https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md`
 
+The capsule metadata and `.awp.json` must identify the same exact governing specification. Do not substitute a `main` branch URL or assume compatibility with another AWP version. A sandboxed or offline project may use a repository-relative local copy of the exact bundle in both places.
+
 An external URL is a reference, not an automatic file include. Prefer the local discovery document and capsule for normal orientation.
 
 ## Validation and generated artifacts

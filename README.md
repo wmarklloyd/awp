@@ -47,19 +47,17 @@ Before beginning work:
    https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md
 ```
 
-The versioned raw specification URL is:
+The version-pinned raw specification URL is:
 
 ```text
 https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md
 ```
 
-The `v0.6.0` tag keeps this reference stable. To deliberately follow ongoing development on `main`, use:
+The `v0.6.0` tag identifies the specification governing a 0.6.0 workstate. Each shared `.awp.md` capsule records this reference in its metadata, and `.awp.json` records the same reference for repository discovery. When a new specification is published, update both references deliberately as part of migrating the workstate.
 
-```text
-https://raw.githubusercontent.com/wmarklloyd/awp/main/AWP_SPECIFICATION_0.6.0.bundle.md
-```
+Do not use a moving `main` URL as a version-pinned specification reference. A sandboxed or offline project may instead point both fields to a repository-relative local copy of the exact specification bundle.
 
-An `AGENTS.md` link is a reference, not an automatic file include. Agents need network access to retrieve the remote specification. Keep routine startup guidance concise and use the local `.awp.json` discovery document and workstate capsule for normal project orientation.
+An `AGENTS.md` link is a reference, not an automatic file include. Agents need network access to retrieve a remote specification. Keep routine startup guidance concise and use the local `.awp.json` discovery document and workstate capsule for normal project orientation.
 
 ## Core model
 
@@ -147,4 +145,4 @@ Start with coordination awareness rather than live leases or enforcement. The go
 
 ## Maturity and compatibility
 
-AWP 0.6.0 is experimental and may change based on implementation experience. Coordination 0.2 records are not compatible with Coordination 0.3 through a version-number change alone; preserve historical events and create explicit imported or successor records when migrating.
+AWP 0.6.0 is experimental and may change based on implementation experience. During the `0.x` exploratory phase, a new specification version may be incompatible with an earlier one. Each workstate identifies its exact governing specification; supporting one version does not imply support for another. Coordination 0.2 records are not compatible with Coordination 0.3 through a version-number change alone; preserve historical events and create explicit imported or successor records when migrating.
