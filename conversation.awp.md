@@ -7,7 +7,7 @@ frontier:
   - evt:awp-rename-checkpoint
 checkpoint: checkpoint:awp-rename-current
 generated_at: 2026-09-04T02:45:11Z
-generated_digest: sha256:afdee79eed10c268392206fa9b4f5025be7b7c51f7b38b7b91b9b269b2136827
+generated_digest: sha256:f8f9fe656796f040460256c227bea5fa387585a19d37d5fc9323530ba52bfe5f
 ---
 
 <!-- awp:generated:start -->
@@ -21,7 +21,7 @@ The preferred exchange representation is a human-readable `project.awp.md` capsu
 
 Complete bundled specification: [AWP_SPECIFICATION_0.6.0.bundle.md](AWP_SPECIFICATION_0.6.0.bundle.md).
 
-The project’s four target use cases are maintained in [purpose.txt](purpose.txt): rich handoff, canonical orientation, canonical re-entry, and coordination above source control.
+The project’s four target use cases are maintained in [purpose.txt](purpose.txt): durable semantic descriptions, clear shared orientation, recorded checkpoint resumption, and coordination of interdependent changes above source control.
 
 Current status: the protocol has been renamed repository-wide to Agent Workstate Protocol (AWP). The 0.6 family, Coordination schema, validators, reproducible bundle, discovery file, and portable resume capsule are internally consistent and validated. No production reader/writer, semantic-scope analyzer, test harness, or live coordination service exists yet.
 
