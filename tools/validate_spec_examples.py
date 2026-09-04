@@ -11,7 +11,7 @@ from jsonschema import Draft202012Validator
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = ROOT / "AWP_SPECIFICATION_0.3.0.md"
+SPEC = ROOT / "spec" / "0.3.0" / "index.md"
 SCHEMA = ROOT / "schemas" / "awp-core-0.3.schema.json"
 
 CORE_TYPES = {

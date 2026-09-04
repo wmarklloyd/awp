@@ -1,0 +1,339 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:awp:schema:coordination:0.4.0",
+  "title": "AWP Coordination 0.4",
+  "description": "Structural schema for AWP Coordination 0.4 records and event envelopes.",
+  "oneOf": [
+    { "$ref": "#/$defs/coordinationRecord" },
+    { "$ref": "#/$defs/coordinationEvent" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S+$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "referenceArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/identifier" },
+      "uniqueItems": true
+    },
+    "pinnedReference": {
+      "type": "string",
+      "pattern": "^\\S+@[1-9][0-9]*$"
+    },
+    "pinnedReferenceArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/pinnedReference" },
+      "uniqueItems": true
+    },
+    "repositoryState": {
+      "type": "object",
+      "required": ["repository", "revision"],
+      "properties": {
+        "repository": { "$ref": "#/$defs/identifier" },
+        "revision": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": true
+    },
+    "selector": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "repository", "directory", "file", "symbol", "syntax_node",
+            "configuration_key", "schema_object", "generated_output", "test", "fixture"
+          ]
+        },
+        "repository": { "$ref": "#/$defs/identifier" },
+        "base_revision": { "$ref": "#/$defs/identifier" },
+        "path": { "type": "string", "minLength": 1 },
+        "symbol": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "decisionPolicy": {
+      "type": "object",
+      "required": ["kind", "decides_revision"],
+      "properties": {
+        "kind": { "enum": ["unanimous", "threshold", "named_participants", "authorized_owner"] },
+        "eligible_participants": { "$ref": "#/$defs/referenceArray" },
+        "threshold": { "type": "integer", "minimum": 1 },
+        "required_participants": { "$ref": "#/$defs/referenceArray" },
+        "abstention": { "enum": ["counts_as_no", "reduces_eligible", "prohibited"] },
+        "decides_revision": { "type": "integer", "minimum": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "threshold" } }, "required": ["kind"] },
+          "then": { "required": ["eligible_participants", "threshold"] }
+        },
+        {
+          "if": { "properties": { "kind": { "enum": ["unanimous", "named_participants"] } }, "required": ["kind"] },
+          "then": { "required": ["eligible_participants"] }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "commonRecord": {
+      "type": "object",
+      "required": ["id", "type", "module", "revision", "status", "created_by", "created_at"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "type": {
+          "enum": [
+            "semantic_definition", "scope", "intent", "observed_scope", "overlap",
+            "conflict", "negotiation", "commitment", "contract", "precondition",
+            "precondition_result", "change_set", "verification_result", "dependency",
+            "integration_plan", "integration_result", "lease"
+          ]
+        },
+        "module": { "const": "urn:awp:coordination" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "status": { "type": "string", "minLength": 1 },
+        "created_by": { "$ref": "#/$defs/identifier" },
+        "created_at": { "$ref": "#/$defs/timestamp" },
+        "updated_at": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "coordinationRecord": {
+      "allOf": [
+        { "$ref": "#/$defs/commonRecord" },
+        {
+          "type": "object",
+          "allOf": [
+            {
+              "if": { "properties": { "type": { "const": "semantic_definition" } }, "required": ["type"] },
+              "then": {
+                "required": ["kind", "name"],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "interface", "behavior", "invariant", "state_field", "schema",
+                      "error_semantics", "lifecycle", "compatibility_promise",
+                      "performance_property", "security_property", "test_surface",
+                      "deployment_surface", "other"
+                    ]
+                  },
+                  "name": { "type": "string", "minLength": 1 },
+                  "aliases": { "$ref": "#/$defs/referenceArray" },
+                  "selectors": { "type": "array", "items": { "$ref": "#/$defs/selector" } }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "scope" } }, "required": ["type"] },
+              "then": {
+                "required": ["selector", "access"],
+                "properties": {
+                  "selector": { "$ref": "#/$defs/selector" },
+                  "access": {
+                    "enum": [
+                      "observe", "read", "relied_upon_read", "write", "create", "delete",
+                      "propose_change", "integrate", "verify"
+                    ]
+                  },
+                  "semantic_targets": { "$ref": "#/$defs/pinnedReferenceArray" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "intent" } }, "required": ["type"] },
+              "then": {
+                "required": ["goal", "summary", "base", "declared_scopes"],
+                "properties": {
+                  "status": { "enum": ["proposed", "active", "waiting", "completed", "withdrawn", "abandoned", "superseded"] },
+                  "goal": { "$ref": "#/$defs/identifier" },
+                  "summary": { "type": "string", "minLength": 1 },
+                  "base": { "$ref": "#/$defs/repositoryState" },
+                  "declared_scopes": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "expected_effects": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "preserves": { "$ref": "#/$defs/pinnedReferenceArray" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "observed_scope" } }, "required": ["type"] },
+              "then": {
+                "required": ["subject", "base_revision", "result_revision", "analyzer", "method", "outcome", "observed", "comparison"],
+                "properties": {
+                  "status": { "enum": ["final", "superseded"] },
+                  "subject": { "$ref": "#/$defs/pinnedReference" },
+                  "outcome": { "enum": ["complete", "partial", "error"] },
+                  "observed": { "$ref": "#/$defs/pinnedReferenceArray" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "overlap" } }, "required": ["type"] },
+              "then": {
+                "required": ["subjects", "classification", "basis", "policy_action"],
+                "properties": {
+                  "status": { "enum": ["open", "negotiating", "resolved", "escalated", "superseded"] },
+                  "subjects": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "classification": { "enum": ["none", "informational", "compatible", "ordered", "negotiation_required", "blocking", "unknown"] },
+                  "policy_action": { "enum": ["allow", "warn", "negotiate", "order", "block", "escalate"] }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "negotiation" } }, "required": ["type"] },
+              "then": {
+                "required": ["subject", "participants", "opening_proposal", "response_deadline", "decision_policy", "permitted_outcomes", "escalation_target"],
+                "properties": {
+                  "status": { "enum": ["open", "accepted", "rejected", "timed_out", "cancelled", "escalated"] },
+                  "decision_policy": { "$ref": "#/$defs/decisionPolicy" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "commitment" } }, "required": ["type"] },
+              "then": {
+                "required": ["debtor", "beneficiaries", "promised_condition", "discharge_condition", "violation_condition"],
+                "properties": {
+                  "status": { "enum": ["conditional", "active", "satisfied", "violated", "cancelled", "released", "superseded"] }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "contract" } }, "required": ["type"] },
+              "then": {
+                "required": ["owners", "producers", "consumers", "content", "decision_policy", "participant_adoption"],
+                "properties": {
+                  "status": { "enum": ["proposed", "negotiating", "accepted", "implemented", "verified", "superseded", "rejected", "withdrawn"] },
+                  "decision_policy": { "$ref": "#/$defs/decisionPolicy" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "precondition" } }, "required": ["type"] },
+              "then": {
+                "required": ["kind", "on_false", "on_unknown"],
+                "properties": {
+                  "status": { "enum": ["active", "retired", "superseded"] },
+                  "kind": { "enum": ["mechanical", "asserted"] },
+                  "on_false": { "enum": ["warn", "block_ready", "stale", "escalate"] },
+                  "on_unknown": { "enum": ["warn", "block_ready", "escalate"] }
+                },
+                "allOf": [
+                  {
+                    "if": { "properties": { "kind": { "const": "mechanical" } }, "required": ["kind"] },
+                    "then": { "required": ["predicate", "subject", "evaluator_interface"] }
+                  },
+                  {
+                    "if": { "properties": { "kind": { "const": "asserted" } }, "required": ["kind"] },
+                    "then": { "required": ["statement", "asserting_actor", "epistemic_status"] }
+                  }
+                ]
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "precondition_result" } }, "required": ["type"] },
+              "then": {
+                "required": ["precondition", "outcome", "evaluated_against", "depends_on", "evaluator"],
+                "properties": {
+                  "status": { "enum": ["final", "superseded"] },
+                  "precondition": { "$ref": "#/$defs/pinnedReference" },
+                  "outcome": { "enum": ["pass", "fail", "unknown", "error"] },
+                  "depends_on": { "type": "array", "minItems": 1, "items": { "type": "object" } }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "change_set" } }, "required": ["type"] },
+              "then": {
+                "required": ["intent", "base", "artifacts", "declared_scopes", "preconditions", "effects"],
+                "properties": {
+                  "status": { "enum": ["proposed", "in_progress", "ready", "stale", "integrating", "integrated", "failed", "withdrawn", "superseded"] },
+                  "intent": { "$ref": "#/$defs/pinnedReference" },
+                  "base": { "$ref": "#/$defs/repositoryState" },
+                  "declared_scopes": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "preconditions": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "observed_scope": { "$ref": "#/$defs/pinnedReference" },
+                  "verification": { "$ref": "#/$defs/pinnedReferenceArray" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "verification_result" } }, "required": ["type"] },
+              "then": {
+                "required": ["subjects", "repository", "base_revision", "result_revision", "procedure", "environment", "outcome", "observations"],
+                "properties": {
+                  "status": { "enum": ["final", "superseded"] },
+                  "subjects": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "outcome": { "enum": ["pass", "fail", "inconclusive", "error"] }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "dependency" } }, "required": ["type"] },
+              "then": {
+                "required": ["kind", "source", "target"],
+                "properties": {
+                  "kind": { "enum": ["requires", "implements", "verifies", "derived_from", "relies_on", "orders_before", "conflicts_with", "supersedes", "integrates"] },
+                  "source": { "$ref": "#/$defs/pinnedReference" },
+                  "target": { "$ref": "#/$defs/pinnedReference" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "integration_plan" } }, "required": ["type"] },
+              "then": {
+                "required": ["owner", "base", "change_sets", "order", "verification", "rollback", "atomicity"],
+                "properties": {
+                  "status": { "enum": ["proposed", "approved", "integrating", "completed", "failed", "cancelled", "superseded"] },
+                  "change_sets": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "order": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "atomicity": { "enum": ["atomic", "stepwise", "best_effort"] }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "integration_result" } }, "required": ["type"] },
+              "then": {
+                "required": ["plan", "base_revision", "result_revision", "input_dispositions", "verification", "rollback_status"],
+                "properties": {
+                  "plan": { "$ref": "#/$defs/pinnedReference" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "lease" } }, "required": ["type"] },
+              "then": {
+                "required": ["holder", "scope", "mode", "coordinator", "epoch", "fencing_token", "expires_at"],
+                "properties": {
+                  "status": { "enum": ["requested", "active", "denied", "released", "expired", "revoked", "superseded"] },
+                  "scope": { "$ref": "#/$defs/pinnedReference" },
+                  "mode": { "enum": ["shared_read", "shared_write", "exclusive_write", "integration_owner"] },
+                  "fencing_token": { "type": "integer", "minimum": 1 }
+                }
+              }
+            }
+          ],
+          "additionalProperties": true
+        }
+      ]
+    },
+    "coordinationEvent": {
+      "type": "object",
+      "required": ["event_schema_version", "module", "kind", "event_id", "workstate_id", "parents", "occurred_at", "actor", "payload"],
+      "properties": {
+        "event_schema_version": { "const": "0.2" },
+        "module": { "const": "urn:awp:coordination" },
+        "kind": { "type": "string", "pattern": "^[a-z_]+\\.[a-z_]+$" },
+        "event_id": { "$ref": "#/$defs/identifier" },
+        "workstate_id": { "$ref": "#/$defs/identifier" },
+        "parents": { "$ref": "#/$defs/referenceArray" },
+        "occurred_at": { "$ref": "#/$defs/timestamp" },
+        "actor": { "$ref": "#/$defs/identifier" },
+        "payload": { "type": "object" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

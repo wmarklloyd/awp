@@ -1,0 +1,25 @@
+{
+  "schema": "schemas/awp-discovery-0.2.schema.json",
+  "cases": [
+    {
+      "document": "conformance/valid/discovery-0.2-remote.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/valid/discovery-0.2-local.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/discovery-0.2-missing-specification.json",
+      "valid": false,
+      "expected_keywords": ["specification", "required"]
+    },
+    {
+      "document": "conformance/invalid/discovery-0.2-parent-traversal.json",
+      "valid": false,
+      "expected_keywords": ["current_workstate", "should not be valid"]
+    }
+  ]
+}

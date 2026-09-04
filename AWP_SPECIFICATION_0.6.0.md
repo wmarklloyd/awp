@@ -13,12 +13,12 @@ The family has one required foundation, AWP Core. Every other subspecification i
 
 ### 1.1 Target use cases
 
-AWP is intended for agents and users that already have their own working environments. It provides a common, portable format to:
+AWP is intended for agents and users that already have their own working environments. It provides a common, portable format for four related cases:
 
-1. Enable a user or agent to send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
-2. Provide a new agent with a clear, shared project orientation before it must inspect the wider repository;
-3. Allow an agent or user to return to a project and resume from a recorded checkpoint rather than reconstructing its state from scratch; and
-4. Enable multiple agents to negotiate interdependent code changes above the byte-level coordination provided by Git or similar source-control systems.
+1. sending another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
+2. giving a new agent a canonical project orientation before it must inspect the wider repository;
+3. letting an agent or user return to a project and resume from a canonical checkpoint rather than reconstructing state from scratch; and
+4. helping multiple agents negotiate interdependent code work above the byte-level coordination supplied by Git or similar source control.
 
 AWP does not replace an agent runtime, source control, artifact storage, or an agent-specific startup convention. Its purpose is to provide portable semantic state and coordination information that those systems can consume.
 
@@ -67,7 +67,7 @@ Every AWP 0.6 manifest MUST contain a `modules` array. It MUST declare exactly o
 A module entry has:
 
 - `id`: collision-resistant module identifier;
-- `version`: version identifier of that module;
+- `version`: semantic version of that module;
 - `required`: whether understanding the module is necessary for the declared use of this workstate;
 - optional `schema`: schema identifier or packaged schema location;
 - optional `representation`: module-owned data location in this representation;
@@ -118,19 +118,18 @@ project.awp.md
   module:security section
 ```
 
-The conventional project-named form is `<project-name>.awp.md`. Producers MAY retain versioned archival copies using `<project-name>.v<revision>.awp.md`, such as `project.v2.awp.md`. This filename revision is only a human-facing label; protocol and workstate identity remain defined by the capsule metadata and the `.awp.json` `current_workstate` pointer.
-
 The manifest is authoritative for physical locations. Module-specific events participate in the unified Core event graph and identify their owning module. This preserves causal ordering across modules without requiring one event log per module.
 
-## 6. Versioning and specification binding
+## 6. Versioning
 
-Every shared AWP workstate MUST identify the exact specification artifact that governs it. A repository discovery document and its current capsule MUST carry an explicit `specification` reference. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate.
+The family version and module versions are independent semantic versions:
 
-A reader MUST interpret a workstate according to its declared specification and module versions. It MUST NOT silently substitute a newer, older, or otherwise different specification, infer compatibility from a filename, or treat a moving branch URL as version-pinned. If the declared specification is unavailable or unsupported, the reader MUST report that condition rather than guess.
+- the family version identifies a tested set of module releases;
+- a module major version may introduce incompatible semantics;
+- a module minor version may add backward-compatible fields or event kinds;
+- a module patch version may clarify wording or fix non-semantic errors.
 
-AWP `0.x` is exploratory. A new family or module release MAY make incompatible changes, including at a minor or patch version. Explicit specification binding allows protocol development to proceed without requiring backward compatibility between exploratory releases. Implementations MAY support multiple versions or provide explicit migrations, but conformance to one version does not imply support for another.
-
-The family version and module versions remain independent. The family version identifies a tested set of module releases, and a later family release may reuse an unchanged module version. Writers that change protocol semantics MUST publish a new versioned specification artifact and update affected workstates deliberately. Implementations MUST determine support by the declared specification, module ID, and module version, not by comparing only `awp_version`.
+A later AWP family release may reuse an unchanged module version. Implementations MUST negotiate module compatibility by module ID and version, not by comparing only `awp_version`.
 
 The common event envelope is versioned independently because events may outlive a family release. AWP 0.6.0 uses event-envelope version `0.2`.
 
@@ -183,9 +182,9 @@ An upgrader from 0.5.0 MUST update declared module versions. Coordination 0.2 re
 - [Module registry](spec/0.6.0/modules.json)
 - [Open issue register](spec/0.6.0/open-issues.md)
 - [Validation tool](tools/validate_spec_0_6.py)
-- [Project purpose](purpose.txt)
-- [0.6.0 release notes](AWP_0.6.0_RELEASE_NOTES.md)
-- [Coordination state-of-the-art review](AWP_0.5.0_MULTI_AGENT_COORDINATION_REVIEW.md)
+- [Project purpose](docs/project-scope.md)
+- [0.6.0 release notes](docs/releases/0.6.0.md)
+- [Coordination state-of-the-art review](research/model-assisted-reviews/awp-0.5-multi-agent-coordination-review.md)
 
 The 0.3.0 monolithic draft, 0.4.0 modular draft, and 0.5.0 family remain available as historical design input. The documents listed in Section 2, their normative schemas, and the module registry constitute the AWP 0.6.0 specification family.
 

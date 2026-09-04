@@ -1,0 +1,13 @@
+{
+  "id": "overlap:unpinned",
+  "type": "overlap",
+  "module": "urn:awp:coordination",
+  "revision": 1,
+  "status": "open",
+  "created_by": "actor:analyzer",
+  "created_at": "2026-09-03T20:02:00Z",
+  "subjects": ["intent:update-config", "intent:refactor-config"],
+  "classification": "blocking",
+  "basis": [{"reason": "concurrent write"}],
+  "policy_action": "block"
+}

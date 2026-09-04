@@ -1,0 +1,16 @@
+{
+  "id": "scope:config-write",
+  "type": "scope",
+  "module": "urn:awp:coordination",
+  "revision": 1,
+  "status": "active",
+  "created_by": "actor:agent-a",
+  "created_at": "2026-09-03T20:00:00Z",
+  "selector": {
+    "kind": "file",
+    "repository": "repo:example",
+    "base_revision": "git:0123456789abcdef",
+    "path": "src/config.py"
+  },
+  "access": "write"
+}

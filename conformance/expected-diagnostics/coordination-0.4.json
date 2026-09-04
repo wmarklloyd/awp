@@ -1,0 +1,31 @@
+{
+  "schema": "schemas/awp-coordination-0.4.schema.json",
+  "definition": "coordinationRecord",
+  "cases": [
+    {
+      "document": "conformance/valid/coordination-0.4-scope.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/valid/coordination-0.4-intent.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/valid/coordination-0.4-overlap.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/coordination-0.4-missing-revision.json",
+      "valid": false,
+      "expected_keywords": ["revision", "required"]
+    },
+    {
+      "document": "conformance/invalid/coordination-0.4-unpinned-overlap.json",
+      "valid": false,
+      "expected_keywords": ["subjects", "does not match"]
+    }
+  ]
+}

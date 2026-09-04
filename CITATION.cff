@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use or discuss AWP, cite the versioned specification."
+title: "Agent Workstate Protocol"
+type: software
+authors:
+  - family-names: Lloyd
+    given-names: Mark
+repository-code: "https://github.com/wmarklloyd/awp"
+url: "https://github.com/wmarklloyd/awp/tree/v0.6.0"
+version: 0.6.0
+date-released: 2026-09-03
+license: GPL-3.0-only
+keywords:
+  - agent interoperability
+  - workstate
+  - provenance
+  - multi-agent coordination

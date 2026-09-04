@@ -1,0 +1,123 @@
+{
+  "case_count": 5,
+  "conditions": {
+    "awp_assisted_proxy": {
+      "classifications": [
+        {
+          "case": "independent-files",
+          "outcome": "true_negative",
+          "predicted_conflict": false
+        },
+        {
+          "case": "same-file-write",
+          "outcome": "true_positive",
+          "predicted_conflict": true
+        },
+        {
+          "case": "different-file-contract",
+          "outcome": "true_positive",
+          "predicted_conflict": true
+        },
+        {
+          "case": "writer-reader-dependency",
+          "outcome": "true_positive",
+          "predicted_conflict": true
+        },
+        {
+          "case": "shared-read-only-contract",
+          "outcome": "true_negative",
+          "predicted_conflict": false
+        }
+      ],
+      "false_negative": 0,
+      "false_positive": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "true_negative": 2,
+      "true_positive": 3,
+      "warning_phase": "pre-implementation-declaration"
+    },
+    "chat_only_proxy": {
+      "classifications": [
+        {
+          "case": "independent-files",
+          "outcome": "true_negative",
+          "predicted_conflict": false
+        },
+        {
+          "case": "same-file-write",
+          "outcome": "false_negative",
+          "predicted_conflict": false
+        },
+        {
+          "case": "different-file-contract",
+          "outcome": "false_negative",
+          "predicted_conflict": false
+        },
+        {
+          "case": "writer-reader-dependency",
+          "outcome": "false_negative",
+          "predicted_conflict": false
+        },
+        {
+          "case": "shared-read-only-contract",
+          "outcome": "true_negative",
+          "predicted_conflict": false
+        }
+      ],
+      "false_negative": 3,
+      "false_positive": 0,
+      "precision": null,
+      "recall": 0.0,
+      "true_negative": 2,
+      "true_positive": 0,
+      "warning_phase": "message-time-if-explicit"
+    },
+    "git_only_proxy": {
+      "classifications": [
+        {
+          "case": "independent-files",
+          "outcome": "true_negative",
+          "predicted_conflict": false
+        },
+        {
+          "case": "same-file-write",
+          "outcome": "true_positive",
+          "predicted_conflict": true
+        },
+        {
+          "case": "different-file-contract",
+          "outcome": "false_negative",
+          "predicted_conflict": false
+        },
+        {
+          "case": "writer-reader-dependency",
+          "outcome": "false_negative",
+          "predicted_conflict": false
+        },
+        {
+          "case": "shared-read-only-contract",
+          "outcome": "true_negative",
+          "predicted_conflict": false
+        }
+      ],
+      "false_negative": 2,
+      "false_positive": 0,
+      "precision": 1.0,
+      "recall": 0.3333333333333333,
+      "true_negative": 2,
+      "true_positive": 1,
+      "warning_phase": "post-change"
+    }
+  },
+  "fixture_version": "1",
+  "interpretation_limit": "These results verify fixture instrumentation only and do not estimate real-world AWP effectiveness.",
+  "study": "coordination-awareness synthetic instrumentation pilot",
+  "unmeasured": [
+    "agent_behavior",
+    "authoring_time",
+    "coordination_delay",
+    "token_cost",
+    "integration_success"
+  ]
+}

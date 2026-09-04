@@ -1,0 +1,968 @@
+{
+  "family": "AWP",
+  "version": "0.7.0-draft",
+  "status": "generated-review-inventory",
+  "normative_authority": "source prose",
+  "requirements": [
+    {
+      "id": "AWP-FAMILY-001",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 10,
+      "statement": "The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in BCP 14 when, and only when, they appear in all capitals."
+    },
+    {
+      "id": "AWP-FAMILY-002",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 46,
+      "statement": "Every AWP 0.7 manifest MUST contain a `modules` array. It MUST declare exactly one Core entry, and that entry MUST be required. The following is a module-declaration excerpt rather than a complete manifest:"
+    },
+    {
+      "id": "AWP-FAMILY-003",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 80,
+      "statement": "A writer MUST declare every module whose records, events, or required processing rules affect the effective workstate. It MUST include compatible declarations for all direct dependencies. It MUST mark a module required only when ignoring that module would prevent the receiver from safely performing the declared continuation."
+    },
+    {
+      "id": "AWP-FAMILY-004",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 82,
+      "statement": "If a module is required, every dependency needed to interpret it MUST also be required. If an optional module depends on another optional module, a receiver may ignore both while preserving their data."
+    },
+    {
+      "id": "AWP-FAMILY-005",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 84,
+      "statement": "Core owns the unqualified Core record types and fields. A module defining a new record type MUST include a `module` field naming its module ID. A module extending a Core record MUST place its fields under that record's `modules` object, keyed by module ID. Module-owned event kinds use the common event envelope's required `module` field. These rules prevent independent subspecifications from claiming the same unqualified name."
+    },
+    {
+      "id": "AWP-FAMILY-006",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 88,
+      "statement": "A reader that encounters an unknown optional module MAY continue using understood modules. It MUST preserve or explicitly disclose loss of the unknown data, and it MUST NOT infer semantics from unknown fields."
+    },
+    {
+      "id": "AWP-FAMILY-007",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 90,
+      "statement": "A reader that encounters an unknown required module MUST NOT claim a complete interpretation or perform a continuation that could depend on it. It SHOULD still present the human briefing, validate understood envelopes, and report the unsupported module."
+    },
+    {
+      "id": "AWP-FAMILY-008",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 125,
+      "statement": "The conventional project-named form is `<project-name>.awp.md`. Producers MAY retain versioned archival copies using `<project-name>.v<revision>.awp.md`, such as `project.v2.awp.md`. This filename revision is only a human-facing label; protocol and workstate identity remain defined by the capsule metadata and the `.awp.json` `current_workstate` pointer."
+    },
+    {
+      "id": "AWP-FAMILY-009",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 131,
+      "statement": "Every shared AWP workstate MUST identify the exact specification artifact that governs it. A repository discovery document and its current capsule MUST carry an explicit `specification` reference. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate."
+    },
+    {
+      "id": "AWP-FAMILY-010",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 133,
+      "statement": "A reader MUST interpret a workstate according to its declared specification and module versions. It MUST NOT silently substitute a newer, older, or otherwise different specification, infer compatibility from a filename, or treat a moving branch URL as version-pinned. If the declared specification is unavailable or unsupported, the reader MUST report that condition rather than guess."
+    },
+    {
+      "id": "AWP-FAMILY-011",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 135,
+      "statement": "AWP `0.x` is exploratory. A new minor family or module release MAY make incompatible changes. A patch release MUST NOT introduce incompatible normative semantics. Explicit specification binding allows protocol development to proceed without requiring backward compatibility between exploratory minor releases. Implementations MAY support multiple versions or provide explicit migrations, but conformance to one version does not imply support for another."
+    },
+    {
+      "id": "AWP-FAMILY-012",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 137,
+      "statement": "The family version and module versions remain independent. The family version identifies a tested set of module releases, and a later family release may reuse an unchanged module version. Writers that change protocol semantics MUST publish a new versioned specification artifact and update affected workstates deliberately. Implementations MUST determine support by the declared specification, module ID, and module version, not by comparing only `awp_version`."
+    },
+    {
+      "id": "AWP-FAMILY-013",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 157,
+      "statement": "An implementation MUST satisfy the conformance requirements in each module for every role it claims. Supporting AWP Core alone is valid AWP conformance. It does not imply support for capsules, handoffs, synchronization, coordination, signatures, encryption, or adapters."
+    },
+    {
+      "id": "AWP-FAMILY-014",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 161,
+      "statement": "Every module and binding MUST preserve these rules:"
+    },
+    {
+      "id": "AWP-FAMILY-015",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 170,
+      "statement": "8. Optional modules MUST NOT redefine Core field meanings."
+    },
+    {
+      "id": "AWP-FAMILY-016",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 178,
+      "statement": "The migration is intentionally incompatible: a shared capsule and `.awp.json` discovery document now identify the exact specification artifact that governs the workstate. A 0.7 reader MUST NOT silently substitute another specification. Discovery 0.1 documents remain valid historical inputs but require explicit migration before being claimed as Discovery 0.2."
+    },
+    {
+      "id": "AWP-FAMILY-017",
+      "source": "spec/drafts/0.7.0/index.md",
+      "line": 180,
+      "statement": "An upgrader from 0.6.0 MUST add the governing `specification` reference to capsule metadata, update Capsule to `0.4.0`, and emit a Discovery 0.2 document. Historical events remain unchanged."
+    },
+    {
+      "id": "AWP-CORE-001",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 32,
+      "statement": "Every workstate MUST have a stable `workstate_id`. Copying or repackaging a workstate does not change this ID. Forking creates a new workstate ID and records the parent workstate and parent frontier."
+    },
+    {
+      "id": "AWP-CORE-002",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 34,
+      "statement": "Record and event IDs MUST be stable and unique within the workstate. Globally collision-resistant IDs are RECOMMENDED. IDs are opaque: consumers MUST NOT derive authority, time, ordering, or record type from their spelling."
+    },
+    {
+      "id": "AWP-CORE-003",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 36,
+      "statement": "Timestamps MUST use RFC 3339 and SHOULD use UTC. Causality is determined by event ancestry, not timestamps."
+    },
+    {
+      "id": "AWP-CORE-004",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 71,
+      "statement": "The Core module declaration MUST appear exactly once with version `0.7.x` and `required: true`. Module IDs MUST be unique within the array. A module declaration MUST satisfy the dependency and requiredness rules in the family specification."
+    },
+    {
+      "id": "AWP-CORE-005",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 75,
+      "statement": "Module-specific manifest data belongs in the owning module declaration's `configuration` object or in a top-level `module_data` object keyed by module ID. Undeclared modules MUST NOT place data there."
+    },
+    {
+      "id": "AWP-CORE-006",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 111,
+      "statement": "The owning module MUST be declared in the manifest. Event kind and payload are interpreted according to that module version. An unknown optional-module event remains part of the causal graph even when its payload cannot be interpreted."
+    },
+    {
+      "id": "AWP-CORE-007",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 113,
+      "statement": "Lossless processors MUST preserve unknown event fields. An event is immutable; correction, supersession, and redaction lineage use new events."
+    },
+    {
+      "id": "AWP-CORE-008",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 117,
+      "statement": "Event parents form a directed acyclic graph. A conforming writer MUST NOT create a cycle. A non-genesis event MUST identify every immediate causal predecessor known to its writer. Concurrent events may have the same parent. A merge or resolution event names all resolved tips as parents."
+    },
+    {
+      "id": "AWP-CORE-009",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 121,
+      "statement": "Wall-clock timestamps and array order MUST NOT be used as causal ordering. A `sequence` field is meaningful only within its declared single-writer scope."
+    },
+    {
+      "id": "AWP-CORE-010",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 153,
+      "statement": "Imported authority is evidence. A receiver MUST evaluate it against current local policy, authentication, revocation, and scope before action."
+    },
+    {
+      "id": "AWP-CORE-011",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 155,
+      "statement": "Actor declarations are materialized in a snapshot's top-level `actors` array. An actor reference in a manifest, event, authority declaration, or record SHOULD resolve to one of those declarations or to an identified external identity binding. An unresolved actor reference has type `unknown`; it does not invalidate historical events or create authentication, trust, or authority."
+    },
+    {
+      "id": "AWP-CORE-012",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 159,
+      "statement": "A core record contains `id` and `type` plus the fields below. It MAY include integer `revision`, beginning at `1` when first created. Fields marked required are structural minima; cross-record requirements remain normative even where JSON Schema cannot express them."
+    },
+    {
+      "id": "AWP-CORE-013",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 180,
+      "statement": "Core record types may refer to records owned by optional modules. If such a reference affects safe continuation, the referenced module MUST be required."
+    },
+    {
+      "id": "AWP-CORE-014",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 182,
+      "statement": "An optional module extending a Core record places its fields under `modules.{module-id}`. A module defining a new record type includes `id`, `type`, and `module`. It MUST NOT use an unqualified type name already owned by Core or another module."
+    },
+    {
+      "id": "AWP-CORE-015",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 198,
+      "statement": "Confidence MUST NOT replace epistemic status. A verified claim SHOULD identify evidence, procedure, scope, relevant artifact versions, environment, and observation time. Claims outside their recorded scope MUST be treated as unverified."
+    },
+    {
+      "id": "AWP-CORE-016",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 200,
+      "statement": "Contradictory claims MUST remain distinct until a resolution event cites the evidence and records the disposition. A summary is not independent evidence."
+    },
+    {
+      "id": "AWP-CORE-017",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 212,
+      "statement": "An update SHOULD carry a complete replacement or patch plus `prior_revision`. When a record has a revision, an update MUST apply only when `prior_revision` equals the effective revision and MUST assign the next integer revision. An update without a satisfiable prior revision is a conflict unless its owning module defines a safe commutative rule. A writer MUST NOT use last-write-wins to silently resolve a conflicting revision. Completion, verification, authorization, and external-side-effect transitions SHOULD cite evidence."
+    },
+    {
+      "id": "AWP-CORE-018",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 247,
+      "statement": "The `modules` object may contain module-owned materialized state keyed by module ID. Module state MUST NOT redefine Core records. A snapshot-only workstate MUST disclose that audit history is absent and SHOULD identify its source frontier or source digest."
+    },
+    {
+      "id": "AWP-CORE-019",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 249,
+      "statement": "When valid event history conflicts with a snapshot, event history is authoritative. Detailed replay and divergence rules belong to AWP Synchronization. A Core-only reader MUST at least compare the declared frontiers and report `current`, `stale`, `divergent`, or `unverifiable`; it MUST NOT silently treat a mismatch as current."
+    },
+    {
+      "id": "AWP-CORE-020",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 253,
+      "statement": "A Core reader MUST:"
+    },
+    {
+      "id": "AWP-CORE-021",
+      "source": "spec/drafts/0.7.0/core.md",
+      "line": 264,
+      "statement": "A Core writer MUST:"
+    },
+    {
+      "id": "AWP-CAPSULE-001",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 24,
+      "statement": "For a project-named Markdown capsule, the default conventional filename is `<project-name>.awp.md`. When the project name is unavailable or ambiguous, producers SHOULD use `project.awp.md`. A producer MAY retain multiple capsule revisions using `<project-name>.v<revision>.awp.md`, for example `awp.v2.awp.md` or `project.v2026-09-04.awp.md`. The filename revision is a human-facing archival label; it is not the AWP protocol version and MUST NOT override `awp_version`, `workstate_id`, `frontier`, `checkpoint`, `generated_digest`, or the `current_workstate` pointer in `.awp.json`. A consumer MUST follow the discovery pointer when one is present."
+    },
+    {
+      "id": "AWP-CAPSULE-002",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 26,
+      "statement": "A workstate using one of these representations MUST declare the Capsule module. It MUST mark Capsule required when no alternative declared representation makes the required Core and module state accessible without Capsule processing."
+    },
+    {
+      "id": "AWP-CAPSULE-003",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 30,
+      "statement": "A project MAY place a `.awp.json` discovery document at its declared project root so that an AWP-aware agent or tool can locate the current workstate without scanning the project. The discovery document is a pointer, not a workstate, trust assertion, or authority grant."
+    },
+    {
+      "id": "AWP-CAPSULE-004",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 43,
+      "statement": "`awp_schema`, `awp_discovery_version`, `current_workstate`, and `specification` are REQUIRED. `awp_schema` identifies this AWP discovery schema without assuming that a copied project contains AWP's source tree. `fallback_workstates` is optional. `specification` identifies the exact specification artifact governing the current workstate. It SHOULD be an immutable, version-pinned URI when the specification is hosted remotely, such as a tagged GitHub raw URL. It MUST NOT use a moving branch URL as though it were version-pinned. A sandboxed or offline project MAY point `specification` to a repository-relative local copy instead."
+    },
+    {
+      "id": "AWP-CAPSULE-005",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 45,
+      "statement": "Relative paths are resolved from the directory containing `.awp.json`. A local path MUST be relative, normalized, remain within the project root after resolution, and identify a regular file. A URI MAY be used only by a binding that defines retrieval and security behavior; discovering a URI MUST NOT trigger automatic network access."
+    },
+    {
+      "id": "AWP-CAPSULE-006",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 47,
+      "statement": "An AWP-aware project-entry implementation SHOULD look for `.awp.json` in the project root supplied by its host, repository binding, invocation, or configuration. It MUST NOT search above that root. When the file is present, it MUST validate [the discovery schema](../../../schemas/awp-discovery-0.2.schema.json) before following a pointer. It then opens `current_workstate` using the normal Capsule and Core procedures. It MUST verify that the capsule declares the same `specification` reference. A mismatch is invalid discovery and MUST NOT be resolved by silently choosing either reference."
+    },
+    {
+      "id": "AWP-CAPSULE-007",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 49,
+      "statement": "If `.awp.json` is missing, invalid, unsafe, or points to unavailable content, the implementation reports discovery as `absent`, `invalid`, `unsafe`, or `unavailable`. It MAY accept an explicitly supplied capsule instead. It MUST NOT silently select a fallback whose identity conflicts with an already selected workstate."
+    },
+    {
+      "id": "AWP-CAPSULE-008",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 51,
+      "statement": "Agent-specific instruction files such as `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md` are outside AWP. They MAY point to `.awp.json` or directly to a capsule, but their presence is not required for AWP conformance."
+    },
+    {
+      "id": "AWP-CAPSULE-009",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 55,
+      "statement": "Every complete directory, Markdown capsule, or package MUST begin with or contain a root `WORK.md`-equivalent briefing. A human-facing reader SHOULD present it first."
+    },
+    {
+      "id": "AWP-CAPSULE-010",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 57,
+      "statement": "The briefing MUST begin with metadata containing:"
+    },
+    {
+      "id": "AWP-CAPSULE-011",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 67,
+      "statement": "Generated content MUST occur inside exactly one marker pair:"
+    },
+    {
+      "id": "AWP-CAPSULE-012",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 92,
+      "statement": "`specification` identifies the exact specification artifact that governs the workstate. It follows the same version-pinned URI and repository-relative local-path rules as repository discovery. A reader MUST NOT silently substitute another specification. An unavailable or unsupported declared specification makes the workstate `unverifiable` for protocol interpretation."
+    },
+    {
+      "id": "AWP-CAPSULE-013",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 124,
+      "statement": "`WORK.md` and `manifest.json` are REQUIRED. `events.jsonl` is REQUIRED unless the manifest declares a snapshot-only representation. `snapshot.json`, `artifacts/`, `modules/`, and `views/` are optional."
+    },
+    {
+      "id": "AWP-CAPSULE-014",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 126,
+      "statement": "Each `events.jsonl` line contains one complete JSON event. Module-specific events remain in this unified ledger. Module-owned auxiliary data MAY occupy separate files under `modules/`, but their manifest locations are authoritative; directory names are conventional only."
+    },
+    {
+      "id": "AWP-CAPSULE-015",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 132,
+      "statement": "A `.awp.md` file begins with briefing metadata and human Markdown, followed by machine sections. Front matter MUST declare `capsule_boundary`, a lowercase hexadecimal token containing at least 128 bits of unpredictable entropy."
+    },
+    {
+      "id": "AWP-CAPSULE-016",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 146,
+      "statement": "It may contain attributes of the form ` name=\"value\"` before ` -->`. Attribute names match `[a-z][a-z0-9_-]*`; values MUST NOT contain a quote, CR, LF, or `-->`."
+    },
+    {
+      "id": "AWP-CAPSULE-017",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 165,
+      "statement": "The boundary token MUST NOT occur in decoded section content. A writer detecting a collision MUST generate a new boundary or encode the content using a binary-safe encoding such as base64. Binary artifacts MUST use base64 or a registered binary-safe encoding."
+    },
+    {
+      "id": "AWP-CAPSULE-018",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 167,
+      "statement": "A reader MUST validate marker pairing, reject duplicate authoritative sections, verify each module section against a matching manifest declaration, reject malformed boundaries, and preserve unknown sections during lossless rewriting. It MUST NOT infer machine state from arbitrary Markdown headings or code examples outside marked sections."
+    },
+    {
+      "id": "AWP-CAPSULE-019",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 173,
+      "statement": "Unpacking MUST preserve logical paths, bytes, IDs, module declarations, and references. Readers MUST reject absolute paths, parent traversal, duplicate normalized paths, case-folding collisions on case-insensitive targets, symlink escapes, and members exceeding configured size or decompression limits."
+    },
+    {
+      "id": "AWP-CAPSULE-020",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 175,
+      "statement": "Writers SHOULD place `WORK.md` and `manifest.json` before large members for preview efficiency. Physical member order has no semantic meaning."
+    },
+    {
+      "id": "AWP-CAPSULE-021",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 205,
+      "statement": "Standard representation kinds are `package-path`, `capsule-section`, `remote`, and `events-only`. A remote module location does not make the workstate self-contained and MUST disclose retrieval requirements. Secrets MUST NOT appear in locations."
+    },
+    {
+      "id": "AWP-CAPSULE-022",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 211,
+      "statement": "A Capsule reader MUST validate the representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures."
+    },
+    {
+      "id": "AWP-CAPSULE-023",
+      "source": "spec/drafts/0.7.0/capsule.md",
+      "line": 213,
+      "statement": "A Capsule writer MUST create an unambiguous representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A writer that emits `.awp.json` MUST produce a schema-valid, traversal-safe discovery document."
+    },
+    {
+      "id": "AWP-HANDOFF-001",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 15,
+      "statement": "A workstate containing a handoff record MUST declare this module. It MUST mark the module required when the requested continuation depends on the record's completeness, dependency, resumption, or authority-ceiling semantics."
+    },
+    {
+      "id": "AWP-HANDOFF-002",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 25,
+      "statement": "`portable` is RECOMMENDED for cross-system continuation. A portable handoff MUST identify each required dependency as `available`, `retrievable`, `unavailable`, or `withheld`. A full handoff MUST enumerate omissions and MUST NOT imply that an entire repository, transcript, or runtime is present when it is not."
+    },
+    {
+      "id": "AWP-HANDOFF-003",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 37,
+      "statement": "Levels are cumulative. `operational` MUST satisfy every semantic requirement. `exact` MUST satisfy semantic and operational requirements unless explicitly labeled `private_nonportable`, in which case it is not a conforming portable handoff."
+    },
+    {
+      "id": "AWP-HANDOFF-004",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 89,
+      "statement": "Required fields are `id`, `type`, `module`, `checkpoint`, `completeness`, `intended_audience`, `requested_action`, `authority_ceiling`, and `resumption_level`. `module` MUST be `urn:awp:handoff`."
+    },
+    {
+      "id": "AWP-HANDOFF-005",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 91,
+      "statement": "`authority_ceiling` is an upper bound asserted by the sender. It does not grant those authorities; the receiver may operate under a stricter ceiling. A missing, unknown, or ambiguous ceiling MUST be treated as no authority for external side effects."
+    },
+    {
+      "id": "AWP-HANDOFF-006",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 126,
+      "statement": "Required fields are `id`, `type`, `module`, `checkpoint`, `mode`, `read_first`, `required_artifacts`, `recommended_next_action`, `freshness_policy`, `on_stale`, and `authority_ceiling`. `type` MUST be `resume`, `module` MUST be `urn:awp:handoff`, and the only standard mode in this version is `project_reentry`. Optional `handoff` identifies the handoff record this resume record refines."
+    },
+    {
+      "id": "AWP-HANDOFF-007",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 128,
+      "statement": "When both a Resume and referenced Handoff record are present, the Resume record is the project-entry instruction for the named checkpoint. Its `authority_ceiling` MUST be equal to or narrower than the Handoff ceiling, and its action MUST be a compatible refinement of the Handoff requested action. A receiver that cannot establish those conditions MUST qualify or reject the resume; it MUST NOT choose one record silently."
+    },
+    {
+      "id": "AWP-HANDOFF-008",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 136,
+      "statement": "`on_stale` is `refresh_workstate`, `report_and_stop`, or `read_only_orientation`. A receiver MUST NOT interpret any value as permission to perform an external side effect from stale or unverifiable state."
+    },
+    {
+      "id": "AWP-HANDOFF-009",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 138,
+      "statement": "`repository_state`, when present, binds a resume checkpoint to the repository and immutable source revision against which it was prepared. Each entry requires `repository` and `source_revision` and MAY narrow comparison using `path_scope`. A `project_reentry` record that depends on source-controlled artifacts MUST include each repository state required to assess safe continuation."
+    },
+    {
+      "id": "AWP-HANDOFF-010",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 140,
+      "statement": "A receiver that can identify the local repository revision MUST compare it with `source_revision`. A mismatch makes the repository binding stale. When it can obtain a diff, claims, evidence, change sets, and verification results scoped to changed paths MUST be treated as stale until reverified or explicitly re-scoped. When the receiver cannot identify or compare the repository revision, the binding is unverifiable rather than current. A matching revision does not establish that remote services, credentials, or other dependencies remain current."
+    },
+    {
+      "id": "AWP-HANDOFF-011",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 142,
+      "statement": "`read_first` is an ordered presentation hint, not causal ordering or authority. A receiver MAY load additional records required to interpret dependencies, evidence, conflicts, or safety constraints. It MUST NOT omit relevant required state merely to meet a context budget. Optional context-selection metadata MAY state a token or byte budget, priority groups, and deferred artifacts, but it cannot weaken completeness, freshness, or authority requirements."
+    },
+    {
+      "id": "AWP-HANDOFF-012",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 144,
+      "statement": "A Resume Profile receiver MUST:"
+    },
+    {
+      "id": "AWP-HANDOFF-013",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 159,
+      "statement": "A Handoff writer MUST:"
+    },
+    {
+      "id": "AWP-HANDOFF-014",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 173,
+      "statement": "A Handoff reader MUST:"
+    },
+    {
+      "id": "AWP-HANDOFF-015",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 193,
+      "statement": "Reports SHOULD record capsule size where applicable, token usage, author and receiver versions, unsupported modules, omissions, false assumptions, safety failures, and resulting artifact quality. A single successful task is not evidence of general interoperability."
+    },
+    {
+      "id": "AWP-HANDOFF-016",
+      "source": "spec/drafts/0.7.0/handoff.md",
+      "line": 197,
+      "statement": "A Handoff reader implements the receiver procedure and exposes limitations. A Handoff writer implements the producer procedure and makes accurate claims. A Resume Profile reader additionally implements Section 5 and declares the `resume-profile` capability. A system MAY support handoff and resume records without supporting the Capsule module; repository discovery requires Capsule support."
+    },
+    {
+      "id": "AWP-ARTIFACT-001",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 15,
+      "statement": "A workstate using Artifact fields MUST declare this module. It MUST mark the module required when continuation depends on retrieving, verifying, executing, or distinguishing the availability of an artifact."
+    },
+    {
+      "id": "AWP-ARTIFACT-002",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 49,
+      "statement": "Artifact-module fields live under `modules[\"urn:awp:artifact\"]`. Required module fields are `status` and `locations`. An available packaged artifact MUST include `media_type`, `size`, and `integrity`. Statuses are `available`, `retrievable`, `unavailable`, `withheld`, `redacted`, and `superseded`."
+    },
+    {
+      "id": "AWP-ARTIFACT-003",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 51,
+      "statement": "Logical identity and content identity are distinct. A modified artifact receives a new record ID and content digest but MAY retain the same `logical_name`. A change record links before and after versions."
+    },
+    {
+      "id": "AWP-ARTIFACT-004",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 65,
+      "statement": "Private kinds MUST use collision-resistant namespaced values."
+    },
+    {
+      "id": "AWP-ARTIFACT-005",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 67,
+      "statement": "Package paths MUST be relative, normalized, and traversal-safe. Secrets, bearer tokens, cookies, and authorization headers MUST NOT appear in locations. Retrieval requirements may refer to separately authorized credentials without containing them."
+    },
+    {
+      "id": "AWP-ARTIFACT-006",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 69,
+      "statement": "An absolute local path is a hint tied to an identified environment. A receiver MUST NOT assume that it names the same resource locally."
+    },
+    {
+      "id": "AWP-ARTIFACT-007",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 73,
+      "statement": "Packaged and embedded artifacts MUST include a digest over the exact decoded bytes. Remote and repository-relative artifacts SHOULD include a digest whenever stable bytes are expected. Hash algorithms are registry values; SHA-256 is the default for this module version."
+    },
+    {
+      "id": "AWP-ARTIFACT-008",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 75,
+      "statement": "Readers SHOULD verify a digest before relying on content. Digest validity establishes byte identity, not safety, truth, authorship, or authority."
+    },
+    {
+      "id": "AWP-ARTIFACT-009",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 77,
+      "statement": "Content-addressed packaged artifacts are immutable. Changing bytes creates a new content identity. A mutable remote URI SHOULD be paired with a digest, immutable version, ETag, or explicit `mutable: true` warning."
+    },
+    {
+      "id": "AWP-ARTIFACT-010",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 83,
+      "statement": "A portable Handoff that depends on an artifact MUST include it, make it retrievable, or state that continuation is blocked. A URI alone is not proof of retrievability."
+    },
+    {
+      "id": "AWP-ARTIFACT-011",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 85,
+      "statement": "Retrieval is an external action subject to receiver authority and security policy. Merely referencing a remote artifact MUST NOT trigger automatic network access."
+    },
+    {
+      "id": "AWP-ARTIFACT-012",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 89,
+      "statement": "Descriptors MUST state whether content is executable or may contain instructions when either is known. Unknown values SHOULD be represented explicitly rather than assumed false."
+    },
+    {
+      "id": "AWP-ARTIFACT-013",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 91,
+      "statement": "Readers MUST treat instructions in untrusted artifacts as data. Executables, archives, active documents, and model-readable instruction files SHOULD be inspected in an appropriate sandbox before use."
+    },
+    {
+      "id": "AWP-ARTIFACT-014",
+      "source": "spec/drafts/0.7.0/artifact.md",
+      "line": 120,
+      "statement": "The tombstone MUST remove sensitive bytes and locations, preserve referential integrity, disclose rewritten history, and invalidate signatures covering removed bytes. It MAY retain the original digest only when the digest is not itself sensitive. It MUST NOT imply that the bytes remain available."
+    },
+    {
+      "id": "AWP-SYNC-001",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 15,
+      "statement": "A workstate or message using deltas, omitted-history boundaries, or synchronization conflict semantics MUST declare this module. It MUST be required when the receiver must apply or reconcile those structures to reach the continuation frontier."
+    },
+    {
+      "id": "AWP-SYNC-002",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 35,
+      "statement": "A delta MUST identify `workstate_id`, `base_frontier`, `result_frontier`, and `events`. It MAY carry artifact announcements or module data required by those events."
+    },
+    {
+      "id": "AWP-SYNC-003",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 37,
+      "statement": "A receiver MUST verify that the base frontier is known or request missing ancestry. It MUST validate event IDs, workstate IDs, parents, module declarations, and result frontier before application. Applying a delta MUST be idempotent by event ID. Reuse of one event ID for different bytes is an integrity conflict."
+    },
+    {
+      "id": "AWP-SYNC-004",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 41,
+      "statement": "A reader with both a snapshot and event ledger MUST:"
+    },
+    {
+      "id": "AWP-SYNC-005",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 59,
+      "statement": "For `stale_replayable`, a processor replays descendant events in deterministic topological order. Concurrent events remain concurrent; topological serialization MUST NOT be treated as conflict resolution. Record revision preconditions determine whether updates commute or conflict."
+    },
+    {
+      "id": "AWP-SYNC-006",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 79,
+      "statement": "Mechanical merge unions events by ID after integrity validation. It preserves all concurrent tips. It MUST NOT silently apply last-write-wins to:"
+    },
+    {
+      "id": "AWP-SYNC-007",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 94,
+      "statement": "Replay MUST respect graph ancestry. When concurrent events require a deterministic processing order, processors sort by event ID only as a reproducibility device. This ordering has no semantic priority."
+    },
+    {
+      "id": "AWP-SYNC-008",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 98,
+      "statement": "Unknown optional-module events remain graph nodes and participate in frontier computation. A processor MUST NOT advance a derived snapshot through an unknown event when doing so could alter a required Core or module result; it reports the projection as unverifiable instead."
+    },
+    {
+      "id": "AWP-SYNC-009",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 102,
+      "statement": "AWP 0.7.0 does not define destructive log compaction. A writer MAY create a summary or snapshot-only export, but it MUST disclose omitted history and MUST NOT claim `full` completeness."
+    },
+    {
+      "id": "AWP-COORD-001",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 72,
+      "statement": "A writer MUST NOT advertise a level whose required behaviors it does not implement. A reader MAY support a lower level, but it MUST reject the workstate for safe continuation when the module is required and unsupported semantics affect the requested action."
+    },
+    {
+      "id": "AWP-COORD-002",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 84,
+      "statement": "An implementation MAY adopt `coordination-awareness` before implementing the complete integration-assurance workflow. Capability declarations state what records can be processed; conformance levels state how rigorously they are processed."
+    },
+    {
+      "id": "AWP-COORD-003",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 110,
+      "statement": "`id`, `type`, `module`, `revision`, `status`, `created_by`, and `created_at` are required. `revision` begins at `1`. An update MUST identify `prior_revision` in its event and produce exactly `prior_revision + 1`."
+    },
+    {
+      "id": "AWP-COORD-004",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 116,
+      "statement": "Unknown fields MUST be preserved by lossless processors. A processor MUST distinguish a registered record type above its advertised capability or conformance level from a genuinely unregistered type. It preserves registered higher-level records without interpreting them and may still perform lower-level actions that do not depend on their meaning. A genuinely unregistered type owned by this required module makes only the affected action or projection `unverifiable` unless a declared compatibility rule permits preservation without interpretation. A lower-level reader MAY always perform safe display or export."
+    },
+    {
+      "id": "AWP-COORD-005",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 125,
+      "statement": "Safety-relevant references in contracts, preconditions, readiness decisions, verification, overlaps, and integration plans MUST be revision-pinned. A missing, superseded, or contested pinned revision remains historically addressable but MUST NOT be silently replaced by another revision. An unpinned reference that is absent, contested, or ambiguous is unresolved."
+    },
+    {
+      "id": "AWP-COORD-006",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 131,
+      "statement": "The passage of time never changes projected state. An identified actor or service MUST emit a valid timeout, expiration, or deadline-observation event under a declared clock authority. Until that event is present, a deadline may be overdue but the prior projected lifecycle state remains unchanged; processors SHOULD surface the overdue condition."
+    },
+    {
+      "id": "AWP-COORD-007",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 208,
+      "statement": "Within one workstate, an active alias MUST resolve to at most one semantic definition. Merging ambiguous aliases creates diagnostic `AWP-COORD-REGISTRY-AMBIGUOUS` and affected overlap analysis becomes `unknown` until resolved."
+    },
+    {
+      "id": "AWP-COORD-008",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 212,
+      "statement": "Selector comparison across repository revisions is a C2 correctness operation. An analyzer MUST resolve both selectors against their pinned bases and attempt to relate moved, renamed, extracted, or replaced targets using a declared selector profile. Resolution results are `same`, `related`, `different`, `unresolvable`, or `ambiguous`, with evidence and confidence. `unresolvable` or `ambiguous` forces overlap classification `unknown`; it MUST NOT yield `none`."
+    },
+    {
+      "id": "AWP-COORD-009",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 214,
+      "statement": "Language-specific selector syntax and drift algorithms belong to registered adapter profiles. The initial reference implementation SHOULD provide Python AST and TypeScript compiler-symbol profiles, but their identifiers and outputs remain usable by agents implemented in any language."
+    },
+    {
+      "id": "AWP-COORD-010",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 218,
+      "statement": "A scope is a first-class record selecting a physical or semantic region. Intents, claims, change sets, and contracts reference it by ID and revision. An inline selector MAY be used as an unshared query value, but an inline selector is not a scope record and cannot be revised or used as a dependency target."
+    },
+    {
+      "id": "AWP-COORD-011",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 241,
+      "statement": "Physical selector kinds include `repository`, `directory`, `file`, `symbol`, `syntax_node`, `configuration_key`, `schema_object`, `generated_output`, `test`, and `fixture`. Line ranges are hints and MUST NOT be the only selector for a safety-relevant claim."
+    },
+    {
+      "id": "AWP-COORD-012",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 247,
+      "statement": "Authors SHOULD declare relied-upon reads only for assumptions whose incompatible change could invalidate the output, not every file or symbol inspected. Tools may propose candidates from dependency traces, but the published set SHOULD be summarized at stable interface, invariant, schema, or behavior boundaries. Fine-grained automatic reads MAY remain evidence behind that summary. This keeps the reverse index useful rather than turning ordinary repository browsing into conflicts."
+    },
+    {
+      "id": "AWP-COORD-013",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 251,
+      "statement": "An actor SHOULD publish an intent before materially changing shared state."
+    },
+    {
+      "id": "AWP-COORD-014",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 296,
+      "statement": "If observed work expands beyond the declared scope, the writer MUST either update the intent before publishing a ready change set or record an explicit deviation. Under a C2 enforcing policy, unresolved material under-declaration prevents `ready`."
+    },
+    {
+      "id": "AWP-COORD-015",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 327,
+      "statement": "Observed-scope lifecycle statuses are `final` and `superseded`; outcome is `complete`, `partial`, or `error`. The analyzer, base, result, method, and evidence digest MUST be recorded. `declared_not_observed` is informational unless policy says otherwise. `undeclared` MUST be evaluated for new overlaps and may stale earlier acknowledgements. An omitted effect or scope means unknown; an explicitly present empty array asserts that none were observed or declared under the stated method."
+    },
+    {
+      "id": "AWP-COORD-016",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 374,
+      "statement": "`unknown` MUST NOT be treated as `compatible`. The configured policy determines whether it warns, negotiates, or blocks."
+    },
+    {
+      "id": "AWP-COORD-017",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 400,
+      "statement": "`accepted`, `rejected`, `timed_out`, `cancelled`, and `escalated` are terminal. Escalation after rejection or timeout creates a successor negotiation referencing the terminal record. A further round likewise creates a successor. A processor MUST NOT infer acceptance from silence unless the declared decision policy explicitly defines silence and the enforcing authority supports it."
+    },
+    {
+      "id": "AWP-COORD-018",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 402,
+      "statement": "An accepted proposal MAY create commitments. A commitment identifies:"
+    },
+    {
+      "id": "AWP-COORD-019",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 443,
+      "statement": "`kind` is `unanimous`, `threshold`, `named_participants`, or `authorized_owner`. `eligible_participants` is required except for `authorized_owner`; `threshold` is required only for `threshold` and MUST be between 1 and the eligible count. `required_participants` defaults to empty. `abstention` is `counts_as_no`, `reduces_eligible`, or `prohibited`. Votes and acceptances MUST pin `decides_revision`. Role names alone are not participant identity; a policy using roles must resolve them to an uncontested eligible actor set before evaluation."
+    },
+    {
+      "id": "AWP-COORD-020",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 458,
+      "statement": "Global contract status MUST NOT be derived from a single participant's adoption status. Each participant has one of `unaware`, `reviewing`, `accepted`, `implementing`, `implemented`, `verified`, `rejected`, `withdrawn`, or `not_applicable`, with its own evidence and revision."
+    },
+    {
+      "id": "AWP-COORD-021",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 460,
+      "statement": "The contract's decision policy specifies named required parties or a quorum. A contract MUST NOT become `accepted`, `implemented`, or `verified` until that state's policy is satisfied."
+    },
+    {
+      "id": "AWP-COORD-022",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 489,
+      "statement": "Precondition lifecycle statuses are `active`, `retired`, and `superseded`. `on_false` is `warn`, `block_ready`, `stale`, or `escalate`. `on_unknown` is `warn`, `block_ready`, or `escalate`; it MUST NOT silently pass."
+    },
+    {
+      "id": "AWP-COORD-023",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 508,
+      "statement": "`pure` evaluators read only the identified AWP projection or supplied bytes. Repository-relative and host-relative results MUST record the repository or environment they observed. All evaluators MUST be side-effect-free with respect to the project, deterministic for identical declared inputs, bounded by an explicit timeout, and return `error` rather than partial success after timeout or internal failure. Constraint syntax is owned by the registered evaluator-interface version; an implementation MUST NOT guess unsupported syntax."
+    },
+    {
+      "id": "AWP-COORD-024",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 510,
+      "statement": "An asserted precondition records a natural-language statement, asserting actor, scope, epistemic status, evidence if any, and required reviewer or authority. It MUST NOT be presented as machine-verified."
+    },
+    {
+      "id": "AWP-COORD-025",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 619,
+      "statement": "A verification result MUST bind the claim being checked to exact inputs."
+    },
+    {
+      "id": "AWP-COORD-026",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 658,
+      "statement": "For each event that changes a record revision or status, a C1 projector MUST:"
+    },
+    {
+      "id": "AWP-COORD-027",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 682,
+      "statement": "An adapter MUST reject `atomic` when its repository or transaction mechanism cannot supply the claimed atomic boundary. Rollback is a separately recorded operation and MUST NOT be assumed successful."
+    },
+    {
+      "id": "AWP-COORD-028",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 684,
+      "statement": "Before starting integration, the owner MUST refresh available coordination events, compare the target base, re-evaluate expiring or base-bound preconditions, confirm contract revisions, and re-open any invalidated overlap dispositions."
+    },
+    {
+      "id": "AWP-COORD-029",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 702,
+      "statement": "A successful source-control merge MUST NOT by itself transition an integration to `completed` when combined semantic verification is required."
+    },
+    {
+      "id": "AWP-COORD-030",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 710,
+      "statement": "A C1 projector MUST:"
+    },
+    {
+      "id": "AWP-COORD-031",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 742,
+      "statement": "Synchronization 0.2 governs retention and compaction: a snapshot does not authorize destructive pruning, and snapshot-only exports disclose omitted history. A portable Coordination view MAY omit terminal records irrelevant to the requested continuation only when it declares the omission and does not claim full audit completeness. It MUST retain or make retrievable every active dependency, unresolved conflict, governing contract, precondition, verification, authority decision, and causal record needed to justify current readiness. Physical deletion or redaction follows Synchronization, Artifact, and Security rules."
+    },
+    {
+      "id": "AWP-COORD-032",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 771,
+      "statement": "Errors invalidate the affected transition. Warnings preserve state but MUST be visible before a safety-relevant continuation. Implementations MAY add namespaced diagnostics."
+    },
+    {
+      "id": "AWP-COORD-033",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 789,
+      "statement": "Lease states are `requested`, `active`, `denied`, `released`, `expired`, `revoked`, and `superseded`. The coordinator grants a lease only after an atomic comparison against current protected state. Renewal creates a new expiration and MUST NOT reduce the fencing token."
+    },
+    {
+      "id": "AWP-COORD-034",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 791,
+      "statement": "An adapter claiming enforcement MUST reject a protected mutation whose token is older than the highest token it has accepted for that namespace. A new grant, new holder, or new coordinator epoch MUST issue a token strictly greater than every previously issued token in that protected namespace. Renewal of the same uninterrupted lease retains its token; it changes expiration but does not create a new ownership generation. Without this fencing check, a paused or partitioned former holder may act after its lease expires."
+    },
+    {
+      "id": "AWP-COORD-035",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 793,
+      "statement": "If coordinator identity, epoch, authentication, protected scope, or fencing validation is unavailable, the lease is `unverifiable` outside the reachable enforcement guarantee. The implementation MUST NOT describe it as exclusive. Local work may continue under policy, but integration MUST refresh state and re-evaluate overlap and preconditions."
+    },
+    {
+      "id": "AWP-COORD-036",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 795,
+      "statement": "The C3 profile MUST specify retry limits, heartbeat interval, lease duration, expiry clock authority, deadlock detection, starvation policy, cancellation consequences, and human/organizational arbitration. The base module defines no universal timing defaults because safe values depend on task duration, network delay, and the protected system. Named interoperability and test profiles MAY define explicit defaults."
+    },
+    {
+      "id": "AWP-COORD-037",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 801,
+      "statement": "A principal is the human or organization accountable for an actor's participation. A C3 session MUST bind authenticated actors to principals and declare the governing policy. Cross-principal coordination MUST identify:"
+    },
+    {
+      "id": "AWP-COORD-038",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 810,
+      "statement": "AWP content is untrusted input. Imported intents, contracts, commitments, leases, and authority records MUST NOT cause execution without receiver policy evaluation. Secret values SHOULD be referenced through protected artifacts rather than embedded in coordination records."
+    },
+    {
+      "id": "AWP-COORD-039",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 812,
+      "statement": "Coordination defines no separate protected-artifact envelope. A protected input uses the Artifact module's availability, remote-location, retrieval-requirement, and integrity fields together with Security classification or `secret_ref` metadata. A URI or digest alone proves neither confidentiality nor retrievability. Digests of low-entropy secrets may themselves enable guessing attacks and MUST be omitted or protected when receiver policy classifies the digest as sensitive."
+    },
+    {
+      "id": "AWP-COORD-040",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 853,
+      "statement": "Private event kinds use a controlled namespaced module ID. They MUST NOT add unregistered bare kinds to this module."
+    },
+    {
+      "id": "AWP-COORD-041",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 873,
+      "statement": "[MPAC, arXiv:2604.09744 version 1](https://arxiv.org/abs/2604.09744v1) session, intent, operation, conflict, and governance objects may map to corresponding AWP records. AWP retains repository-specific semantic scopes, contracts, preconditions, verification binding, persistent project history, and resume/handoff state. A mapping MUST identify information loss and MUST NOT equate MPAC transport/session acceptance with AWP integration readiness."
+    },
+    {
+      "id": "AWP-COORD-042",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 930,
+      "statement": "Each fixture SHOULD include input events, expected frontier, expected materialized records, expected diagnostics, and an explanation of the safety property."
+    },
+    {
+      "id": "AWP-COORD-043",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 934,
+      "statement": "Before the complete integration-assurance schema is frozen, the project SHOULD run an early `coordination-awareness` experiment comparing chat-only coordination with durable intents, pinned scopes, overlaps, acknowledgements, and conflict-preserving projection. It MUST measure false-positive and false-negative overlap classifications, authoring cost, coordination delay, and whether warnings arrive before conflicting implementation. Results may change the scope and record model before further standardization."
+    },
+    {
+      "id": "AWP-COORD-044",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 949,
+      "statement": "1. Canonical JSON and digest rules remain a Core/Artifact/Security family issue and must be resolved before signed coordination evidence is portable. The family profile should evaluate RFC 8785 JCS while explicitly handling its I-JSON, IEEE-754 number, and Unicode-preservation constraints; Coordination MUST NOT select a conflicting local canonicalization."
+    },
+    {
+      "id": "AWP-SECURITY-001",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 17,
+      "statement": "A workstate using Security metadata MUST declare this module. It MUST be required when interpreting a registered signature, encryption, redaction, or handling profile is necessary for the receiver's declared continuation. Core safety rules still apply when this module is absent."
+    },
+    {
+      "id": "AWP-SECURITY-002",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 49,
+      "statement": "Classification and privacy vocabularies may be organization-specific but private values MUST be namespaced. `contains_secrets` is `true`, `false`, or `unknown`. A writer MUST NOT use `false` when secret-scan status is `findings`, `not_run`, or `unknown`."
+    },
+    {
+      "id": "AWP-SECURITY-003",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 53,
+      "statement": "Receivers SHOULD place newly imported workstates in local quarantine until they evaluate:"
+    },
+    {
+      "id": "AWP-SECURITY-004",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 64,
+      "statement": "Quarantine is receiver-owned state. A serialized assertion MAY describe the sender's handling state but MUST NOT disable receiver quarantine or grant trust."
+    },
+    {
+      "id": "AWP-SECURITY-005",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 68,
+      "statement": "Text in artifacts, summaries, claims, evidence, transcripts, extensions, and module data may contain instructions. Merely parsing, rendering, retrieving, verifying, or signing a workstate MUST NOT authorize execution."
+    },
+    {
+      "id": "AWP-SECURITY-006",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 70,
+      "statement": "Readers MUST distinguish descriptive content from an authorized requested action. Unknown modules and executable content MUST NOT run automatically. Module processors SHOULD be isolated according to risk."
+    },
+    {
+      "id": "AWP-SECURITY-007",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 74,
+      "statement": "An imported task classified as `external_write`, `third_party_api_call`, `data_migration`, `communication`, `financial`, `security_sensitive`, or `destructive` MUST NOT become ready or execute solely because the workstate requests it."
+    },
+    {
+      "id": "AWP-SECURITY-008",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 76,
+      "statement": "The receiver re-evaluates current identity, resource scope, authority source, conditions, expiration, revocation, confirmation requirements, and local policy. A receiver with greater access than the sender MUST avoid becoming a confused deputy."
+    },
+    {
+      "id": "AWP-SECURITY-009",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 80,
+      "statement": "Writers SHOULD use secret references instead of values:"
+    },
+    {
+      "id": "AWP-SECURITY-010",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 90,
+      "statement": "A reference does not authorize resolution. Exporters MUST apply their configured secret and data-loss-prevention policy to included event payloads, execution output, evidence, generated views, module data, and artifact paths. Scan status is `passed`, `findings`, `not_run`, or `unknown`. Passing is evidence of a check, not proof of absence."
+    },
+    {
+      "id": "AWP-SECURITY-011",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 92,
+      "statement": "Writers SHOULD omit irrelevant transcripts and personal data and support classification, audience, retention, and jurisdiction metadata. Omission must not be disguised by a stronger completeness claim."
+    },
+    {
+      "id": "AWP-SECURITY-012",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 96,
+      "statement": "Physical redaction creates a new workstate history lineage. It MUST:"
+    },
+    {
+      "id": "AWP-SECURITY-013",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 111,
+      "statement": "Signatures may cover individual events, frontier manifests, snapshots, artifact manifests, module data, or complete packages. Signature metadata MUST identify algorithm, key identifier, coverage, canonicalization profile, signer, and verification status."
+    },
+    {
+      "id": "AWP-SECURITY-014",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 123,
+      "statement": "AWP Security 0.4.0 does not select a normative canonicalization or signature algorithm. Implementations MUST NOT claim interoperable AWP signature conformance without naming an external or future registered signature profile."
+    },
+    {
+      "id": "AWP-SECURITY-015",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 127,
+      "statement": "Encryption metadata may describe package-wide, module-level, artifact-level, or recipient-based protection. It MUST identify the encryption profile and protected scope without exposing keys or secret values."
+    },
+    {
+      "id": "AWP-SECURITY-016",
+      "source": "spec/drafts/0.7.0/security.md",
+      "line": 135,
+      "statement": "When Capsule or Artifact is used, processors MUST apply their traversal, normalization, size, decompression, integrity, executable-content, and retrieval rules. A signature over an unsafe archive does not make extraction safe."
+    }
+  ]
+}

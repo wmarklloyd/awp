@@ -1,0 +1,10 @@
+{
+  "id": "scope:missing-revision",
+  "type": "scope",
+  "module": "urn:awp:coordination",
+  "status": "active",
+  "created_by": "actor:agent-a",
+  "created_at": "2026-09-03T20:00:00Z",
+  "selector": {"kind": "file", "path": "src/config.py"},
+  "access": "write"
+}

@@ -11,7 +11,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FAMILY = ROOT / "AWP_SPECIFICATION_0.5.0.md"
+FAMILY = ROOT / "spec" / "0.5.0" / "index.md"
 SPEC_DIR = ROOT / "spec" / "0.5.0"
 REGISTRY = SPEC_DIR / "modules.json"
 REGISTRY_SCHEMA = ROOT / "schemas" / "awp-module-registry-0.5.schema.json"

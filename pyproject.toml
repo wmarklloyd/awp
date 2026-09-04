@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "awp-specification-tools"
+version = "0.1.0"
+description = "Validation and reproducible-build tools for the Agent Workstate Protocol specification"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-only" }
+authors = [{ name = "Mark Lloyd" }]
+dependencies = ["jsonschema==4.26.0"]
+
+[project.urls]
+Repository = "https://github.com/wmarklloyd/awp"
+Specification = "https://github.com/wmarklloyd/awp/tree/v0.6.0"
+
+[tool.setuptools]
+py-modules = []
+
+[tool.pyright]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100

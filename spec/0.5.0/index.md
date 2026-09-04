@@ -15,10 +15,10 @@ The family has one required foundation, AWP Core. Every other subspecification i
 
 AWP is intended for agents and users that already have their own working environments. It provides a common, portable format for four related cases:
 
-1. Sending another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
-2. Giving a new agent a canonical project orientation before it must inspect the wider repository;
-3. Letting an agent or user return to a project and resume from a canonical checkpoint rather than reconstructing state from scratch; and
-4. Helping multiple agents negotiate interdependent code work above the byte-level coordination supplied by Git or similar source control.
+1. sending another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
+2. giving a new agent a canonical project orientation before it must inspect the wider repository;
+3. letting an agent or user return to a project and resume from a canonical checkpoint rather than reconstructing state from scratch; and
+4. helping multiple agents negotiate interdependent code work above the byte-level coordination supplied by Git or similar source control.
 
 AWP does not replace an agent runtime, source control, artifact storage, or an agent-specific startup convention. Its purpose is to provide portable semantic state and coordination information that those systems can consume.
 
@@ -26,16 +26,16 @@ AWP does not replace an agent runtime, source control, artifact storage, or an a
 
 | Subspecification | Module identifier | Version | Status | Direct dependencies |
 |---|---|---:|---|---|
-| [AWP Core](spec/0.5.0/core.md) | `urn:awp:core` | `0.5.0` | required | none |
-| [AWP Capsule](spec/0.5.0/capsule.md) | `urn:awp:capsule` | `0.2.0` | optional | Core |
-| [AWP Handoff](spec/0.5.0/handoff.md) | `urn:awp:handoff` | `0.2.0` | optional | Core |
-| [AWP Artifact](spec/0.5.0/artifact.md) | `urn:awp:artifact` | `0.2.0` | optional | Core |
-| [AWP Synchronization](spec/0.5.0/synchronization.md) | `urn:awp:sync` | `0.2.0` | optional | Core |
-| [AWP Coordination](spec/0.5.0/coordination.md) | `urn:awp:coordination` | `0.2.0` | experimental | Core, Synchronization |
-| [AWP Security](spec/0.5.0/security.md) | `urn:awp:security` | `0.2.0` | optional | Core; Artifact when artifact controls are used |
-| [AWP Adapter Framework](spec/0.5.0/adapters.md) | not a payload module | `0.2.0` | informative | binding-specific |
+| [AWP Core](core.md) | `urn:awp:core` | `0.5.0` | required | none |
+| [AWP Capsule](capsule.md) | `urn:awp:capsule` | `0.2.0` | optional | Core |
+| [AWP Handoff](handoff.md) | `urn:awp:handoff` | `0.2.0` | optional | Core |
+| [AWP Artifact](artifact.md) | `urn:awp:artifact` | `0.2.0` | optional | Core |
+| [AWP Synchronization](synchronization.md) | `urn:awp:sync` | `0.2.0` | optional | Core |
+| [AWP Coordination](coordination.md) | `urn:awp:coordination` | `0.2.0` | experimental | Core, Synchronization |
+| [AWP Security](security.md) | `urn:awp:security` | `0.2.0` | optional | Core; Artifact when artifact controls are used |
+| [AWP Adapter Framework](adapters.md) | not a payload module | `0.2.0` | informative | binding-specific |
 
-The machine-readable [module registry](spec/0.5.0/modules.json) is normative for the module IDs, versions, document paths, stability labels, and direct dependencies in this release.
+The machine-readable [module registry](modules.json) is normative for the module IDs, versions, document paths, stability labels, and direct dependencies in this release.
 
 ## 3. Module declarations
 
@@ -176,14 +176,14 @@ An upgrader from 0.4.0 MUST update declared module versions. It MAY add a discov
 
 ## 10. Release contents
 
-- [Core schema](schemas/awp-core-0.5.schema.json)
-- [Discovery schema](schemas/awp-discovery-0.1.schema.json)
-- [Module registry](spec/0.5.0/modules.json)
-- [Open issue register](spec/0.5.0/open-issues.md)
-- [Validation tool](tools/validate_spec_0_5.py)
-- [Project purpose](purpose.txt)
-- [0.5.0 feedback evaluation](AWP_0.5.0_FEEDBACK_EVALUATION.md)
-- [0.3.0 feedback evaluation](AWP_FEEDBACK_EVALUATION.md)
+- [Core schema](../../schemas/awp-core-0.5.schema.json)
+- [Discovery schema](../../schemas/awp-discovery-0.1.schema.json)
+- [Module registry](modules.json)
+- [Open issue register](open-issues.md)
+- [Validation tool](../../tools/validate_spec_0_5.py)
+- [Project purpose](../../docs/project-scope.md)
+- [0.5.0 feedback evaluation](../../research/model-assisted-reviews/awp-0.5-feedback-evaluation.md)
+- [0.3.0 feedback evaluation](../../research/model-assisted-reviews/awp-feedback-evaluation.md)
 
 The 0.3.0 monolithic draft and 0.4.0 modular draft remain available as historical design input. The documents listed in Section 2 constitute the AWP 0.5.0 specification family.
 

@@ -1,0 +1,46 @@
+name: Protocol proposal
+description: Propose a normative or interoperability-relevant AWP change
+title: "[Proposal]: "
+labels: ["protocol-proposal"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and observable consequence
+      description: Describe the interoperability, safety, or usability problem.
+    validations:
+      required: true
+  - type: textarea
+    id: affected
+    attributes:
+      label: Affected versions and modules
+      description: Identify family, module, schema, role, and requirement identifiers.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed semantics
+      description: State the proposed normative behavior and error handling.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and migration
+      description: Explain whether a new family, module, schema, or event version is required.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Fixtures and evidence
+      description: Identify conformance cases or implementation evidence that could falsify the proposal.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: true

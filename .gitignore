@@ -1,6 +1,10 @@
 # Python-generated files
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
 
 # Local virtual environments
 .venv/
@@ -11,4 +15,3 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
-

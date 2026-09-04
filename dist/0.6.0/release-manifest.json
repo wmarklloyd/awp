@@ -1,0 +1,23 @@
+{
+  "protocol": "Agent Workstate Protocol",
+  "version": "0.6.0",
+  "status": "exploratory-release",
+  "git_tag": "v0.6.0",
+  "git_commit": "5468d8018fbc972567c5760734ef5b6c6c61e9be",
+  "published": "2026-09-03",
+  "artifacts": [
+    {
+      "path": "dist/0.6.0/AWP-0.6.0.bundle.md",
+      "tagged_path": "AWP_SPECIFICATION_0.6.0.bundle.md",
+      "sha256": "7c08480e85f8d3c291641cb76b43aca4cbd4ff2940511d4b7a493a2848dbb907",
+      "tagged_git_blob_sha1": "1c9fdb8e15f7648d26aa85bfd94318a9cef244a6"
+    },
+    {
+      "path": "dist/0.6.0/source/AWP_SPECIFICATION_0.6.0.md",
+      "tagged_path": "AWP_SPECIFICATION_0.6.0.md",
+      "sha256": "095aeb4801e31d25b2118ece294e472015832fa80118de218a8dbdb2feb0d616",
+      "tagged_git_blob_sha1": "de36ee9765d3d95e7f33b3cf52ab0b9e09285937"
+    }
+  ],
+  "note": "The tag identifies the original repository layout. The distribution bundle is reproduced from the tagged specification sources with LF line endings."
+}

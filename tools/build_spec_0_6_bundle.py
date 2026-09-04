@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "AWP_SPECIFICATION_0.6.0.bundle.md"
+OUTPUT = ROOT / "dist" / "0.6.0" / "AWP-0.6.0.bundle.md"
 
 MODULES = (
     "core.md",
@@ -52,7 +52,7 @@ def build() -> str:
         "",
         "---",
         "",
-        read("AWP_SPECIFICATION_0.6.0.md"),
+        read("dist/0.6.0/source/AWP_SPECIFICATION_0.6.0.md"),
         "",
         "---",
         "",
@@ -70,6 +70,7 @@ def build() -> str:
 
 
 def main() -> int:
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(build(), encoding="utf-8", newline="\n")
     print(f"Wrote {OUTPUT.relative_to(ROOT)}")
     return 0

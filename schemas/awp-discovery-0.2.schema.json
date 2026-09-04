@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:awp:schema:discovery:0.2.0",
+  "title": "AWP Repository Discovery 0.2",
+  "description": "Locates the current AWP workstate and its governing specification bundle from a project root.",
+  "type": "object",
+  "required": ["awp_schema", "awp_discovery_version", "current_workstate", "specification"],
+  "properties": {
+    "$schema": { "const": "https://json-schema.org/draft/2020-12/schema" },
+    "awp_schema": { "const": "urn:awp:schema:discovery:0.2.0" },
+    "awp_discovery_version": { "const": "0.2" },
+    "current_workstate": { "$ref": "#/$defs/location" },
+    "specification": { "$ref": "#/$defs/location" },
+    "fallback_workstates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/location" },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "location": {
+      "type": "string",
+      "minLength": 1,
+      "allOf": [
+        { "pattern": "^\\S+$" },
+        { "not": { "pattern": "^(?:[A-Za-z]:|/|\\\\)" } },
+        { "not": { "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)" } }
+      ]
+    }
+  }
+}

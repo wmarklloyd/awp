@@ -1,0 +1,99 @@
+{
+  "$schema": "../../../schemas/awp-module-registry-0.7.schema.json",
+  "family": "AWP",
+  "family_version": "0.7.0",
+  "event_schema_versions": ["0.2"],
+  "modules": [
+    {
+      "id": "urn:awp:core",
+      "name": "AWP Core",
+      "version": "0.7.0",
+      "status": "required",
+      "document": "core.md",
+      "schema": "../../../schemas/awp-core-0.7.schema.json",
+      "dependencies": []
+    },
+    {
+      "id": "urn:awp:capsule",
+      "name": "AWP Capsule",
+      "version": "0.4.0",
+      "status": "optional",
+      "document": "capsule.md",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.7.x" }
+      ]
+    },
+    {
+      "id": "urn:awp:handoff",
+      "name": "AWP Handoff",
+      "version": "0.4.0",
+      "status": "optional",
+      "document": "handoff.md",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.7.x" }
+      ]
+    },
+    {
+      "id": "urn:awp:artifact",
+      "name": "AWP Artifact",
+      "version": "0.4.0",
+      "status": "optional",
+      "document": "artifact.md",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.7.x" }
+      ]
+    },
+    {
+      "id": "urn:awp:sync",
+      "name": "AWP Synchronization",
+      "version": "0.4.0",
+      "status": "optional",
+      "document": "synchronization.md",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.7.x" }
+      ]
+    },
+    {
+      "id": "urn:awp:coordination",
+      "name": "AWP Coordination",
+      "version": "0.4.0",
+      "status": "experimental",
+      "document": "coordination.md",
+      "schema": "../../../schemas/awp-coordination-0.4.schema.json",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.7.x" },
+        { "id": "urn:awp:sync", "version": "0.4.x" }
+      ]
+    },
+    {
+      "id": "urn:awp:security",
+      "name": "AWP Security",
+      "version": "0.4.0",
+      "status": "optional",
+      "document": "security.md",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.7.x" }
+      ],
+      "conditional_dependencies": [
+        {
+          "when_capability": "artifact-controls",
+          "id": "urn:awp:artifact",
+          "version": "0.4.x"
+        }
+      ]
+    }
+  ],
+  "informative_documents": [
+    {
+      "name": "AWP Adapter Framework",
+      "version": "0.4.0",
+      "document": "adapters.md"
+    },
+    {
+      "name": "AWP Open Issues",
+      "version": "0.7.0",
+      "document": "open-issues.md"
+    }
+  ]
+}
+

@@ -25,12 +25,12 @@ The family has one required foundation, AWP Core. Every other subspecification i
 
 ### 1.1 Target use cases
 
-AWP is intended for agents and users that already have their own working environments. It provides a common, portable format to:
+AWP is intended for agents and users that already have their own working environments. It provides a common, portable format for four related cases:
 
-1. Enable a user or agent to send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
-2. Provide a new agent with a clear, shared project orientation before it must inspect the wider repository;
-3. Allow an agent or user to return to a project and resume from a recorded checkpoint rather than reconstructing its state from scratch; and
-4. Enable multiple agents to negotiate interdependent code changes above the byte-level coordination provided by Git or similar source-control systems.
+1. sending another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
+2. giving a new agent a canonical project orientation before it must inspect the wider repository;
+3. letting an agent or user return to a project and resume from a canonical checkpoint rather than reconstructing state from scratch; and
+4. helping multiple agents negotiate interdependent code work above the byte-level coordination supplied by Git or similar source control.
 
 AWP does not replace an agent runtime, source control, artifact storage, or an agent-specific startup convention. Its purpose is to provide portable semantic state and coordination information that those systems can consume.
 
@@ -79,7 +79,7 @@ Every AWP 0.6 manifest MUST contain a `modules` array. It MUST declare exactly o
 A module entry has:
 
 - `id`: collision-resistant module identifier;
-- `version`: version identifier of that module;
+- `version`: semantic version of that module;
 - `required`: whether understanding the module is necessary for the declared use of this workstate;
 - optional `schema`: schema identifier or packaged schema location;
 - optional `representation`: module-owned data location in this representation;
@@ -130,19 +130,18 @@ project.awp.md
   module:security section
 ```
 
-The conventional project-named form is `<project-name>.awp.md`. Producers MAY retain versioned archival copies using `<project-name>.v<revision>.awp.md`, such as `project.v2.awp.md`. This filename revision is only a human-facing label; protocol and workstate identity remain defined by the capsule metadata and the `.awp.json` `current_workstate` pointer.
-
 The manifest is authoritative for physical locations. Module-specific events participate in the unified Core event graph and identify their owning module. This preserves causal ordering across modules without requiring one event log per module.
 
-## 6. Versioning and specification binding
+## 6. Versioning
 
-Every shared AWP workstate MUST identify the exact specification artifact that governs it. A repository discovery document and its current capsule MUST carry an explicit `specification` reference. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate.
+The family version and module versions are independent semantic versions:
 
-A reader MUST interpret a workstate according to its declared specification and module versions. It MUST NOT silently substitute a newer, older, or otherwise different specification, infer compatibility from a filename, or treat a moving branch URL as version-pinned. If the declared specification is unavailable or unsupported, the reader MUST report that condition rather than guess.
+- the family version identifies a tested set of module releases;
+- a module major version may introduce incompatible semantics;
+- a module minor version may add backward-compatible fields or event kinds;
+- a module patch version may clarify wording or fix non-semantic errors.
 
-AWP `0.x` is exploratory. A new family or module release MAY make incompatible changes, including at a minor or patch version. Explicit specification binding allows protocol development to proceed without requiring backward compatibility between exploratory releases. Implementations MAY support multiple versions or provide explicit migrations, but conformance to one version does not imply support for another.
-
-The family version and module versions remain independent. The family version identifies a tested set of module releases, and a later family release may reuse an unchanged module version. Writers that change protocol semantics MUST publish a new versioned specification artifact and update affected workstates deliberately. Implementations MUST determine support by the declared specification, module ID, and module version, not by comparing only `awp_version`.
+A later AWP family release may reuse an unchanged module version. Implementations MUST negotiate module compatibility by module ID and version, not by comparing only `awp_version`.
 
 The common event envelope is versioned independently because events may outlive a family release. AWP 0.6.0 uses event-envelope version `0.2`.
 
@@ -506,30 +505,26 @@ The representations are:
 
 Logical equivalence does not require identical bytes or file layout. The manifest maps logical data to physical locations.
 
-For a project-named Markdown capsule, the default conventional filename is `<project-name>.awp.md`. When the project name is unavailable or ambiguous, producers SHOULD use `project.awp.md`. A producer MAY retain multiple capsule revisions using `<project-name>.v<revision>.awp.md`, for example `awp.v2.awp.md` or `project.v2026-09-04.awp.md`. The filename revision is a human-facing archival label; it is not the AWP protocol version and MUST NOT override `awp_version`, `workstate_id`, `frontier`, `checkpoint`, `generated_digest`, or the `current_workstate` pointer in `.awp.json`. A consumer MUST follow the discovery pointer when one is present.
-
 A workstate using one of these representations MUST declare the Capsule module. It MUST mark Capsule required when no alternative declared representation makes the required Core and module state accessible without Capsule processing.
 
 ## 2. Repository discovery
 
-A project MAY place a `.awp.json` discovery document at its declared project root so that an AWP-aware agent or tool can locate the current workstate without scanning the project. The discovery document is a pointer, not a workstate, trust assertion, or authority grant.
+A project MAY place a `.awp.json` discovery document at its declared project root so that a AWP-aware agent or tool can locate the current workstate without scanning the project. The discovery document is a pointer, not a workstate, trust assertion, or authority grant.
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "awp_schema": "urn:awp:schema:discovery:0.1.0",
   "awp_discovery_version": "0.1",
-  "current_workstate": "project.awp.md",
-  "specification": "https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md",
+  "current_workstate": "conversation.awp.md",
+  "specification": "AWP_SPECIFICATION_0.6.0.bundle.md",
   "fallback_workstates": []
 }
 ```
 
-`awp_schema`, `awp_discovery_version`, `current_workstate`, and `specification` are REQUIRED. `awp_schema` identifies this AWP discovery schema without assuming that a copied project contains AWP's source tree. `fallback_workstates` is optional. `specification` identifies the exact specification artifact governing the current workstate. It SHOULD be an immutable, version-pinned URI when the specification is hosted remotely, such as a tagged GitHub raw URL. It MUST NOT use a moving branch URL as though it were version-pinned. A sandboxed or offline project MAY point `specification` to a repository-relative local copy instead.
+`awp_schema`, `awp_discovery_version`, and `current_workstate` are REQUIRED. `awp_schema` identifies this AWP discovery schema without assuming that a copied project contains AWP's source tree. `specification` and `fallback_workstates` are optional. Relative paths are resolved from the directory containing `.awp.json`. A local path MUST be relative, normalized, remain within the project root after resolution, and identify a regular file. A URI MAY be used only by a binding that defines retrieval and security behavior; discovering a URI MUST NOT trigger automatic network access.
 
-Relative paths are resolved from the directory containing `.awp.json`. A local path MUST be relative, normalized, remain within the project root after resolution, and identify a regular file. A URI MAY be used only by a binding that defines retrieval and security behavior; discovering a URI MUST NOT trigger automatic network access.
-
-An AWP-aware project-entry implementation SHOULD look for `.awp.json` in the project root supplied by its host, repository binding, invocation, or configuration. It MUST NOT search above that root. When the file is present, it MUST validate [the discovery schema](../../schemas/awp-discovery-0.1.schema.json) before following a pointer. It then opens `current_workstate` using the normal Capsule and Core procedures. It MUST verify that the capsule declares the same `specification` reference. A mismatch is invalid discovery and MUST NOT be resolved by silently choosing either reference.
+A AWP-aware project-entry implementation SHOULD look for `.awp.json` in the project root supplied by its host, repository binding, invocation, or configuration. It MUST NOT search above that root. When the file is present, it MUST validate [the discovery schema](../../schemas/awp-discovery-0.1.schema.json) before following a pointer. It then opens `current_workstate` using the normal Capsule and Core procedures.
 
 If `.awp.json` is missing, invalid, unsafe, or points to unavailable content, the implementation reports discovery as `absent`, `invalid`, `unsafe`, or `unavailable`. It MAY accept an explicitly supplied capsule instead. It MUST NOT silently select a fallback whose identity conflicts with an already selected workstate.
 
@@ -542,7 +537,6 @@ Every complete directory, Markdown capsule, or package MUST begin with or contai
 The briefing MUST begin with metadata containing:
 
 - `awp_version`;
-- `specification`;
 - `workstate_id`;
 - `frontier`;
 - current `checkpoint`, if one exists;
@@ -554,7 +548,6 @@ Generated content MUST occur inside exactly one marker pair:
 ```markdown
 ---
 awp_version: 0.6.0
-specification: https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md
 workstate_id: urn:uuid:596ae918-e7da-4e6f-a226-b13f8b084727
 frontier:
   - evt:01K4M4VYB9
@@ -573,8 +566,6 @@ Implementation and local verification are complete. Production approval remains 
 Human notes may be edited here.
 <!-- awp:notes:end -->
 ```
-
-`specification` identifies the exact specification artifact that governs the workstate. It follows the same version-pinned URI and repository-relative local-path rules as repository discovery. A reader MUST NOT silently substitute another specification. An unavailable or unsupported declared specification makes the workstate `unverifiable` for protocol interpretation.
 
 The digest uses `sha256:{lowercase-hex}` over the UTF-8 content beginning after the LF terminating the start marker and ending before the LF preceding the end marker, after CRLF-to-LF normalization.
 
@@ -3198,9 +3189,9 @@ Private bindings use collision-resistant IDs. An unknown binding may be ignored 
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:awp:schema:discovery:0.1.0",
   "title": "AWP Repository Discovery 0.1",
-  "description": "Locates the current AWP workstate and its governing specification bundle from a project root.",
+  "description": "Locates the current AWP workstate and an optional specification bundle from a project root.",
   "type": "object",
-  "required": ["awp_schema", "awp_discovery_version", "current_workstate", "specification"],
+  "required": ["awp_schema", "awp_discovery_version", "current_workstate"],
   "properties": {
     "$schema": { "const": "https://json-schema.org/draft/2020-12/schema" },
     "awp_schema": { "const": "urn:awp:schema:discovery:0.1.0" },

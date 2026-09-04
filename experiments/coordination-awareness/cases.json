@@ -1,0 +1,51 @@
+{
+  "fixture_version": "1",
+  "description": "Synthetic cases for checking coordination-awareness instrumentation.",
+  "cases": [
+    {
+      "id": "independent-files",
+      "ground_truth_conflict": false,
+      "chat": {"explicit_conflict_warning": false},
+      "participants": [
+        {"id": "a", "changed_paths": ["src/auth.py"], "scopes": [{"kind": "file", "target": "src/auth.py", "access": "write"}, {"kind": "semantic", "target": "auth-session", "access": "write"}]},
+        {"id": "b", "changed_paths": ["docs/usage.md"], "scopes": [{"kind": "file", "target": "docs/usage.md", "access": "write"}, {"kind": "semantic", "target": "user-documentation", "access": "write"}]}
+      ]
+    },
+    {
+      "id": "same-file-write",
+      "ground_truth_conflict": true,
+      "chat": {"explicit_conflict_warning": false},
+      "participants": [
+        {"id": "a", "changed_paths": ["src/config.py"], "scopes": [{"kind": "file", "target": "src/config.py", "access": "write"}]},
+        {"id": "b", "changed_paths": ["src/config.py"], "scopes": [{"kind": "file", "target": "src/config.py", "access": "write"}]}
+      ]
+    },
+    {
+      "id": "different-file-contract",
+      "ground_truth_conflict": true,
+      "chat": {"explicit_conflict_warning": false},
+      "participants": [
+        {"id": "a", "changed_paths": ["src/api.py"], "scopes": [{"kind": "file", "target": "src/api.py", "access": "write"}, {"kind": "semantic", "target": "user-response-schema", "access": "write"}]},
+        {"id": "b", "changed_paths": ["tests/test_client.py"], "scopes": [{"kind": "file", "target": "tests/test_client.py", "access": "write"}, {"kind": "semantic", "target": "user-response-schema", "access": "relied_upon_read"}]}
+      ]
+    },
+    {
+      "id": "writer-reader-dependency",
+      "ground_truth_conflict": true,
+      "chat": {"explicit_conflict_warning": false},
+      "participants": [
+        {"id": "a", "changed_paths": ["schemas/event.json"], "scopes": [{"kind": "file", "target": "schemas/event.json", "access": "write"}, {"kind": "semantic", "target": "event-envelope", "access": "write"}]},
+        {"id": "b", "changed_paths": ["src/parser.py"], "scopes": [{"kind": "file", "target": "src/parser.py", "access": "write"}, {"kind": "semantic", "target": "event-envelope", "access": "relied_upon_read"}]}
+      ]
+    },
+    {
+      "id": "shared-read-only-contract",
+      "ground_truth_conflict": false,
+      "chat": {"explicit_conflict_warning": false},
+      "participants": [
+        {"id": "a", "changed_paths": ["reports/a.md"], "scopes": [{"kind": "semantic", "target": "metrics-schema", "access": "read"}]},
+        {"id": "b", "changed_paths": ["reports/b.md"], "scopes": [{"kind": "semantic", "target": "metrics-schema", "access": "read"}]}
+      ]
+    }
+  ]
+}

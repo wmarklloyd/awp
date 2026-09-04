@@ -1,0 +1,35 @@
+name: Implementation report
+description: Report an AWP implementation or interoperability result
+title: "[Implementation]: "
+labels: ["implementation-report"]
+body:
+  - type: input
+    id: implementation
+    attributes:
+      label: Implementation and version
+    validations:
+      required: true
+  - type: input
+    id: specification
+    attributes:
+      label: Exact specification reference
+    validations:
+      required: true
+  - type: textarea
+    id: roles
+    attributes:
+      label: Claimed roles and modules
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and fixture revisions
+    validations:
+      required: true
+  - type: textarea
+    id: results
+    attributes:
+      label: Complete results and deviations
+    validations:
+      required: true

@@ -1,0 +1,47 @@
+name: Validate specification
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install validation dependency
+        run: python -m pip install --requirement requirements-dev.txt
+      - name: Validate specifications
+        run: |
+          python tools/validate_spec_examples.py
+          python tools/validate_spec_0_4.py
+          python tools/validate_spec_0_5.py
+          python tools/validate_spec_0_6.py
+          python tools/validate_spec_0_7.py
+          python tools/validate_conformance.py
+          python tools/check_markdown_links.py
+          python tools/verify_workstate_artifacts.py
+      - name: Run repository tests
+        run: python -m unittest discover -s tests -v
+      - name: Verify synthetic pilot results
+        run: python experiments/coordination-awareness/run_pilot.py --check
+      - name: Verify generated bundles
+        run: |
+          python tools/build_requirements_registry.py
+          python tools/build_spec_0_6_bundle.py
+          python tools/build_spec_0_7_bundle.py
+          git diff --exit-code -- dist spec/drafts/0.7.0/requirements.json
