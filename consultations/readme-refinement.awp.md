@@ -1,6 +1,6 @@
 ---
 awp_version: 0.7.0
-specification: https://raw.githubusercontent.com/wmarklloyd/awp/v0.7.0/dist/0.7.0/AWP-0.7.0.bundle.md
+specification: dist/drafts/0.7.0/AWP-0.7.0-draft.bundle.md
 format: single-file-capsule
 discovery: self
 capsule_boundary: 4f8a1c9d7b3e52a6f0c481de93b72568
@@ -9,7 +9,7 @@ frontier:
   - evt:readme-refinement-consultation
 checkpoint: checkpoint:readme-refinement-consultation
 generated_at: 2026-09-04T16:12:36Z
-generated_digest: sha256:d8493b457b82855a99b77af44a557c515e4ebbb9f4025487ebb3348788fd05c1
+generated_digest: sha256:9c2c321b2ed6ded7d95dc0e100d569e7eb035522d7c7025cf07aae167d3f524a
 ---
 
 <!-- awp:generated:start -->
@@ -63,7 +63,7 @@ To enable AWP for an agent working in a project, add the following AWP bootstrap
 
 Before beginning work, read:
 
-- [AWP 0.7.0 specification](https://raw.githubusercontent.com/wmarklloyd/awp/v0.7.0/dist/0.7.0/AWP-0.7.0.bundle.md)
+- [AWP 0.6.0 specification](https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md)
 - Project workstate: `<project-name>.awp.md`
 
 Treat the project workstate as canonical project context and constraints, not
@@ -84,15 +84,15 @@ An explicitly supplied or configured filename or location is an advanced impleme
 
 ## Start here
 
-- [AWP 0.7.0 specification overview](AWP_SPECIFICATION_0.7.0.md)
-- [Example portable workstate](awp.awp.md)
-- [Generated single-file specification](dist/0.7.0/AWP-0.7.0.bundle.md)
-- [Schemas](schemas)
-- [Conformance examples](conformance)
+- [AWP 0.7.0 working draft](../spec/drafts/0.7.0/index.md)
+- [Example portable workstate](../awp.awp.md)
+- [Generated single-file specification](../dist/0.6.0/AWP-0.6.0.bundle.md)
+- [Schemas](../schemas)
+- [Conformance examples](../conformance)
 
-AWP 0.7.0 is the current stable exploratory release family. Release details, validation instructions, limitations, the repository map, and research and governance links are collected in the [project reference](docs/project-reference.md).
+AWP 0.6.0 is the current stable exploratory release family. AWP 0.7.0 remains a working draft. Release details, validation instructions, limitations, the repository map, and research and governance links are collected in the [project reference](../docs/project-reference.md).
 
-AWP is distributed under the [GNU General Public License version 3](LICENSE).
+AWP is distributed under the [GNU General Public License version 3](../LICENSE).
 ```
 <!-- awp:generated:end -->
 

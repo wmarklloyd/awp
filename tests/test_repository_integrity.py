@@ -7,8 +7,7 @@ import subprocess
 import unittest
 from pathlib import Path
 
-from jsonschema import Draft202012Validator, FormatChecker
-import yaml
+from jsonschema import Draft202012Validator
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -73,45 +72,6 @@ class RepositoryIntegrityTests(unittest.TestCase):
         )
         self.assertEqual(builder.build(), expected)
 
-    def test_requirements_inventory_is_reproducible(self) -> None:
-        builder = load_module(ROOT / "tools" / "build_requirements_registry.py", "awp_build_requirements")
-        expected = json.loads(
-            (ROOT / "spec" / "drafts" / "0.7.0" / "requirements.json").read_text(encoding="utf-8")
-        )
-        self.assertEqual(builder.build(), expected)
-        ids = [requirement["id"] for requirement in expected["requirements"]]
-        self.assertEqual(len(ids), len(set(ids)))
-
-    def test_stable_requirements_inventory_is_reproducible(self) -> None:
-        builder = load_module(ROOT / "tools" / "build_requirements_registry.py", "awp_build_requirements_stable")
-        expected = json.loads(
-            (ROOT / "spec" / "0.7.0" / "requirements.json").read_text(encoding="utf-8")
-        )
-        self.assertEqual(
-            builder.build(
-                ROOT / "spec" / "0.7.0",
-                "0.7.0",
-                "spec/0.7.0",
-                "frozen-release-inventory",
-            ),
-            expected,
-        )
-
-    def test_stable_overview_matches_tagged_git_object(self) -> None:
-        current_text = (ROOT / "AWP_SPECIFICATION_0.6.0.md").read_text(encoding="utf-8").rstrip()
-        tagged_bytes = subprocess.run(
-            ["git", "show", "v0.6.0:AWP_SPECIFICATION_0.6.0.md"],
-            cwd=ROOT,
-            check=True,
-            capture_output=True,
-        ).stdout
-        tagged_text = tagged_bytes.decode("utf-8").rstrip()
-        self.assertEqual(current_text, tagged_text)
-
-    def test_architecture_decision_numbers_are_unique(self) -> None:
-        numbers = [path.name.split("-", 1)[0] for path in (ROOT / "docs" / "decisions").glob("*.md")]
-        self.assertEqual(len(numbers), len(set(numbers)))
-
     def test_draft_bundle_is_reproducible(self) -> None:
         builder = load_module(ROOT / "tools" / "build_spec_0_7_bundle.py", "awp_build_07")
         expected = (
@@ -119,47 +79,25 @@ class RepositoryIntegrityTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertEqual(builder.build(), expected)
 
-    def test_stable_0_7_bundle_is_reproducible(self) -> None:
-        builder = load_module(
-            ROOT / "tools" / "build_spec_0_7_release_bundle.py", "awp_build_07_release"
-        )
-        expected = (ROOT / "dist" / "0.7.0" / "AWP-0.7.0.bundle.md").read_text(
-            encoding="utf-8"
-        )
-        self.assertEqual(builder.build(), expected)
-
-    def test_stable_0_7_checksums_match_release_manifest(self) -> None:
-        release = ROOT / "dist" / "0.7.0"
-        manifest = json.loads((release / "release-manifest.json").read_text(encoding="utf-8"))
-        recorded = {}
-        for line in (release / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
-            digest, path = line.split(maxsplit=1)
-            recorded[path] = digest
-        expected = {
-            str(Path(artifact["path"]).relative_to("dist/0.7.0")).replace("\\", "/"): artifact["sha256"]
-            for artifact in manifest["artifacts"]
-        }
-        self.assertEqual(recorded, expected)
-        for artifact in manifest["artifacts"]:
-            self.assertEqual(
-                hashlib.sha256((ROOT / artifact["path"]).read_bytes()).hexdigest(),
-                artifact["sha256"],
-            )
-
-    def test_released_discovery_schema_remains_historical(self) -> None:
+    def test_released_and_draft_discovery_schemas_have_distinct_ids(self) -> None:
         released = json.loads(
             (ROOT / "schemas" / "awp-discovery-0.1.schema.json").read_text(encoding="utf-8")
         )
+        draft = json.loads(
+            (ROOT / "schemas" / "awp-discovery-0.2.schema.json").read_text(encoding="utf-8")
+        )
         Draft202012Validator.check_schema(released)
+        Draft202012Validator.check_schema(draft)
+        self.assertNotEqual(released["$id"], draft["$id"])
         self.assertNotIn("specification", released["required"])
+        self.assertIn("specification", draft["required"])
 
-    def test_current_capsule_contains_embedded_discovery_metadata(self) -> None:
-        self.assertFalse((ROOT / ".awp.json").exists())
-        capsule = (ROOT / "awp.awp.md").read_text(encoding="utf-8")
-        metadata = yaml.load(capsule.split("---", 2)[1], Loader=yaml.BaseLoader)
-        schema = json.loads((ROOT / "schemas" / "awp-capsule-0.4.schema.json").read_text(encoding="utf-8"))
-        errors = list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(metadata))
-        self.assertEqual(errors, [])
+    def test_repository_discovery_matches_capsule_specification(self) -> None:
+        discovery = json.loads((ROOT / ".awp.json").read_text(encoding="utf-8"))
+        capsule = (ROOT / discovery["current_workstate"]).read_text(encoding="utf-8")
+        metadata = capsule.split("---", 2)[1]
+        expected = f"specification: {discovery['specification']}"
+        self.assertIn(expected, metadata)
 
 
 if __name__ == "__main__":

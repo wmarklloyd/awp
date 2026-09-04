@@ -3,51 +3,136 @@
 [![Validate specification](https://github.com/wmarklloyd/awp/actions/workflows/validate.yml/badge.svg)](https://github.com/wmarklloyd/awp/actions/workflows/validate.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-Agent Workstate Protocol (AWP) is a portable format for preserving the working state of a project across people, AI agents, tools, and sessions. It gives the next participant the project’s intent and current state—not merely its files—so useful work can begin with less reconstruction, repetition, and avoidable error.
+Agent Workstate Protocol (AWP) is an exploratory, transport-independent format for preserving and exchanging semantic project state across human and software-agent sessions. It represents goals, constraints, decisions, evidence, uncertainty, authority boundaries, progress, and resumable next actions without requiring private chain-of-thought or hidden runtime state.
 
-AWP has four purposes:
+AWP also defines experimental coordination records above source control: work intent, physical and semantic scopes, overlaps, contracts, preconditions, verification, staleness, and integration state.
 
-- Transfer a project to another agent with substantially more useful context than an ordinary Markdown brief.
-- Orient a new agent from a canonical statement of the project’s goals and current state, without first scraping the entire project.
-- Allow a returning agent or person to resume work quickly from a reliable checkpoint.
-- Coordinate multiple agents working on interdependent parts of any shared work product through a layer above Git or comparable source control.
+## Status
 
-A single, portable `.awp.md` capsule can contain goals, plans, constraints, decisions, evidence, open questions, consultations, guardrails, checkpoints, handoffs, artifacts, and next actions. Coordination records can describe dependencies and overlaps in code, documents, designs, models, analyses, physical plans, or other shared work. AWP does not require private chain-of-thought or hidden runtime state.
+| Track | Version | Status | Entry point |
+|---|---:|---|---|
+| Stable specification | 0.6.0 | Exploratory release | [Family overview](AWP_SPECIFICATION_0.6.0.md) |
+| Active development | 0.7.0 | Working draft; not a release | [Draft overview](spec/drafts/0.7.0/index.md) |
+| Coordination | 0.3.0 stable-family module / 0.4.0 draft | Normative but experimental | [Released module](spec/0.6.0/coordination.md) |
 
-To enable AWP for an agent working in a project, add the following AWP bootstrap block to `AGENTS.md`. This is the project integration point: the first link gives the agent the exact protocol specification, and the second identifies the project’s current workstate. The capsule does not require a special filename or repository location:
+The 0.6.0 release is identified by immutable tag [`v0.6.0`](https://github.com/wmarklloyd/awp/tree/v0.6.0). The 0.7.0 working draft introduces explicit governing-specification binding and separately versioned Discovery 0.2.0 semantics. Draft material must not be represented as a published AWP release.
 
-```markdown
-## Agent Workstate Protocol
+## Scope
 
-Before beginning work, read:
+The [project scope](docs/project-scope.md) defines four target uses: portable project descriptions, rapid project orientation, checkpoint-based resumption, and coordination of interdependent changes above Git or comparable source-control systems.
 
-- [AWP 0.7.0 specification](https://raw.githubusercontent.com/wmarklloyd/awp/v0.7.0/dist/0.7.0/AWP-0.7.0.bundle.md)
-- Project workstate: `<project-name>.awp.md`
+AWP does not replace an agent runtime, source control, artifact storage, authentication, authorization, distributed consensus, or project policy. Imported workstate describes claims and requested actions; it does not grant authority for external side effects.
 
-Treat the project workstate as canonical project context and constraints, not
-as authorization for external side effects.
+## Evidence and limitations
+
+The repository currently provides:
+
+- modular normative prose and machine-readable module registries;
+- JSON Schemas for structural validation;
+- generated self-contained specification bundles;
+- executable positive and negative conformance fixtures;
+- deterministic bundle-reproducibility tests;
+- a synthetic coordination-awareness instrumentation pilot.
+- an experimental local SQLite presence registry and restartable event monitor.
+
+It does not yet provide a production reader/writer, complete cross-record validator, semantic-scope analyzer, live coordinator, two independent implementations, or empirical evidence that AWP improves real multi-agent outcomes. The distinction between demonstrated properties and research hypotheses is intentional.
+
+## Project entry
+
+An AWP-aware agent or tool starts at [`.awp.json`](.awp.json), follows `current_workstate`, and reads the capsule briefing and checkpoint. This repository’s current workstate is [`awp.awp.md`](awp.awp.md).
+
+The released 0.6.0 bundle is available locally at [`dist/0.6.0/AWP-0.6.0.bundle.md`](dist/0.6.0/AWP-0.6.0.bundle.md). A version-pinned external reference is:
+
+```text
+https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md
 ```
 
-An explicitly supplied or configured filename or location is an advanced implementation choice. Because the capsule is self-contained, it can also be attached directly to another model, shared for a focused consultation, or archived as a resumable checkpoint.
+Do not use a moving branch URL as though it were a released specification. The 0.7.0 draft permits an exact repository-relative local copy for sandboxed or offline environments.
 
-## What AWP provides
+The repository also includes [`consultations/readme-refinement.awp.md`](consultations/readme-refinement.awp.md), a detached 0.7.0 working-draft consultation. It is intentionally not a 0.6.0 example; its `consultation` record uses draft-only semantics and must be interpreted against the local 0.7.0 draft bundle.
 
-- Explicit goals, plans, constraints, decisions, uncertainty, and next actions.
-- Fast project entry, handoff, checkpointing, and resumption.
-- Evidence and provenance for claims about project state.
-- Consultation records that package a precise question with the context needed to answer it.
-- Shared guardrails that remain applicable when work is delegated or divided.
-- Domain-neutral coordination of scopes, dependencies, overlaps, verification, and integration.
-- Exact specification binding and machine-checkable schemas and fixtures.
+## Experimental presence monitoring
 
-## Start here
+The 0.7.0 working draft separates advisory agent presence from C3 enforced leases. The local reference tool stores volatile heartbeats under the shared Git common directory, allowing agents in different worktrees to observe the same project registry without writing heartbeat churn into the project Capsule.
 
-- [AWP 0.7.0 specification overview](AWP_SPECIFICATION_0.7.0.md)
-- [Example portable workstate](awp.awp.md)
-- [Generated single-file specification](dist/0.7.0/AWP-0.7.0.bundle.md)
-- [Schemas](schemas)
-- [Conformance examples](conformance)
+```bash
+python tools/awp_presence.py enter --agent-id agent:one --principal principal:team --project-id project:example --workstate-id workstate:example --scope scope:application@1
+python tools/awp_presence.py heartbeat --session-id session:<generated-id>
+python tools/awp_presence.py scan --watcher-id watcher:one
+python tools/awp_presence.py leave --session-id session:<generated-id>
+```
 
-AWP 0.7.0 is the current stable exploratory release family. Release details, validation instructions, limitations, the repository map, and research and governance links are collected in the [project reference](docs/project-reference.md).
+`enter` reports exact-scope writer conflicts, `heartbeat` renews only an active session, `scan` resumes from a durable watcher cursor using bounded pages and announces entry, expiry, release, and conflict events, and `leave` records a terminal release. The default `local-sqlite-presence-v1` profile is advisory and single-host; it does not authenticate principals, fence writes, infer semantic overlap, or satisfy C3.
 
-AWP is distributed under the [GNU General Public License version 3](LICENSE).
+## Protocol model
+
+AWP separates:
+
+- intent from authority;
+- execution from evidence and conclusion;
+- reported, inferred, observed, verified, disputed, stale, and refuted claims;
+- causal event history from generated snapshots and prose;
+- byte-level source-control conflicts from semantic coordination conflicts;
+- agent negotiation from bounded user-mediated arbitration when an interaction cannot be safely resolved by the agents.
+
+Core is required. Capsule, Handoff, Artifact, Synchronization, Coordination, and Security are separately declared modules. The [architecture overview](docs/architecture.md) describes their boundaries, the [informative formal model](docs/formal-model.md) states the underlying event and projection structure, and the [design rationale](docs/design-rationale.md) explains the principal choices.
+
+## Validation
+
+Python 3.10 or later is required. Install the pinned development dependency:
+
+```bash
+python -m pip install --requirement requirements-dev.txt
+```
+
+Run all released and draft validators, conformance fixtures, and repository tests:
+
+```bash
+python tools/validate_spec_examples.py
+python tools/validate_spec_0_4.py
+python tools/validate_spec_0_5.py
+python tools/validate_spec_0_6.py
+python tools/validate_spec_0_7.py
+python tools/validate_conformance.py
+python -m unittest discover -s tests -v
+```
+
+Regenerate the stable and working-draft bundles with:
+
+```bash
+python tools/build_spec_0_6_bundle.py
+python tools/build_spec_0_7_bundle.py
+```
+
+Generated bundles are checked in CI for byte-for-byte reproducibility.
+
+## Repository map
+
+```text
+.awp.json                   Repository discovery document
+awp.awp.md                  Current portable project workstate
+AWP_SPECIFICATION_0.6.0.md Stable family overview
+spec/                       Released modules, historical families, and drafts
+schemas/                    Versioned normative and draft JSON Schemas
+dist/                       Generated bundles, release manifests, and checksums
+conformance/                Positive, negative, and interoperability fixtures
+experiments/                Reproducible research harnesses and results
+docs/                       Architecture, rationale, governance records, and releases
+research/                   Design history and disclosed model-assisted reviews
+tools/                      Validators and reproducible-build utilities
+tests/                      Repository-integrity tests
+```
+
+The [specification index](spec/README.md) distinguishes immutable releases from working drafts. Protocol changes follow [the evolution policy](docs/protocol-evolution.md) and consequential decisions are recorded under [`docs/decisions`](docs/decisions).
+
+## Research position
+
+AWP composes ideas from event sourcing, distributed version control, provenance models, workflow checkpointing, software-supply-chain attestations, CRDT research, and agent transports. The [related-work note](docs/related-work.md) identifies that lineage and states the project’s narrower proposed contribution. The [open-issues register](spec/0.6.0/open-issues.md) records unresolved technical questions.
+
+Model-assisted design critiques are archived under [`research/model-assisted-reviews`](research/model-assisted-reviews) with an explicit provenance disclaimer. They are not described as independent peer review.
+
+## Contributing, governance, and citation
+
+See [CONTRIBUTING.md](CONTRIBUTING.md), [GOVERNANCE.md](GOVERNANCE.md), and [SECURITY.md](SECURITY.md). Cite the exact specification version using [CITATION.cff](CITATION.cff).
+
+AWP is currently distributed under the [GNU General Public License version 3](LICENSE). The licensing scope may be revisited before a stable 1.0 specification; no relicensing is implied by the working draft.

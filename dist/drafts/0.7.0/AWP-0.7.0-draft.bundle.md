@@ -34,7 +34,7 @@ AWP is intended for agents and users that already have their own working environ
 1. Enable a user or agent to send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
 2. Provide a new agent with a clear, shared project orientation before it inspects the wider repository;
 3. Allow an agent or user to return to a project and resume from a recorded checkpoint rather than reconstructing its state from scratch; and
-4. Enable multiple agents to negotiate interdependent changes to shared work products—including code, models, documents, physical designs, schedules, and other domain outputs—above the byte-level coordination provided by Git or comparable systems.
+4. Enable multiple agents to discover active participants, monitor advisory presence, and negotiate interdependent changes to shared work products—including code, models, documents, physical designs, schedules, and other domain outputs—above the byte-level coordination provided by Git or comparable systems.
 
 AWP does not replace an agent runtime, source control, artifact storage, or an agent-specific startup convention. Its purpose is to provide portable semantic state and coordination information that those systems can consume.
 
@@ -1179,6 +1179,14 @@ A future compaction profile must define lineage, state canonicalization, proof o
 
 Deltas may travel through files, HTTP, A2A, MCP, message queues, repositories, or peer protocols. A transport binding defines authentication, retries, acknowledgement, ordering, size limits, and retrieval. Synchronization semantics remain unchanged.
 
+## 9.1 Live-state and Capsule projection
+
+High-frequency coordination presence and heartbeat state is a live materialized view, not a substitute for the durable event graph. A synchronization transport SHOULD coalesce heartbeat renewal and MUST NOT require every heartbeat to advance the portable workstate frontier. Lifecycle facts that affect semantic continuation, including entry, release, expiry, conflict, and incomplete handoff, MAY be published as Coordination events.
+
+Concurrent agents publish events or deltas rather than independently replacing one canonical Capsule. A Capsule projector MUST compare the Capsule's current frontier and generated digest with the base it read before replacement. If either differs, it MUST reload and reconcile through this module, retry from the new base, or report divergence. It MUST NOT silently overwrite the newer projection.
+
+A deployment with one canonical Capsule MUST identify how projection ownership is serialized. An enforced deployment may use a fenced `integration_owner` lease. An advisory deployment may use a single local writer with atomic compare-and-swap. Projection ownership controls representation updates only; it does not grant authority over project changes.
+
 ## 10. Conformance
 
 A Synchronization reader validates ancestry and integrity, computes frontiers, applies deltas idempotently, preserves concurrency, and surfaces semantic conflicts.
@@ -1236,6 +1244,7 @@ The module declaration advertises supported capabilities and the strongest confo
   "version": "0.4.0",
   "required": false,
   "capabilities": [
+    "presence-monitoring",
     "intents",
     "contracts",
     "change-sets",
@@ -1267,7 +1276,7 @@ The module defines three cumulative capability bundles independently of conforma
 
 | Bundle | Purpose | Minimum capabilities |
 |---|---|---|
-| `coordination-awareness` | Low-cost useful adoption | intents, revision-pinned scopes, overlaps, acknowledgements, conflict-preserving projection |
+| `coordination-awareness` | Low-cost useful adoption | presence monitoring, intents, revision-pinned scopes, overlaps, acknowledgements, conflict-preserving projection |
 | `integration-assurance` | Safe candidate integration | contracts, typed preconditions, verification binding, change sets, staleness, integration results |
 | `live-enforcement` | Protected concurrent mutation | authenticated principals, OCC, leases, epochs, fencing, governance |
 
@@ -2066,6 +2075,140 @@ Diagnostics have stable code, severity, event or record subjects, explanation, a
 
 Errors invalidate the affected transition. Warnings preserve state but MUST be visible before a safety-relevant continuation. Implementations MAY add namespaced diagnostics.
 
+## 18.1 Agent presence and monitoring
+
+Presence monitoring makes active participation observable before agents mutate a shared project. It is an advisory coordination capability available at C1 and above. Presence does not grant authority, reserve a scope, establish exclusivity, or imply that the announced actor is trusted. An enforced lease remains a distinct C3 operation.
+
+A presence record identifies one runtime session:
+
+```json
+{
+  "id": "presence:agent-17-session-4",
+  "type": "presence",
+  "module": "urn:awp:coordination",
+  "revision": 1,
+  "status": "active",
+  "created_by": "actor:agent-17",
+  "created_at": "2026-09-04T18:00:00Z",
+  "agent_id": "agent:17",
+  "session_id": "session:4",
+  "principal": "principal:team-a",
+  "workstate_id": "urn:uuid:596ae918-e7da-4e6f-a226-b13f8b084727",
+  "project": "project:application",
+  "execution_location": {
+    "kind": "worktree",
+    "location": "worktree:agent-17-session-4",
+    "branch": "feature/auth-refresh"
+  },
+  "base": {
+    "repository": "repo:application",
+    "revision": "git:91ab4e7896d820c29ff5b9bd2a1f8d5ef67f734a",
+    "profile": "git-state-v1"
+  },
+  "declared_scopes": ["scope:auth-refresh@2"],
+  "access_mode": "write",
+  "monitoring_profile": "local-sqlite-presence-v1",
+  "heartbeat_at": "2026-09-04T18:00:30Z",
+  "expires_at": "2026-09-04T18:02:00Z"
+}
+```
+
+Required fields are `agent_id`, `session_id`, `principal`, `workstate_id`, `project`, `execution_location`, `base`, `declared_scopes`, `access_mode`, `monitoring_profile`, `heartbeat_at`, and `expires_at`. Project identity MUST be stable across worktrees or execution locations. `session_id` identifies one runtime generation and MUST NOT be reused after release or expiry. `base` binds the announcement to the revision from which work began. `declared_scopes` contains pinned Coordination scope references; a broad provisional scope MAY be announced and narrowed by a later revision.
+
+Presence states are `active`, `released`, `expired`, and `superseded`. Entry MUST publish an active presence record before the actor performs a declared write. A heartbeat atomically advances `heartbeat_at` and `expires_at` for the same active session. It MUST NOT revive an expired, released, or superseded session; a returning runtime creates a new session identity.
+
+The monitoring profile defines heartbeat interval, session duration, registry clock authority, retry policy, watcher cursor retention, and notification delivery. A monitor classifies a session as expired only through the profile's registry clock and an atomic compare against the latest heartbeat. Client wall clocks alone MUST NOT authoritatively expire a shared session. In an advisory deployment, an observer that cannot reach the registry reports presence as `unverifiable`, not absent.
+
+A watcher maintains a durable cursor over lifecycle notifications. It announces at least new sessions, terminal sessions, and newly detected overlaps or conflicts. Delivery MUST be idempotent by notification identity. Restarting a watcher MUST resume from its stored cursor or explicitly disclose an observation gap. Heartbeats SHOULD update materialized live state without producing a durable event for every renewal; implementations MAY sample heartbeat evidence under a declared retention policy.
+
+On entry, an implementation using presence monitoring MUST:
+
+1. resolve stable project and workstate identity;
+2. read and verify the current workstate and repository revision;
+3. create a unique session and publish its initial scope before writing;
+4. inspect active sessions and evaluate physical, semantic, and relied-upon-read overlap under current policy;
+5. surface required warnings, negotiation, ordering, or blocking before mutation;
+6. begin heartbeat renewal or declare that liveness cannot be maintained.
+
+On normal exit, an implementation MUST stop new mutation, publish its final change set and semantic checkpoint or synchronization delta, refresh the canonical Capsule through the current projection owner, and then release its presence session. If the Capsule cannot be refreshed, the writer MUST publish an incomplete-handoff diagnostic rather than presenting the prior Capsule as current. Crash recovery relies on expiry and MUST preserve an `expired` terminal observation.
+
+Heartbeats and other high-frequency live values MUST NOT be written into the project Capsule. The Capsule remains a durable semantic projection updated at checkpoints and handoff. Entry, release, expiry, conflict, and incomplete-handoff facts MAY be retained as durable Coordination events when they affect interpretation or audit.
+
+Multiple agents MUST NOT independently overwrite one canonical Capsule from the same base frontier. Each agent publishes events or deltas; a single current projection owner updates the Capsule using compare-and-swap against its frontier and generated digest. A stale writer merges, retries, or reports divergence through Synchronization. It MUST NOT use last-write-wins.
+
+### 18.1.1 Local SQLite presence profile
+
+The informative profile `local-sqlite-presence-v1` supports agents sharing one local Git common directory. It uses SQLite transactions for atomic entry, expiry, release, and watcher-cursor advancement. Its registry clock is the host running the transaction. The profile uses a 90-second session duration, recommends renewal at most every 30 seconds, and treats exact pinned-scope equality plus an explicit wildcard as its only automatic overlap evidence.
+
+This profile is advisory. It does not authenticate principals, fence writes, provide cross-host availability, infer semantic overlap, or satisfy C3. A deployment that changes its timing, clock, matching, or retention behavior declares a distinct profile or explicit profile parameters.
+
+## 18.2 Scaling requirements
+
+An implementation intended for many concurrent agents MUST avoid project-wide polling and all-pairs overlap comparison. It SHOULD:
+
+- partition presence and event streams by stable project and state-space identity;
+- index active sessions by project, pinned scope, access mode, and expiration;
+- route scope changes only to watchers subscribed to potentially interacting scopes;
+- coalesce heartbeats in materialized state rather than append every renewal to durable history;
+- provide cursor-based incremental delivery, bounded pages, backpressure, and idempotent retry;
+- define retention for terminal sessions, watcher cursors, diagnostics, and sampled liveness evidence;
+- isolate hot scopes so one heavily contended component does not serialize unrelated work;
+- measure active sessions, renewal latency, expiry lag, notification lag, conflict candidates, false alarms, dropped observations, and projection retries;
+- preserve a recovery path when an index, subscriber, projector, or coordinator restarts.
+
+Sharding MUST NOT change the semantic result of overlap evaluation. Cross-partition scopes, wildcard scopes, integration ownership, and project-wide invariants require an identified routing or aggregation strategy. An implementation MUST disclose any scope class it cannot compare completely.
+
+### 18.2.1 Brokered and sharded presence profile
+
+The candidate profile `brokered-sharded-presence-v1` defines advisory presence for deployments in which agents may run on different hosts and a single local registry is insufficient. This profile remains C1 awareness: it does not become a C3 lease merely because its transport is distributed.
+
+The profile has four logical responsibilities, which MAY be implemented by one service or separate replicated services:
+
+1. a session registry stores current presence and heartbeat state;
+2. a scope router identifies partitions and subscribers that may interact with a declaration;
+3. an event broker delivers lifecycle, conflict, gap, and handoff notifications;
+4. a Capsule projector consumes durable semantic events or deltas and serializes the canonical Capsule projection for each workstate.
+
+#### Partitioning and routing
+
+The primary partition key MUST include stable project identity and state-space identity. Session ownership, renewal, release, and expiry for one session MUST be linearizable within its owning partition. Exact pinned scopes SHOULD use an inverted index keyed by scope identity and access mode rather than scanning all active sessions.
+
+A scope router MUST identify every partition that can contain a potentially interacting scope under the declared comparison policy. Cross-partition scopes, wildcard scopes, integration ownership, and project-wide invariants MUST be routed to an aggregator or a declared global-scope partition. If any required partition or index is unavailable, the result is `unverifiable`; the implementation MUST NOT report that no conflict exists.
+
+Partition rebalancing MUST preserve session generation, terminal state, watcher position, and overlap results. A former partition owner MUST NOT accept a renewal or release after ownership has transferred. Implementations SHOULD use epochs, compare-and-swap, or equivalent stale-owner rejection even though presence itself remains advisory.
+
+#### Heartbeats and expiry
+
+Heartbeats MUST route directly by session identity and update coalesced materialized state. They MUST NOT produce one durable broker event per renewal. A heartbeat update MUST compare the session generation and current active state atomically, so a delayed message cannot revive a terminal or replaced session.
+
+Expiry MUST be scheduled from the authoritative registry time of the owning partition. An expiry worker MUST atomically compare the expected session generation and latest expiration before publishing `presence.expired`. Duplicate expiry attempts and duplicate lifecycle delivery MUST converge through stable event identity and idempotent processing.
+
+#### Subscriptions, retention, and backpressure
+
+Watchers SHOULD subscribe by project plus pinned scopes, scope classes, or declared global interest. The broker MUST support durable cursors, bounded delivery pages, idempotent retry, and an explicit retention interval. Cursor state MAY be compacted, but a watcher whose cursor falls behind retained history MUST receive `presence.observation_gap` before current state is presented as complete.
+
+When a hot or wildcard scope matches many sessions, the registry SHOULD publish a bounded conflict-set summary plus a resumable cursor instead of one unbounded notification per pair. Backpressure MUST NOT silently discard a safety-relevant lifecycle, conflict, gap, or incomplete-handoff observation. A deployment MUST declare queue limits, overflow behavior, retry limits, and the point at which presence becomes `unverifiable`.
+
+Terminal sessions, lifecycle events, watcher cursors, conflict summaries, and sampled liveness evidence MUST have explicit retention policies. Retention expiry MUST NOT erase durable semantic events already incorporated into a checkpoint or Capsule projection.
+
+#### Identity, authorization, and confidentiality
+
+The registry MUST authenticate the submitting runtime and bind it to the asserted agent and principal under deployment policy. Authorization MUST constrain which projects, scopes, subscriptions, and presence details that identity may publish or observe. Authentication of presence proves only who made the announcement; it grants no project authority and no permission to mutate a scope.
+
+Deployments spanning trust boundaries MUST define transport protection, replay protection, tenant isolation, audit retention, and redaction of worktree, branch, scope, and principal metadata. A monitor MUST distinguish unauthorized, unreachable, stale, and absent state.
+
+#### Capsule projection
+
+Agents MUST publish final semantic events or synchronization deltas before release; they MUST NOT race to overwrite the canonical Capsule. For each workstate, the projection service MUST expose one logical writer and compare the expected frontier and generated digest before replacement. Replicated projectors MUST use fenced ownership or an equivalent mechanism that prevents a stale projector from publishing after ownership transfer.
+
+A projection conflict MUST reload and reconcile the new frontier, retry under policy, or publish divergence. It MUST NOT resolve by last-write-wins. Projector failure does not keep heartbeat values in the Capsule: it produces an incomplete-handoff observation while the live registry and durable event stream remain separate.
+
+#### Capacity and failure disclosure
+
+A conforming deployment MUST publish the profile parameters and tested envelope on which its capacity claim depends, including session duration, heartbeat interval, active-session count, scope distribution, wildcard rate, partitions, replication, event retention, and watcher fan-out. It SHOULD report p50, p95, and p99 entry, renewal, expiry, notification, conflict-query, and projection latency together with error, retry, gap, and false-alarm rates.
+
+Load tests MUST include synchronized renewal bursts, hot scopes, wildcard scopes, broker restart, partition-owner failover, delayed and duplicated messages, watcher lag beyond retention, network partition, clock skew, and concurrent Capsule projection. A deployment MUST identify which guarantees remain available during each failure. Results from the local SQLite profile or a sequential synthetic probe MUST NOT be presented as evidence of distributed capacity.
+
 ## 19. Live coordination and leases
 
 C3 is optional. It requires a live coordinator or an external protected system, not merely a shared file.
@@ -2113,6 +2256,8 @@ Events use Core envelope version `0.2` and module `urn:awp:coordination`.
 
 Initial event kinds are:
 
+- `presence.entered`, `.scope_updated`, `.released`, `.expired`, `.superseded`;
+- `presence.conflict_detected`, `.observation_gap`, `.handoff_incomplete`;
 - `semantic_definition.created`, `.updated`, `.superseded`;
 - `scope.created`, `.updated`, `.retired`;
 - `intent.announced`, `.activated`, `.updated`, `.waiting`, `.resumed`, `.reassigned`, `.completed`, `.withdrawn`, `.abandoned`, `.superseded`, `.reconciled`;
@@ -2178,6 +2323,8 @@ This is a non-normative happy path, not a lifecycle state machine. Reopened over
 ```text
 refresh workstate and repository identity
               |
+publish presence session and begin heartbeat renewal
+              |
 announce intent and relied-upon reads
               |
 analyze physical + semantic overlap
@@ -2198,7 +2345,9 @@ derive integration order and approve exact plan
               |
 integrate, run combined verification, publish result
               |
-complete intents and release live coordination state
+publish checkpoint/delta, refresh Capsule through projection owner
+              |
+complete intents and release presence and live coordination state
 ```
 
 ## 24. Minimum conformance fixtures
@@ -2225,6 +2374,18 @@ The experimental module is not ready for stable status without fixtures covering
 18. unauthorized integration approval;
 19. unknown required event kind;
 20. cross-host resume with missing repository revision.
+21. simultaneous presence entry with compatible read scopes;
+22. simultaneous presence entry with an overlapping writer;
+23. heartbeat renewal racing registry-authoritative expiry;
+24. crashed session expiry and watcher restart from a durable cursor;
+25. two exit projections attempting to update one Capsule frontier.
+26. cross-partition exact-scope overlap with identical results before and after partition rebalancing;
+27. unavailable scope partition producing `unverifiable` rather than a false no-conflict result;
+28. synchronized heartbeat burst with duplicate and delayed renewals;
+29. hot or wildcard scope producing bounded, resumable conflict-set delivery;
+30. watcher cursor falling behind retention and receiving an observation-gap notification;
+31. stale partition owner and stale Capsule projector rejected after ownership transfer;
+32. authenticated presence accepted without promoting it to mutation authority.
 
 Each fixture SHOULD include input events, expected frontier, expected materialized records, expected diagnostics, and an explanation of the safety property.
 
@@ -2241,7 +2402,8 @@ Coordination 0.4.0 is normative but experimental in AWP 0.7.0. It should not adv
 5. a Git/worktree and test-runner reference adapter demonstrates one end-to-end workflow;
 6. an expanded benchmark compares chat-only, Git-only, and AWP-assisted coordination across awareness and integration-assurance bundles;
 7. the A2A and MPAC mappings are reviewed for semantic overclaiming;
-8. security review confirms that records cannot self-authorize external actions.
+8. security review confirms that records cannot self-authorize external actions;
+9. the brokered/sharded profile has independent interoperability, load, failover, loss, and projection-race evidence across its declared operating envelope.
 
 ## 26. Open issues
 
@@ -2250,8 +2412,9 @@ Coordination 0.4.0 is normative but experimental in AWP 0.7.0. It should not adv
 3. Confidence calibration for inferred semantic overlap is unspecified; policy must not confuse a model score with verification.
 4. Composition and conflict rules for multiple organization-specific contract decision policies need implementation experience.
 5. C3 needs a formally modeled coordinator protocol and at least one real enforcing adapter.
-6. Privacy-preserving coordination across principals may require selective disclosure or commitments to hidden evidence.
-7. Benchmark tasks must measure false alarms and coordination overhead as well as conflicts caught.
+6. The candidate brokered/sharded presence profile needs independent implementations and measured interoperability, capacity, notification-loss, failover, privacy, and operating-cost evidence before its parameters can be stabilized.
+7. Privacy-preserving coordination across principals may require selective disclosure or commitments to hidden evidence.
+8. Benchmark tasks must measure false alarms and coordination overhead as well as conflicts caught.
 
 ## 27. Summary
 
@@ -3246,303 +3409,471 @@ Private bindings use collision-resistant IDs. An unknown binding may be ignored 
       "statement": "AWP 0.7.0 does not define destructive log compaction. A writer MAY create a summary or snapshot-only export, but it MUST disclose omitted history and MUST NOT claim `full` completeness."
     },
     {
+      "id": "AWP-SYNC-010",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 112,
+      "statement": "High-frequency coordination presence and heartbeat state is a live materialized view, not a substitute for the durable event graph. A synchronization transport SHOULD coalesce heartbeat renewal and MUST NOT require every heartbeat to advance the portable workstate frontier. Lifecycle facts that affect semantic continuation, including entry, release, expiry, conflict, and incomplete handoff, MAY be published as Coordination events."
+    },
+    {
+      "id": "AWP-SYNC-011",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 114,
+      "statement": "Concurrent agents publish events or deltas rather than independently replacing one canonical Capsule. A Capsule projector MUST compare the Capsule's current frontier and generated digest with the base it read before replacement. If either differs, it MUST reload and reconcile through this module, retry from the new base, or report divergence. It MUST NOT silently overwrite the newer projection."
+    },
+    {
+      "id": "AWP-SYNC-012",
+      "source": "spec/drafts/0.7.0/synchronization.md",
+      "line": 116,
+      "statement": "A deployment with one canonical Capsule MUST identify how projection ownership is serialized. An enforced deployment may use a fenced `integration_owner` lease. An advisory deployment may use a single local writer with atomic compare-and-swap. Projection ownership controls representation updates only; it does not grant authority over project changes."
+    },
+    {
       "id": "AWP-COORD-001",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 73,
+      "line": 74,
       "statement": "A writer MUST NOT advertise a level whose required behaviors it does not implement. A reader MAY support a lower level, but it MUST reject the workstate for safe continuation when the module is required and unsupported semantics affect the requested action."
     },
     {
       "id": "AWP-COORD-002",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 85,
+      "line": 86,
       "statement": "An implementation MAY adopt `coordination-awareness` before implementing the complete integration-assurance workflow. Capability declarations state what records can be processed; conformance levels state how rigorously they are processed."
     },
     {
       "id": "AWP-COORD-003",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 111,
+      "line": 112,
       "statement": "`id`, `type`, `module`, `revision`, `status`, `created_by`, and `created_at` are required. `revision` begins at `1`. An update MUST identify `prior_revision` in its event and produce exactly `prior_revision + 1`."
     },
     {
       "id": "AWP-COORD-004",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 117,
+      "line": 118,
       "statement": "Unknown fields MUST be preserved by lossless processors. A processor MUST distinguish a registered record type above its advertised capability or conformance level from a genuinely unregistered type. It preserves registered higher-level records without interpreting them and may still perform lower-level actions that do not depend on their meaning. A genuinely unregistered type owned by this required module makes only the affected action or projection `unverifiable` unless a declared compatibility rule permits preservation without interpretation. A lower-level reader MAY always perform safe display or export."
     },
     {
       "id": "AWP-COORD-005",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 126,
+      "line": 127,
       "statement": "Safety-relevant references in contracts, preconditions, readiness decisions, verification, overlaps, and integration plans MUST be revision-pinned. A missing, superseded, or contested pinned revision remains historically addressable but MUST NOT be silently replaced by another revision. An unpinned reference that is absent, contested, or ambiguous is unresolved."
     },
     {
       "id": "AWP-COORD-006",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 132,
+      "line": 133,
       "statement": "The passage of time never changes projected state. An identified actor or service MUST emit a valid timeout, expiration, or deadline-observation event under a declared clock authority. Until that event is present, a deadline may be overdue but the prior projected lifecycle state remains unchanged; processors SHOULD surface the overdue condition."
     },
     {
       "id": "AWP-COORD-007",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 209,
+      "line": 210,
       "statement": "Within one workstate, an active alias MUST resolve to at most one semantic definition. Merging ambiguous aliases creates diagnostic `AWP-COORD-REGISTRY-AMBIGUOUS` and affected overlap analysis becomes `unknown` until resolved."
     },
     {
       "id": "AWP-COORD-008",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 213,
+      "line": 214,
       "statement": "Selector comparison across pinned state-space revisions is a C2 correctness operation. An analyzer MUST resolve both selectors against their pinned bases and attempt to relate moved, renamed, subdivided, aggregated, or replaced targets using a declared selector profile. Resolution results are `same`, `related`, `different`, `unresolvable`, or `ambiguous`, with evidence and confidence. `unresolvable` or `ambiguous` forces overlap classification `unknown`; it MUST NOT yield `none`."
     },
     {
       "id": "AWP-COORD-009",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 215,
+      "line": 216,
       "statement": "Language-specific selector syntax and drift algorithms belong to registered adapter profiles. The initial reference implementation SHOULD provide Python AST and TypeScript compiler-symbol profiles, but their identifiers and outputs remain usable by agents implemented in any language."
     },
     {
       "id": "AWP-COORD-010",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 219,
+      "line": 220,
       "statement": "A scope is a first-class record selecting a physical or semantic region. Intents, claims, change sets, and contracts reference it by ID and revision. An inline selector MAY be used as an unshared query value, but an inline selector is not a scope record and cannot be revised or used as a dependency target."
     },
     {
       "id": "AWP-COORD-011",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 242,
+      "line": 243,
       "statement": "Physical selector kinds include `repository`, `directory`, `file`, `symbol`, `syntax_node`, `configuration_key`, `schema_object`, `generated_output`, `test`, `fixture`, `spatial_region`, `model_element`, `assembly`, `document_region`, `domain_object`, and `interface`. A selector profile defines how a domain resolves fields such as `state_space`, `object_id`, geometry, containment, adjacency, or document coordinates. Coordinates or line ranges are hints and MUST NOT be the only selector for a safety-relevant claim."
     },
     {
       "id": "AWP-COORD-012",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 248,
+      "line": 249,
       "statement": "Authors SHOULD declare relied-upon reads only for assumptions whose incompatible change could invalidate the output, not every file or symbol inspected. Tools may propose candidates from dependency traces, but the published set SHOULD be summarized at stable interface, invariant, schema, or behavior boundaries. Fine-grained automatic reads MAY remain evidence behind that summary. This keeps the reverse index useful rather than turning ordinary repository browsing into conflicts."
     },
     {
       "id": "AWP-COORD-013",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 317,
+      "line": 318,
       "statement": "An actor SHOULD publish an intent before materially changing shared state."
     },
     {
       "id": "AWP-COORD-014",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 362,
+      "line": 363,
       "statement": "If observed work expands beyond the declared scope, the writer MUST either update the intent before publishing a ready change set or record an explicit deviation. Under a C2 enforcing policy, unresolved material under-declaration prevents `ready`."
     },
     {
       "id": "AWP-COORD-015",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 394,
+      "line": 395,
       "statement": "Observed-scope lifecycle statuses are `final` and `superseded`; outcome is `complete`, `partial`, or `error`. The analyzer, base, result, method, and evidence digest MUST be recorded. `declared_not_observed` is informational unless policy says otherwise. `undeclared` MUST be evaluated for new overlaps and may stale earlier acknowledgements. An omitted effect or scope means unknown; an explicitly present empty array asserts that none were observed or declared under the stated method."
     },
     {
       "id": "AWP-COORD-016",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 441,
+      "line": 442,
       "statement": "`unknown` MUST NOT be treated as `compatible`. The configured policy determines whether it warns, negotiates, or blocks."
     },
     {
       "id": "AWP-COORD-017",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 467,
+      "line": 468,
       "statement": "`accepted`, `rejected`, `timed_out`, `cancelled`, and `escalated` are terminal. Escalation after rejection or timeout creates a successor negotiation referencing the terminal record. A further round likewise creates a successor. A processor MUST NOT infer acceptance from silence unless the declared decision policy explicitly defines silence and the enforcing authority supports it."
     },
     {
       "id": "AWP-COORD-018",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 469,
+      "line": 470,
       "statement": "An accepted proposal MAY create commitments. A commitment identifies:"
     },
     {
       "id": "AWP-COORD-019",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 495,
+      "line": 496,
       "statement": "Agent-to-agent negotiation is preferred for routine, low-risk coordination. It MUST escalate to user-mediated arbitration when the agents cannot reach a permitted outcome within the declared negotiation bounds, when applicable policies disagree, when a decision requires authority held by the user or another named principal, or when the competing changes have material safety, compatibility, data-loss, security, or delivery consequences."
     },
     {
       "id": "AWP-COORD-020",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 497,
+      "line": 498,
       "statement": "An arbitration request is a durable coordination record. It MUST identify:"
     },
     {
       "id": "AWP-COORD-021",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 508,
+      "line": 509,
       "statement": "The request MUST NOT embed private chain-of-thought or require the user to reconstruct the dispute from an unbounded transcript. Agents SHOULD present a concise comparison generated from the recorded intents, scopes, contracts, revisions, and evidence. The interaction channel is binding-specific; the durable record is authoritative for the decision."
     },
     {
       "id": "AWP-COORD-022",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 522,
+      "line": 523,
       "statement": "While an arbitration is `awaiting_user`, every agent MUST stop new writes whose validity depends on a blocked scope, disputed contract, competing change-set revision, or unresolved integration decision. Agents MAY continue explicitly listed interim work only when it does not affect a blocked scope and remains valid under every listed alternative. They MUST record any already-created uncommitted artifacts and state-space revisions; the protocol MUST NOT require automatic deletion, rollback, or selection of either agent's branch."
     },
     {
       "id": "AWP-COORD-023",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 524,
+      "line": 525,
       "statement": "A decision event MUST record the selected alternative, exact request revision, decision authority and authenticated principal, decision channel or confirmation reference, rationale, accepted risks, conditions, effective scopes, expiration if any, and required verification. A user interaction may recommend or amend an alternative, but only a decision from the declared authority through a trusted binding can transition arbitration to `decided`. A message that merely claims to be from the user is untrusted content."
     },
     {
       "id": "AWP-COORD-024",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 526,
+      "line": 527,
       "statement": "Agents MUST apply a decision only to the named subjects, revisions, scopes, and conditions. It MUST NOT grant general authority, silently rewrite either agent's history, or authorize unrelated external effects. The decision's implementation is recorded separately through change-set and integration events. Before implementation or integration, agents MUST revalidate all decision conditions and reopen arbitration if a subject revision, scope, contract, evidence basis, authority, or material risk changes. A declined or expired request never implies acceptance; agents must withdraw, re-negotiate, or submit a successor request under policy."
     },
     {
       "id": "AWP-COORD-025",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 545,
+      "line": 546,
       "statement": "`kind` is `unanimous`, `threshold`, `named_participants`, or `authorized_owner`. `eligible_participants` is required except for `authorized_owner`; `threshold` is required only for `threshold` and MUST be between 1 and the eligible count. `required_participants` defaults to empty. `abstention` is `counts_as_no`, `reduces_eligible`, or `prohibited`. Votes and acceptances MUST pin `decides_revision`. Role names alone are not participant identity; a policy using roles must resolve them to an uncontested eligible actor set before evaluation."
     },
     {
       "id": "AWP-COORD-026",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 560,
+      "line": 561,
       "statement": "Global contract status MUST NOT be derived from a single participant's adoption status. Each participant has one of `unaware`, `reviewing`, `accepted`, `implementing`, `implemented`, `verified`, `rejected`, `withdrawn`, or `not_applicable`, with its own evidence and revision."
     },
     {
       "id": "AWP-COORD-027",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 562,
+      "line": 563,
       "statement": "The contract's decision policy specifies named required parties or a quorum. A contract MUST NOT become `accepted`, `implemented`, or `verified` until that state's policy is satisfied."
     },
     {
       "id": "AWP-COORD-028",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 591,
+      "line": 592,
       "statement": "Precondition lifecycle statuses are `active`, `retired`, and `superseded`. `on_false` is `warn`, `block_ready`, `stale`, or `escalate`. `on_unknown` is `warn`, `block_ready`, or `escalate`; it MUST NOT silently pass."
     },
     {
       "id": "AWP-COORD-029",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 612,
+      "line": 613,
       "statement": "`pure` evaluators read only the identified AWP projection or supplied bytes. Adapter-relative and host-relative results MUST record the state space or environment they observed. All evaluators MUST be side-effect-free with respect to the project, deterministic for identical declared inputs, bounded by an explicit timeout, and return `error` rather than partial success after timeout or internal failure. Constraint syntax is owned by the registered evaluator-interface version; an implementation MUST NOT guess unsupported syntax."
     },
     {
       "id": "AWP-COORD-030",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 614,
+      "line": 615,
       "statement": "An asserted precondition records a natural-language statement, asserting actor, scope, epistemic status, evidence if any, and required reviewer or authority. It MUST NOT be presented as machine-verified."
     },
     {
       "id": "AWP-COORD-031",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 723,
+      "line": 724,
       "statement": "A verification result MUST bind the claim being checked to exact inputs."
     },
     {
       "id": "AWP-COORD-032",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 762,
+      "line": 763,
       "statement": "For each event that changes a record revision or status, a C1 projector MUST:"
     },
     {
       "id": "AWP-COORD-033",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 786,
+      "line": 787,
       "statement": "An adapter MUST reject `atomic` when its state-space transaction mechanism cannot supply the claimed atomic boundary. Rollback is a separately recorded operation and MUST NOT be assumed successful."
     },
     {
       "id": "AWP-COORD-034",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 788,
+      "line": 789,
       "statement": "Before starting integration, the owner MUST refresh available coordination events, compare the target base, re-evaluate expiring or base-bound preconditions, confirm contract revisions, and re-open any invalidated overlap dispositions."
     },
     {
       "id": "AWP-COORD-035",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 806,
+      "line": 807,
       "statement": "A successful adapter transaction or source-control merge MUST NOT by itself transition an integration to `completed` when combined semantic verification is required."
     },
     {
       "id": "AWP-COORD-036",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 814,
+      "line": 815,
       "statement": "A C1 projector MUST:"
     },
     {
       "id": "AWP-COORD-037",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 846,
+      "line": 847,
       "statement": "Synchronization 0.2 governs retention and compaction: a snapshot does not authorize destructive pruning, and snapshot-only exports disclose omitted history. A portable Coordination view MAY omit terminal records irrelevant to the requested continuation only when it declares the omission and does not claim full audit completeness. It MUST retain or make retrievable every active dependency, unresolved conflict, governing contract, precondition, verification, authority decision, and causal record needed to justify current readiness. Physical deletion or redaction follows Synchronization, Artifact, and Security rules."
     },
     {
       "id": "AWP-COORD-038",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 878,
+      "line": 879,
       "statement": "Errors invalidate the affected transition. Warnings preserve state but MUST be visible before a safety-relevant continuation. Implementations MAY add namespaced diagnostics."
     },
     {
       "id": "AWP-COORD-039",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 896,
-      "statement": "Lease states are `requested`, `active`, `denied`, `released`, `expired`, `revoked`, and `superseded`. The coordinator grants a lease only after an atomic comparison against current protected state. Renewal creates a new expiration and MUST NOT reduce the fencing token."
+      "line": 919,
+      "statement": "Required fields are `agent_id`, `session_id`, `principal`, `workstate_id`, `project`, `execution_location`, `base`, `declared_scopes`, `access_mode`, `monitoring_profile`, `heartbeat_at`, and `expires_at`. Project identity MUST be stable across worktrees or execution locations. `session_id` identifies one runtime generation and MUST NOT be reused after release or expiry. `base` binds the announcement to the revision from which work began. `declared_scopes` contains pinned Coordination scope references; a broad provisional scope MAY be announced and narrowed by a later revision."
     },
     {
       "id": "AWP-COORD-040",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 898,
-      "statement": "An adapter claiming enforcement MUST reject a protected mutation whose token is older than the highest token it has accepted for that namespace. A new grant, new holder, or new coordinator epoch MUST issue a token strictly greater than every previously issued token in that protected namespace. Renewal of the same uninterrupted lease retains its token; it changes expiration but does not create a new ownership generation. Without this fencing check, a paused or partitioned former holder may act after its lease expires."
+      "line": 921,
+      "statement": "Presence states are `active`, `released`, `expired`, and `superseded`. Entry MUST publish an active presence record before the actor performs a declared write. A heartbeat atomically advances `heartbeat_at` and `expires_at` for the same active session. It MUST NOT revive an expired, released, or superseded session; a returning runtime creates a new session identity."
     },
     {
       "id": "AWP-COORD-041",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 900,
-      "statement": "If coordinator identity, epoch, authentication, protected scope, or fencing validation is unavailable, the lease is `unverifiable` outside the reachable enforcement guarantee. The implementation MUST NOT describe it as exclusive. Local work may continue under policy, but integration MUST refresh state and re-evaluate overlap and preconditions."
+      "line": 923,
+      "statement": "The monitoring profile defines heartbeat interval, session duration, registry clock authority, retry policy, watcher cursor retention, and notification delivery. A monitor classifies a session as expired only through the profile's registry clock and an atomic compare against the latest heartbeat. Client wall clocks alone MUST NOT authoritatively expire a shared session. In an advisory deployment, an observer that cannot reach the registry reports presence as `unverifiable`, not absent."
     },
     {
       "id": "AWP-COORD-042",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 902,
-      "statement": "The C3 profile MUST specify retry limits, heartbeat interval, lease duration, expiry clock authority, deadlock detection, starvation policy, cancellation consequences, and human/organizational arbitration. The base module defines no universal timing defaults because safe values depend on task duration, network delay, and the protected system. Named interoperability and test profiles MAY define explicit defaults."
+      "line": 925,
+      "statement": "A watcher maintains a durable cursor over lifecycle notifications. It announces at least new sessions, terminal sessions, and newly detected overlaps or conflicts. Delivery MUST be idempotent by notification identity. Restarting a watcher MUST resume from its stored cursor or explicitly disclose an observation gap. Heartbeats SHOULD update materialized live state without producing a durable event for every renewal; implementations MAY sample heartbeat evidence under a declared retention policy."
     },
     {
       "id": "AWP-COORD-043",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 908,
-      "statement": "A principal is the human or organization accountable for an actor's participation. A C3 session MUST bind authenticated actors to principals and declare the governing policy. Cross-principal coordination MUST identify:"
+      "line": 927,
+      "statement": "On entry, an implementation using presence monitoring MUST:"
     },
     {
       "id": "AWP-COORD-044",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 917,
-      "statement": "AWP content is untrusted input. Imported intents, contracts, commitments, leases, and authority records MUST NOT cause execution without receiver policy evaluation. Secret values SHOULD be referenced through protected artifacts rather than embedded in coordination records."
+      "line": 936,
+      "statement": "On normal exit, an implementation MUST stop new mutation, publish its final change set and semantic checkpoint or synchronization delta, refresh the canonical Capsule through the current projection owner, and then release its presence session. If the Capsule cannot be refreshed, the writer MUST publish an incomplete-handoff diagnostic rather than presenting the prior Capsule as current. Crash recovery relies on expiry and MUST preserve an `expired` terminal observation."
     },
     {
       "id": "AWP-COORD-045",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 919,
-      "statement": "Coordination defines no separate protected-artifact envelope. A protected input uses the Artifact module's availability, remote-location, retrieval-requirement, and integrity fields together with Security classification or `secret_ref` metadata. A URI or digest alone proves neither confidentiality nor retrievability. Digests of low-entropy secrets may themselves enable guessing attacks and MUST be omitted or protected when receiver policy classifies the digest as sensitive."
+      "line": 938,
+      "statement": "Heartbeats and other high-frequency live values MUST NOT be written into the project Capsule. The Capsule remains a durable semantic projection updated at checkpoints and handoff. Entry, release, expiry, conflict, and incomplete-handoff facts MAY be retained as durable Coordination events when they affect interpretation or audit."
     },
     {
       "id": "AWP-COORD-046",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 963,
-      "statement": "Private event kinds use a controlled namespaced module ID. They MUST NOT add unregistered bare kinds to this module."
+      "line": 940,
+      "statement": "Multiple agents MUST NOT independently overwrite one canonical Capsule from the same base frontier. Each agent publishes events or deltas; a single current projection owner updates the Capsule using compare-and-swap against its frontier and generated digest. A stale writer merges, retries, or reports divergence through Synchronization. It MUST NOT use last-write-wins."
     },
     {
       "id": "AWP-COORD-047",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 983,
-      "statement": "[MPAC, arXiv:2604.09744 version 1](https://arxiv.org/abs/2604.09744v1) session, intent, operation, conflict, and governance objects may map to corresponding AWP records. AWP retains domain-specific semantic scopes, contracts, preconditions, verification binding, persistent project history, and resume/handoff state. A mapping MUST identify information loss and MUST NOT equate MPAC transport/session acceptance with AWP integration readiness."
+      "line": 950,
+      "statement": "An implementation intended for many concurrent agents MUST avoid project-wide polling and all-pairs overlap comparison. It SHOULD:"
     },
     {
       "id": "AWP-COORD-048",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 1040,
-      "statement": "Each fixture SHOULD include input events, expected frontier, expected materialized records, expected diagnostics, and an explanation of the safety property."
+      "line": 962,
+      "statement": "Sharding MUST NOT change the semantic result of overlap evaluation. Cross-partition scopes, wildcard scopes, integration ownership, and project-wide invariants require an identified routing or aggregation strategy. An implementation MUST disclose any scope class it cannot compare completely."
     },
     {
       "id": "AWP-COORD-049",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 1044,
-      "statement": "Before the complete integration-assurance schema is frozen, the project SHOULD run an early `coordination-awareness` experiment comparing chat-only coordination with durable intents, pinned scopes, overlaps, acknowledgements, and conflict-preserving projection. It MUST measure false-positive and false-negative overlap classifications, authoring cost, coordination delay, and whether warnings arrive before conflicting implementation. Results may change the scope and record model before further standardization."
+      "line": 968,
+      "statement": "The profile has four logical responsibilities, which MAY be implemented by one service or separate replicated services:"
     },
     {
       "id": "AWP-COORD-050",
       "source": "spec/drafts/0.7.0/coordination.md",
-      "line": 1059,
+      "line": 977,
+      "statement": "The primary partition key MUST include stable project identity and state-space identity. Session ownership, renewal, release, and expiry for one session MUST be linearizable within its owning partition. Exact pinned scopes SHOULD use an inverted index keyed by scope identity and access mode rather than scanning all active sessions."
+    },
+    {
+      "id": "AWP-COORD-051",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 979,
+      "statement": "A scope router MUST identify every partition that can contain a potentially interacting scope under the declared comparison policy. Cross-partition scopes, wildcard scopes, integration ownership, and project-wide invariants MUST be routed to an aggregator or a declared global-scope partition. If any required partition or index is unavailable, the result is `unverifiable`; the implementation MUST NOT report that no conflict exists."
+    },
+    {
+      "id": "AWP-COORD-052",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 981,
+      "statement": "Partition rebalancing MUST preserve session generation, terminal state, watcher position, and overlap results. A former partition owner MUST NOT accept a renewal or release after ownership has transferred. Implementations SHOULD use epochs, compare-and-swap, or equivalent stale-owner rejection even though presence itself remains advisory."
+    },
+    {
+      "id": "AWP-COORD-053",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 985,
+      "statement": "Heartbeats MUST route directly by session identity and update coalesced materialized state. They MUST NOT produce one durable broker event per renewal. A heartbeat update MUST compare the session generation and current active state atomically, so a delayed message cannot revive a terminal or replaced session."
+    },
+    {
+      "id": "AWP-COORD-054",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 987,
+      "statement": "Expiry MUST be scheduled from the authoritative registry time of the owning partition. An expiry worker MUST atomically compare the expected session generation and latest expiration before publishing `presence.expired`. Duplicate expiry attempts and duplicate lifecycle delivery MUST converge through stable event identity and idempotent processing."
+    },
+    {
+      "id": "AWP-COORD-055",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 991,
+      "statement": "Watchers SHOULD subscribe by project plus pinned scopes, scope classes, or declared global interest. The broker MUST support durable cursors, bounded delivery pages, idempotent retry, and an explicit retention interval. Cursor state MAY be compacted, but a watcher whose cursor falls behind retained history MUST receive `presence.observation_gap` before current state is presented as complete."
+    },
+    {
+      "id": "AWP-COORD-056",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 993,
+      "statement": "When a hot or wildcard scope matches many sessions, the registry SHOULD publish a bounded conflict-set summary plus a resumable cursor instead of one unbounded notification per pair. Backpressure MUST NOT silently discard a safety-relevant lifecycle, conflict, gap, or incomplete-handoff observation. A deployment MUST declare queue limits, overflow behavior, retry limits, and the point at which presence becomes `unverifiable`."
+    },
+    {
+      "id": "AWP-COORD-057",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 995,
+      "statement": "Terminal sessions, lifecycle events, watcher cursors, conflict summaries, and sampled liveness evidence MUST have explicit retention policies. Retention expiry MUST NOT erase durable semantic events already incorporated into a checkpoint or Capsule projection."
+    },
+    {
+      "id": "AWP-COORD-058",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 999,
+      "statement": "The registry MUST authenticate the submitting runtime and bind it to the asserted agent and principal under deployment policy. Authorization MUST constrain which projects, scopes, subscriptions, and presence details that identity may publish or observe. Authentication of presence proves only who made the announcement; it grants no project authority and no permission to mutate a scope."
+    },
+    {
+      "id": "AWP-COORD-059",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1001,
+      "statement": "Deployments spanning trust boundaries MUST define transport protection, replay protection, tenant isolation, audit retention, and redaction of worktree, branch, scope, and principal metadata. A monitor MUST distinguish unauthorized, unreachable, stale, and absent state."
+    },
+    {
+      "id": "AWP-COORD-060",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1005,
+      "statement": "Agents MUST publish final semantic events or synchronization deltas before release; they MUST NOT race to overwrite the canonical Capsule. For each workstate, the projection service MUST expose one logical writer and compare the expected frontier and generated digest before replacement. Replicated projectors MUST use fenced ownership or an equivalent mechanism that prevents a stale projector from publishing after ownership transfer."
+    },
+    {
+      "id": "AWP-COORD-061",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1007,
+      "statement": "A projection conflict MUST reload and reconcile the new frontier, retry under policy, or publish divergence. It MUST NOT resolve by last-write-wins. Projector failure does not keep heartbeat values in the Capsule: it produces an incomplete-handoff observation while the live registry and durable event stream remain separate."
+    },
+    {
+      "id": "AWP-COORD-062",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1011,
+      "statement": "A conforming deployment MUST publish the profile parameters and tested envelope on which its capacity claim depends, including session duration, heartbeat interval, active-session count, scope distribution, wildcard rate, partitions, replication, event retention, and watcher fan-out. It SHOULD report p50, p95, and p99 entry, renewal, expiry, notification, conflict-query, and projection latency together with error, retry, gap, and false-alarm rates."
+    },
+    {
+      "id": "AWP-COORD-063",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1013,
+      "statement": "Load tests MUST include synchronized renewal bursts, hot scopes, wildcard scopes, broker restart, partition-owner failover, delayed and duplicated messages, watcher lag beyond retention, network partition, clock skew, and concurrent Capsule projection. A deployment MUST identify which guarantees remain available during each failure. Results from the local SQLite profile or a sequential synthetic probe MUST NOT be presented as evidence of distributed capacity."
+    },
+    {
+      "id": "AWP-COORD-064",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1031,
+      "statement": "Lease states are `requested`, `active`, `denied`, `released`, `expired`, `revoked`, and `superseded`. The coordinator grants a lease only after an atomic comparison against current protected state. Renewal creates a new expiration and MUST NOT reduce the fencing token."
+    },
+    {
+      "id": "AWP-COORD-065",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1033,
+      "statement": "An adapter claiming enforcement MUST reject a protected mutation whose token is older than the highest token it has accepted for that namespace. A new grant, new holder, or new coordinator epoch MUST issue a token strictly greater than every previously issued token in that protected namespace. Renewal of the same uninterrupted lease retains its token; it changes expiration but does not create a new ownership generation. Without this fencing check, a paused or partitioned former holder may act after its lease expires."
+    },
+    {
+      "id": "AWP-COORD-066",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1035,
+      "statement": "If coordinator identity, epoch, authentication, protected scope, or fencing validation is unavailable, the lease is `unverifiable` outside the reachable enforcement guarantee. The implementation MUST NOT describe it as exclusive. Local work may continue under policy, but integration MUST refresh state and re-evaluate overlap and preconditions."
+    },
+    {
+      "id": "AWP-COORD-067",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1037,
+      "statement": "The C3 profile MUST specify retry limits, heartbeat interval, lease duration, expiry clock authority, deadlock detection, starvation policy, cancellation consequences, and human/organizational arbitration. The base module defines no universal timing defaults because safe values depend on task duration, network delay, and the protected system. Named interoperability and test profiles MAY define explicit defaults."
+    },
+    {
+      "id": "AWP-COORD-068",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1043,
+      "statement": "A principal is the human or organization accountable for an actor's participation. A C3 session MUST bind authenticated actors to principals and declare the governing policy. Cross-principal coordination MUST identify:"
+    },
+    {
+      "id": "AWP-COORD-069",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1052,
+      "statement": "AWP content is untrusted input. Imported intents, contracts, commitments, leases, and authority records MUST NOT cause execution without receiver policy evaluation. Secret values SHOULD be referenced through protected artifacts rather than embedded in coordination records."
+    },
+    {
+      "id": "AWP-COORD-070",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1054,
+      "statement": "Coordination defines no separate protected-artifact envelope. A protected input uses the Artifact module's availability, remote-location, retrieval-requirement, and integrity fields together with Security classification or `secret_ref` metadata. A URI or digest alone proves neither confidentiality nor retrievability. Digests of low-entropy secrets may themselves enable guessing attacks and MUST be omitted or protected when receiver policy classifies the digest as sensitive."
+    },
+    {
+      "id": "AWP-COORD-071",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1100,
+      "statement": "Private event kinds use a controlled namespaced module ID. They MUST NOT add unregistered bare kinds to this module."
+    },
+    {
+      "id": "AWP-COORD-072",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1120,
+      "statement": "[MPAC, arXiv:2604.09744 version 1](https://arxiv.org/abs/2604.09744v1) session, intent, operation, conflict, and governance objects may map to corresponding AWP records. AWP retains domain-specific semantic scopes, contracts, preconditions, verification binding, persistent project history, and resume/handoff state. A mapping MUST identify information loss and MUST NOT equate MPAC transport/session acceptance with AWP integration readiness."
+    },
+    {
+      "id": "AWP-COORD-073",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1193,
+      "statement": "Each fixture SHOULD include input events, expected frontier, expected materialized records, expected diagnostics, and an explanation of the safety property."
+    },
+    {
+      "id": "AWP-COORD-074",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1197,
+      "statement": "Before the complete integration-assurance schema is frozen, the project SHOULD run an early `coordination-awareness` experiment comparing chat-only coordination with durable intents, pinned scopes, overlaps, acknowledgements, and conflict-preserving projection. It MUST measure false-positive and false-negative overlap classifications, authoring cost, coordination delay, and whether warnings arrive before conflicting implementation. Results may change the scope and record model before further standardization."
+    },
+    {
+      "id": "AWP-COORD-075",
+      "source": "spec/drafts/0.7.0/coordination.md",
+      "line": 1213,
       "statement": "1. Canonical JSON and digest rules remain a Core/Artifact/Security family issue and must be resolved before signed coordination evidence is portable. The family profile should evaluate RFC 8785 JCS while explicitly handling its I-JSON, IEEE-754 number, and Unicode-preservation constraints; Coordination MUST NOT select a conflicting local canonicalization."
     },
     {
@@ -4128,6 +4459,17 @@ Private bindings use collision-resistant IDs. An unknown binding may be ignored 
       },
       "additionalProperties": true
     },
+    "executionLocation": {
+      "type": "object",
+      "required": ["kind", "location"],
+      "properties": {
+        "kind": { "enum": ["checkout", "worktree", "remote", "other"] },
+        "location": { "type": "string", "minLength": 1 },
+        "branch": { "type": "string", "minLength": 1 },
+        "instance": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": true
+    },
     "selector": {
       "type": "object",
       "required": ["kind", "base_revision"],
@@ -4186,7 +4528,7 @@ Private bindings use collision-resistant IDs. An unknown binding may be ignored 
             "semantic_definition", "scope", "intent", "observed_scope", "overlap",
             "conflict", "negotiation", "arbitration", "commitment", "contract", "precondition",
             "precondition_result", "change_set", "verification_result", "dependency",
-            "integration_plan", "integration_result", "lease"
+            "integration_plan", "integration_result", "presence", "lease"
           ]
         },
         "module": { "const": "urn:awp:coordination" },
@@ -4444,6 +4786,31 @@ Private bindings use collision-resistant IDs. An unknown binding may be ignored 
                   "plan": { "$ref": "#/$defs/pinnedReference" },
                   "repository": { "$ref": "#/$defs/identifier" },
                   "state_space": { "$ref": "#/$defs/identifier" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "presence" } }, "required": ["type"] },
+              "then": {
+                "required": [
+                  "agent_id", "session_id", "principal", "workstate_id", "project",
+                  "execution_location", "base", "declared_scopes", "access_mode",
+                  "monitoring_profile", "heartbeat_at", "expires_at"
+                ],
+                "properties": {
+                  "status": { "enum": ["active", "released", "expired", "superseded"] },
+                  "agent_id": { "$ref": "#/$defs/identifier" },
+                  "session_id": { "$ref": "#/$defs/identifier" },
+                  "principal": { "$ref": "#/$defs/identifier" },
+                  "workstate_id": { "$ref": "#/$defs/identifier" },
+                  "project": { "$ref": "#/$defs/identifier" },
+                  "execution_location": { "$ref": "#/$defs/executionLocation" },
+                  "base": { "$ref": "#/$defs/stateReference" },
+                  "declared_scopes": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "access_mode": { "enum": ["observe", "read", "write"] },
+                  "monitoring_profile": { "$ref": "#/$defs/identifier" },
+                  "heartbeat_at": { "$ref": "#/$defs/timestamp" },
+                  "expires_at": { "$ref": "#/$defs/timestamp" }
                 }
               }
             },

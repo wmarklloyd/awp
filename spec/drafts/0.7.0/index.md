@@ -22,7 +22,7 @@ AWP is intended for agents and users that already have their own working environ
 1. Enable a user or agent to send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
 2. Provide a new agent with a clear, shared project orientation before it inspects the wider repository;
 3. Allow an agent or user to return to a project and resume from a recorded checkpoint rather than reconstructing its state from scratch; and
-4. Enable multiple agents to negotiate interdependent changes to shared work products—including code, models, documents, physical designs, schedules, and other domain outputs—above the byte-level coordination provided by Git or comparable systems.
+4. Enable multiple agents to discover active participants, monitor advisory presence, and negotiate interdependent changes to shared work products—including code, models, documents, physical designs, schedules, and other domain outputs—above the byte-level coordination provided by Git or comparable systems.
 
 AWP does not replace an agent runtime, source control, artifact storage, or an agent-specific startup convention. Its purpose is to provide portable semantic state and coordination information that those systems can consume.
 

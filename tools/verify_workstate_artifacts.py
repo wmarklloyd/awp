@@ -9,11 +9,12 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CAPSULE = ROOT / "awp.awp.md"
+DISCOVERY = ROOT / ".awp.json"
 
 
 def main() -> int:
-    capsule_path = CAPSULE.resolve()
+    discovery = json.loads(DISCOVERY.read_text(encoding="utf-8"))
+    capsule_path = (ROOT / discovery["current_workstate"]).resolve()
     if ROOT.resolve() not in capsule_path.parents:
         print("FAILED: current workstate resolves outside the repository")
         return 1

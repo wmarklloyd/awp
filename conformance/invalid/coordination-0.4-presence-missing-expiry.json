@@ -1,0 +1,26 @@
+{
+  "id": "presence:agent-17-session-4",
+  "type": "presence",
+  "module": "urn:awp:coordination",
+  "revision": 1,
+  "status": "active",
+  "created_by": "actor:agent-17",
+  "created_at": "2026-09-04T18:00:00Z",
+  "agent_id": "agent:17",
+  "session_id": "session:4",
+  "principal": "principal:team-a",
+  "workstate_id": "urn:uuid:596ae918-e7da-4e6f-a226-b13f8b084727",
+  "project": "project:application",
+  "execution_location": {
+    "kind": "worktree",
+    "location": "worktree:agent-17-session-4"
+  },
+  "base": {
+    "repository": "repo:application",
+    "revision": "git:91ab4e7896d820c29ff5b9bd2a1f8d5ef67f734a"
+  },
+  "declared_scopes": ["scope:auth-refresh@2"],
+  "access_mode": "write",
+  "monitoring_profile": "local-sqlite-presence-v1",
+  "heartbeat_at": "2026-09-04T18:00:30Z"
+}

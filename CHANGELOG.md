@@ -2,12 +2,13 @@
 
 This file records protocol-family changes. Released artifacts remain immutable; detailed module changes belong in versioned release notes.
 
-## 0.7.0 — 2026-09-04
+## Unreleased — 0.7.0 working draft
 
-- Makes the exact governing specification and discovery mode explicit in self-contained capsules.
-- Generalizes coordination to shared work products and arbitrary state-space adapters.
-- Adds portable cross-model consultations and model-independent shared guardrails.
-- Publishes schemas, fixtures, a frozen requirement inventory, release notes, checksums, and reproducible bundles.
+- Drafts exact governing-specification binding and embedded discovery for self-contained capsules.
+- Drafts coordination for shared work products and arbitrary state-space adapters.
+- Drafts portable cross-model consultations and model-independent shared guardrails.
+- Drafts explicit governing-specification binding, embedded discovery, cross-model consultations, and shared guardrails.
+- Draft validation and conformance assets are available for review; this is not a published release.
 
 ## 0.6.0 — 2026-09-03
 

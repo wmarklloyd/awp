@@ -42,8 +42,6 @@ jobs:
       - name: Verify generated bundles
         run: |
           python tools/build_requirements_registry.py
-          python tools/build_requirements_registry.py --stable
           python tools/build_spec_0_6_bundle.py
-          python tools/build_spec_0_7_release_bundle.py
           python tools/build_spec_0_7_bundle.py
-          git diff --exit-code -- dist spec/0.7.0/requirements.json spec/drafts/0.7.0/requirements.json
+          git diff --exit-code -- dist spec/drafts/0.7.0/requirements.json

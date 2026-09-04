@@ -107,10 +107,17 @@ A future compaction profile must define lineage, state canonicalization, proof o
 
 Deltas may travel through files, HTTP, A2A, MCP, message queues, repositories, or peer protocols. A transport binding defines authentication, retries, acknowledgement, ordering, size limits, and retrieval. Synchronization semantics remain unchanged.
 
+## 9.1 Live-state and Capsule projection
+
+High-frequency coordination presence and heartbeat state is a live materialized view, not a substitute for the durable event graph. A synchronization transport SHOULD coalesce heartbeat renewal and MUST NOT require every heartbeat to advance the portable workstate frontier. Lifecycle facts that affect semantic continuation, including entry, release, expiry, conflict, and incomplete handoff, MAY be published as Coordination events.
+
+Concurrent agents publish events or deltas rather than independently replacing one canonical Capsule. A Capsule projector MUST compare the Capsule's current frontier and generated digest with the base it read before replacement. If either differs, it MUST reload and reconcile through this module, retry from the new base, or report divergence. It MUST NOT silently overwrite the newer projection.
+
+A deployment with one canonical Capsule MUST identify how projection ownership is serialized. An enforced deployment may use a fenced `integration_owner` lease. An advisory deployment may use a single local writer with atomic compare-and-swap. Projection ownership controls representation updates only; it does not grant authority over project changes.
+
 ## 10. Conformance
 
 A Synchronization reader validates ancestry and integrity, computes frontiers, applies deltas idempotently, preserves concurrency, and surfaces semantic conflicts.
 
 A Synchronization writer emits valid base and result frontiers, includes required events or declares missing ancestry, and never describes a lossy history as full.
-
 

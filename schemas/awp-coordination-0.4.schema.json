@@ -46,6 +46,17 @@
       },
       "additionalProperties": true
     },
+    "executionLocation": {
+      "type": "object",
+      "required": ["kind", "location"],
+      "properties": {
+        "kind": { "enum": ["checkout", "worktree", "remote", "other"] },
+        "location": { "type": "string", "minLength": 1 },
+        "branch": { "type": "string", "minLength": 1 },
+        "instance": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": true
+    },
     "selector": {
       "type": "object",
       "required": ["kind", "base_revision"],
@@ -104,7 +115,7 @@
             "semantic_definition", "scope", "intent", "observed_scope", "overlap",
             "conflict", "negotiation", "arbitration", "commitment", "contract", "precondition",
             "precondition_result", "change_set", "verification_result", "dependency",
-            "integration_plan", "integration_result", "lease"
+            "integration_plan", "integration_result", "presence", "lease"
           ]
         },
         "module": { "const": "urn:awp:coordination" },
@@ -362,6 +373,31 @@
                   "plan": { "$ref": "#/$defs/pinnedReference" },
                   "repository": { "$ref": "#/$defs/identifier" },
                   "state_space": { "$ref": "#/$defs/identifier" }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "type": { "const": "presence" } }, "required": ["type"] },
+              "then": {
+                "required": [
+                  "agent_id", "session_id", "principal", "workstate_id", "project",
+                  "execution_location", "base", "declared_scopes", "access_mode",
+                  "monitoring_profile", "heartbeat_at", "expires_at"
+                ],
+                "properties": {
+                  "status": { "enum": ["active", "released", "expired", "superseded"] },
+                  "agent_id": { "$ref": "#/$defs/identifier" },
+                  "session_id": { "$ref": "#/$defs/identifier" },
+                  "principal": { "$ref": "#/$defs/identifier" },
+                  "workstate_id": { "$ref": "#/$defs/identifier" },
+                  "project": { "$ref": "#/$defs/identifier" },
+                  "execution_location": { "$ref": "#/$defs/executionLocation" },
+                  "base": { "$ref": "#/$defs/stateReference" },
+                  "declared_scopes": { "$ref": "#/$defs/pinnedReferenceArray" },
+                  "access_mode": { "enum": ["observe", "read", "write"] },
+                  "monitoring_profile": { "$ref": "#/$defs/identifier" },
+                  "heartbeat_at": { "$ref": "#/$defs/timestamp" },
+                  "expires_at": { "$ref": "#/$defs/timestamp" }
                 }
               }
             },

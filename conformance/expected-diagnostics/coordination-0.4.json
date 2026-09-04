@@ -23,6 +23,16 @@
       "expected_keywords": []
     },
     {
+      "document": "conformance/valid/coordination-0.4-presence.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/coordination-0.4-presence-missing-expiry.json",
+      "valid": false,
+      "expected_keywords": ["expires_at", "required"]
+    },
+    {
       "document": "conformance/invalid/coordination-0.4-missing-revision.json",
       "valid": false,
       "expected_keywords": ["revision", "required"]
