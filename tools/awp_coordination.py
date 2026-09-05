@@ -483,6 +483,132 @@ class CoordinationLedger:
                 )
             return result
 
+    def publish_change_set(
+        self,
+        *,
+        workstate_id: str,
+        intent_id: str,
+        project_id: str,
+        actor: str,
+        summary: str,
+        actual_scopes: Sequence[tuple[str, str]],
+        artifacts: Sequence[str] = (),
+        unfinished_work: Sequence[str] = (),
+        request_id: str | None = None,
+        request_hash: str | None = None,
+        at: datetime | None = None,
+    ) -> dict:
+        """Store a proposed change set and return its durable publication receipt."""
+        if not actual_scopes:
+            raise CoordinationError("at least one actual scope is required")
+        occurred_at = utc_timestamp(at)
+        with self._transaction() as connection:
+            if request_id:
+                prior_request = connection.execute(
+                    "SELECT request_hash, response_json FROM requests "
+                    "WHERE workstate_id = ? AND request_id = ?",
+                    (workstate_id, request_id),
+                ).fetchone()
+                if prior_request:
+                    if prior_request["request_hash"] != request_hash:
+                        raise CoordinationError("request ID was reused with different content")
+                    return json.loads(prior_request["response_json"])
+
+            row = connection.execute(
+                "SELECT record_json FROM records WHERE workstate_id = ? "
+                "AND record_id = ? AND type = 'intent'",
+                (workstate_id, intent_id),
+            ).fetchone()
+            if not row:
+                raise CoordinationError(f"unknown intent: {intent_id}")
+            intent = json.loads(row["record_json"])
+            owner = intent.get("owner", intent.get("created_by"))
+            if actor != owner:
+                raise CoordinationError(f"actor is not authorized to publish intent: {intent_id}")
+            if intent["status"] in TERMINAL_INTENT_STATES:
+                raise CoordinationError(f"intent is already terminal: {intent_id}")
+            if intent["base"].get("repository") != project_id:
+                raise CoordinationError("intent project does not match the publication project")
+
+            scopes = self._scope_map(connection, workstate_id)
+            declared_selectors = {
+                (scopes[reference]["selector"]["kind"], scopes[reference]["selector"]["path"])
+                for reference in intent["declared_scopes"]
+                if reference in scopes
+            }
+            actual_scope_set = set(actual_scopes)
+            change_set_id = self._identifier("changeset")
+            change_set = {
+                "id": change_set_id,
+                "type": "change_set",
+                "module": MODULE,
+                "revision": 1,
+                "status": "proposed",
+                "created_by": actor,
+                "created_at": occurred_at,
+                "intent": f"{intent_id}@{intent['revision']}",
+                "base": intent["base"],
+                "artifacts": list(artifacts),
+                "declared_scopes": list(intent["declared_scopes"]),
+                "preconditions": [],
+                "effects": {
+                    "reads": [],
+                    "writes": [],
+                    "creates": [],
+                    "removes": [],
+                    "changes_behavior": [],
+                    "preserves": [],
+                },
+                "extensions": {
+                    "profile": PROFILE,
+                    "summary": summary,
+                    "actual_scope": [
+                        {"kind": kind, "path": path} for kind, path in actual_scopes
+                    ],
+                    "unfinished_work": list(unfinished_work),
+                },
+            }
+            event, sequence = self._append(
+                connection,
+                workstate_id=workstate_id,
+                actor=actor,
+                kind="changeset.proposed",
+                payload={
+                    "record_id": change_set_id,
+                    "revision": 1,
+                    "replacement": change_set,
+                },
+                occurred_at=occurred_at,
+            )
+            self._project_record(connection, workstate_id, change_set, sequence)
+            result = {
+                "profile": PROFILE,
+                "mode": "ledger-backed-advisory",
+                "result": change_set,
+                "event_ids": [event["event_id"]],
+                "frontier": self._frontier(connection, workstate_id),
+                "scope_complete": actual_scope_set == declared_selectors,
+                "declared_scope": [
+                    {"kind": kind, "path": path}
+                    for kind, path in sorted(declared_selectors)
+                ],
+                "actual_scope": [
+                    {"kind": kind, "path": path} for kind, path in actual_scopes
+                ],
+            }
+            if request_id:
+                connection.execute(
+                    "INSERT INTO requests(workstate_id, request_id, request_hash, response_json) "
+                    "VALUES (?, ?, ?, ?)",
+                    (
+                        workstate_id,
+                        request_id,
+                        request_hash or hashlib.sha256(b"").hexdigest(),
+                        json.dumps(result, sort_keys=True, separators=(",", ":")),
+                    ),
+                )
+            return result
+
     def transition_intent(
         self,
         *,

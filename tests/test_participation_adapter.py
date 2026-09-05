@@ -83,6 +83,62 @@ class ParticipationAdapterTests(unittest.TestCase):
         self.assertEqual(result["next"]["operation"], "interact")
         self.assertTrue(result["interactions"])
 
+    def test_publish_records_a_proposed_change_set_and_receipt(self) -> None:
+        announcement = self.adapter.announce(self.announce_request())
+        request = {
+            "operation": "publish",
+            "request_id": "request:publish",
+            "project": "project:test",
+            "context": "ctx:test",
+            "intent": announcement["intent"],
+            "summary": "Updated the test file",
+            "actual_scope": [{"path": "src/app.py", "access": "write"}],
+            "evidence": ["artifact:test-log"],
+        }
+        result = self.adapter.publish(request)
+        self.assertEqual(result["publication"], "confirmed")
+        self.assertEqual(result["coordination"], "clear")
+        self.assertTrue(result["coverage"]["scope_complete"])
+        self.assertEqual(result["next"]["operation"], "checkpoint")
+        self.assertEqual(len(self.adapter.ledger.export_events("workstate:test")), 3)
+        retry = self.adapter.publish(request)
+        self.assertEqual(result["publication_receipt"], retry["publication_receipt"])
+        self.assertEqual(len(self.adapter.ledger.export_events("workstate:test")), 3)
+
+    def test_publish_reports_scope_mismatch_and_missing_evidence(self) -> None:
+        announcement = self.adapter.announce(self.announce_request())
+        result = self.adapter.publish(
+            {
+                "operation": "publish",
+                "request_id": "request:publish-mismatch",
+                "project": "project:test",
+                "context": "ctx:test",
+                "intent": announcement["intent"],
+                "summary": "Updated another file",
+                "actual_scope": [{"path": "README.md", "access": "write"}],
+            }
+        )
+        self.assertEqual(result["publication"], "confirmed")
+        self.assertEqual(result["coordination"], "warning")
+        self.assertFalse(result["coverage"]["scope_complete"])
+        codes = {item["code"] for item in result["diagnostics"]}
+        self.assertEqual(codes, {"AWP-COORD-SCOPE-MISMATCH", "AWP-COORD-EVIDENCE-MISSING"})
+
+    def test_publish_unknown_intent_is_rejected(self) -> None:
+        result = self.adapter.publish(
+            {
+                "operation": "publish",
+                "request_id": "request:unknown-publish",
+                "project": "project:test",
+                "context": "ctx:test",
+                "intent": "intent:missing",
+                "summary": "No change",
+                "actual_scope": [{"path": "README.md", "access": "write"}],
+            }
+        )
+        self.assertEqual(result["publication"], "rejected")
+        self.assertIn("unknown intent", result["diagnostics"][0]["message"])
+
     def test_mixed_access_scopes_are_rejected_by_local_slice(self) -> None:
         request = self.announce_request()
         request["scope"].append({"path": "README.md", "access": "read"})

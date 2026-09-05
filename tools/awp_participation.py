@@ -213,6 +213,90 @@ class ParticipationAdapter:
         except (ParticipationError, CoordinationError) as error:
             return self._rejected(request_id, str(error))
 
+    def publish(self, request: dict[str, Any]) -> dict[str, Any]:
+        request_id = self._request_id(request)
+        try:
+            self._validate(request, "publish")
+            normalized: list[tuple[str, str]] = []
+            for item in request["actual_scope"]:
+                raw_path = item["path"]
+                if self.project_root:
+                    normalized.append(normalize_scope(self.project_root, raw_path))
+                else:
+                    kind = item.get("selector") or ("directory" if raw_path.endswith(("/", "\\")) else "file")
+                    normalized.append((kind, raw_path.replace("\\", "/")))
+            result = self.ledger.publish_change_set(
+                workstate_id=self.workstate_id,
+                intent_id=request["intent"],
+                project_id=request.get("project", self.project_id),
+                actor=self.actor,
+                summary=request["summary"],
+                actual_scopes=normalized,
+                artifacts=request.get("evidence", []),
+                unfinished_work=request.get("unfinished_work", []),
+                request_id=request_id,
+                request_hash=self._request_hash(request),
+            )
+            scope_complete = result["scope_complete"]
+            evidence_present = bool(request.get("evidence"))
+            coordination = "warning" if not scope_complete else (
+                "clear" if evidence_present else "unverifiable"
+            )
+            diagnostics = []
+            if not scope_complete:
+                diagnostics.append(
+                    {
+                        "code": "AWP-COORD-SCOPE-MISMATCH",
+                        "severity": "warning",
+                        "message": "Actual scope differs from the declared intent scope.",
+                        "recovery": "Refresh context and review the change-set scope before integration.",
+                    }
+                )
+            if not evidence_present:
+                diagnostics.append(
+                    {
+                        "code": "AWP-COORD-EVIDENCE-MISSING",
+                        "severity": "warning",
+                        "message": "No inspectable verification artifact was supplied.",
+                        "recovery": "Attach evidence or leave the result unverifiable before integration.",
+                    }
+                )
+            receipt_id = f"receipt:{request_id}"
+            return {
+                "request_id": request_id,
+                "project": self.project_id,
+                "publication": "confirmed",
+                "coordination": coordination,
+                "authority_ceiling": self.authority_ceiling,
+                "frontier": result["frontier"],
+                "coverage": {
+                    **self._coverage(),
+                    "scope_complete": scope_complete,
+                },
+                "diagnostics": diagnostics,
+                "result": result["result"]["id"],
+                "receipt": receipt_id,
+                "publication_receipt": {
+                    "receipt_id": receipt_id,
+                    "request_id": request_id,
+                    "status": "confirmed",
+                    "event_ids": result["event_ids"],
+                    "frontier": result["frontier"],
+                    "binding": {
+                        "profile": result["profile"],
+                        "operational_mode": "ledger_bound",
+                        "reach": "shared",
+                        "confirmation": "change-set event and frontier returned by local ledger",
+                    },
+                },
+                "next": {
+                    "operation": "checkpoint",
+                    "reason": "Record the next action and preserve the result in the workstate capsule.",
+                },
+            }
+        except (ParticipationError, CoordinationError) as error:
+            return self._rejected(request_id, str(error))
+
     def _rejected(self, request_id: str, message: str) -> dict[str, Any]:
         return {
             "request_id": request_id,
