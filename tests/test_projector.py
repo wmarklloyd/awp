@@ -105,6 +105,12 @@ class C1ProjectorTests(unittest.TestCase):
         self.assertEqual(result["records"]["intent:test"]["status"], "proposed")
         self.assertEqual(result["diagnostics"][0]["code"], "AWP-COORD-INVALID-TRANSITION")
 
+    def test_creation_kind_must_match_record_type(self) -> None:
+        invalid = event("evt:bad-create", [], "intent.completed", intent_record("proposed", 1))
+        result = self.projector.project([invalid], WORKSTATE)
+        self.assertEqual(result["records"], {})
+        self.assertEqual(result["diagnostics"][0]["code"], "AWP-COORD-INVALID-TRANSITION")
+
     def test_revision_conflict_is_diagnosed(self) -> None:
         activated = intent_record("active", 2)
         invalid = event(

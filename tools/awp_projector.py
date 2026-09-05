@@ -25,6 +25,14 @@ COORDINATION_SCHEMA = ROOT / "schemas" / "awp-coordination-0.4.schema.json"
 
 
 TRANSITIONS: dict[str, dict[tuple[str, str], str]] = {
+    "semantic_definition": {
+        ("active", "semantic_definition.updated"): "active",
+        ("active", "semantic_definition.superseded"): "superseded",
+    },
+    "scope": {
+        ("active", "scope.updated"): "active",
+        ("active", "scope.retired"): "retired",
+    },
     "intent": {
         ("proposed", "intent.activated"): "active",
         ("active", "intent.waiting"): "waiting",
@@ -110,6 +118,47 @@ TRANSITIONS: dict[str, dict[tuple[str, str], str]] = {
         ("proposed", "integration.cancelled"): "cancelled",
         ("approved", "integration.cancelled"): "cancelled",
     },
+    "observed_scope": {
+        ("final", "observed_scope.superseded"): "superseded",
+    },
+    "precondition": {
+        ("active", "precondition.retired"): "retired",
+        ("active", "precondition.superseded"): "superseded",
+    },
+    "precondition_result": {
+        ("final", "precondition_result.superseded"): "superseded",
+    },
+    "verification_result": {
+        ("final", "verification.superseded"): "superseded",
+    },
+    "presence": {
+        ("active", "presence.scope_updated"): "active",
+        ("active", "presence.released"): "released",
+        ("active", "presence.expired"): "expired",
+        ("active", "presence.superseded"): "superseded",
+    },
+}
+
+
+CREATION_KINDS = {
+    "semantic_definition": "semantic_definition.created",
+    "scope": "scope.created",
+    "intent": "intent.announced",
+    "observed_scope": "observed_scope.published",
+    "overlap": "overlap.detected",
+    "negotiation": "negotiation.opened",
+    "arbitration": "arbitration.requested",
+    "commitment": "commitment.created",
+    "contract": "contract.proposed",
+    "precondition": "precondition.created",
+    "precondition_result": "precondition.evaluated",
+    "change_set": "changeset.proposed",
+    "verification_result": "verification.completed",
+    "dependency": "dependency.created",
+    "integration_plan": "integration.proposed",
+    "integration_result": "integration.completed",
+    "presence": "presence.entered",
+    "lease": "lease.requested",
 }
 
 
@@ -354,8 +403,12 @@ class C1Projector:
                 diagnostics.append(self._diagnostic("AWP-COORD-REVISION-CONFLICT", event_id, "event and replacement revisions do not agree", record_id=record_id))
                 continue
             if prior_revision is None:
+                expected_creation_kind = CREATION_KINDS.get(replacement.get("type"))
                 if revision != 1 or record_id in versions:
                     diagnostics.append(self._diagnostic("AWP-COORD-REVISION-CONFLICT", event_id, "creation must begin at revision 1 and cannot replace an existing record", record_id=record_id))
+                    continue
+                if expected_creation_kind and event["kind"] != expected_creation_kind:
+                    diagnostics.append(self._diagnostic("AWP-COORD-INVALID-TRANSITION", event_id, f"{event['kind']} cannot create a {replacement.get('type')} record", record_id=record_id))
                     continue
                 versions[record_id] = [{"event_id": event_id, "revision": 1, "record": replacement}]
                 heads[record_id] = {event_id}
