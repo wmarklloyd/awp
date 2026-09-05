@@ -1,16 +1,16 @@
 # AWP Project Reference
 
-This document collects release, validation, repository, research, and governance information that supports the Agent Workstate Protocol without interrupting the introductory path in the main [README](../README.md).
+This document collects release, validation, repository, research, and governance information that supports the Agent Workshare Protocol without interrupting the introductory path in the main [README](../README.md).
 
 ## Release status
 
 | Track | Version | Status | Entry point |
 |---|---:|---|---|
 | Stable specification | 0.6.0 | Exploratory release | [Family overview](../AWP_SPECIFICATION_0.6.0.md) |
-| Active development | 0.7.0 | Working draft; not a release | [Draft overview](../spec/drafts/0.7.0/index.md) |
+| Active development | 0.8.0 | Working draft; not a release | [Draft overview](../spec/drafts/0.8.0/index.md) |
 | Coordination | 0.3.0 stable-family module / 0.4.0 draft | Normative but experimental | [Released module](../spec/0.6.0/coordination.md) |
 
-AWP 0.7.0 introduces explicit governing-specification binding and separately versioned draft semantics. It is not a published release.
+AWP 0.8.0 introduces explicit governing-specification binding and separately versioned draft semantics. It is not a published release.
 
 The current version-pinned external bundle reference is:
 
@@ -18,7 +18,7 @@ The current version-pinned external bundle reference is:
 https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md
 ```
 
-Do not use a moving branch URL as though it were a released specification. A sandboxed or offline project may reference a repository-relative copy of the exact 0.6.0 bundle. A detached 0.7.0 consultation may instead reference the local draft bundle explicitly.
+Do not use a moving branch URL as though it were a released specification. A sandboxed or offline project may reference a repository-relative copy of the exact 0.6.0 bundle. A detached 0.8.0 consultation may instead reference the local draft bundle explicitly.
 
 ## Protocol modules
 

@@ -1,6 +1,6 @@
 ---
-awp_version: 0.7.0
-specification: dist/drafts/0.7.0/AWP-0.7.0-draft.bundle.md
+awp_version: 0.8.0
+specification: dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md
 format: single-file-capsule
 discovery: self
 capsule_boundary: 4f8a1c9d7b3e52a6f0c481de93b72568
@@ -9,7 +9,7 @@ frontier:
   - evt:readme-refinement-consultation
 checkpoint: checkpoint:readme-refinement-consultation
 generated_at: 2026-09-04T16:12:36Z
-generated_digest: sha256:9c2c321b2ed6ded7d95dc0e100d569e7eb035522d7c7025cf07aae167d3f524a
+generated_digest: sha256:3859307b0e5b171346e0e19edac3dd02c3d8b1fcb0286806db6cefac5b555562
 ---
 
 <!-- awp:generated:start -->
@@ -40,12 +40,12 @@ The project integration point is an AWP bootstrap link in `AGENTS.md`. The READM
 ## Current README under review
 
 ```markdown
-# Agent Workstate Protocol
+# Agent Workshare Protocol
 
 [![Validate specification](https://github.com/wmarklloyd/awp/actions/workflows/validate.yml/badge.svg)](https://github.com/wmarklloyd/awp/actions/workflows/validate.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-Agent Workstate Protocol (AWP) is a portable format for preserving the working state of a project across people, AI agents, tools, and sessions. It gives the next participant the project’s intent and current state—not merely its files—so useful work can begin with less reconstruction, repetition, and avoidable error.
+Agent Workshare Protocol (AWP) is a portable format for preserving the working state of a project across people, AI agents, tools, and sessions. It gives the next participant the project’s intent and current state—not merely its files—so useful work can begin with less reconstruction, repetition, and avoidable error.
 
 AWP has four purposes:
 
@@ -59,7 +59,7 @@ A single, portable `.awp.md` capsule can contain goals, plans, constraints, deci
 To enable AWP for an agent working in a project, add the following AWP bootstrap block to `AGENTS.md`. This is the project integration point: the first link gives the agent the exact protocol specification, and the second identifies the project’s current workstate. The capsule does not require a special filename or repository location:
 
 ```markdown
-## Agent Workstate Protocol
+## Agent Workshare Protocol
 
 Before beginning work, read:
 
@@ -84,13 +84,13 @@ An explicitly supplied or configured filename or location is an advanced impleme
 
 ## Start here
 
-- [AWP 0.7.0 working draft](../spec/drafts/0.7.0/index.md)
+- [AWP 0.8.0 working draft](../spec/drafts/0.8.0/index.md)
 - [Example portable workstate](../awp.awp.md)
 - [Generated single-file specification](../dist/0.6.0/AWP-0.6.0.bundle.md)
 - [Schemas](../schemas)
 - [Conformance examples](../conformance)
 
-AWP 0.6.0 is the current stable exploratory release family. AWP 0.7.0 remains a working draft. Release details, validation instructions, limitations, the repository map, and research and governance links are collected in the [project reference](../docs/project-reference.md).
+AWP 0.6.0 is the current stable exploratory release family. AWP 0.8.0 remains a working draft. Release details, validation instructions, limitations, the repository map, and research and governance links are collected in the [project reference](../docs/project-reference.md).
 
 AWP is distributed under the [GNU General Public License version 3](../LICENSE).
 ```
@@ -98,14 +98,14 @@ AWP is distributed under the [GNU General Public License version 3](../LICENSE).
 
 <!-- awp:4f8a1c9d7b3e52a6f0c481de93b72568:manifest:start encoding="json" -->
 {
-  "awp_version": "0.7.0",
+  "awp_version": "0.8.0",
   "workstate_id": "urn:uuid:awp-consultation-readme-refinement-2026-09-04",
   "title": "README refinement consultation",
   "created_at": "2026-09-04T16:12:36Z",
   "created_by": "actor:user",
   "completeness": "portable",
   "modules": [
-    {"id": "urn:awp:core", "version": "0.7.0", "required": true},
+    {"id": "urn:awp:core", "version": "0.8.0", "required": true},
     {"id": "urn:awp:capsule", "version": "0.4.0", "required": true}
   ],
   "representations": {
@@ -118,7 +118,7 @@ AWP is distributed under the [GNU General Public License version 3](../LICENSE).
 
 <!-- awp:4f8a1c9d7b3e52a6f0c481de93b72568:snapshot:start encoding="json" -->
 {
-  "awp_version": "0.7.0",
+  "awp_version": "0.8.0",
   "workstate_id": "urn:uuid:awp-consultation-readme-refinement-2026-09-04",
   "frontier": ["evt:readme-refinement-consultation"],
   "generated_at": "2026-09-04T16:12:36Z",
@@ -132,8 +132,8 @@ AWP is distributed under the [GNU General Public License version 3](../LICENSE).
         "status": "open",
         "requested_action": "Provide an editorial critique and proposed replacement prose or patch. Do not modify or commit repository files.",
         "context": {
-          "project": "Agent Workstate Protocol",
-          "specification": "AWP 0.7.0",
+          "project": "Agent Workshare Protocol",
+          "specification": "AWP 0.8.0",
           "integration_point": "An AWP bootstrap link in AGENTS.md",
           "activation_correction": "Do not say that placing a capsule in a repository enables AWP. The capsule is a portable workstate artifact; AGENTS.md is the project bootstrap point.",
           "review_scope": "The full current README is embedded in the generated briefing above.",
@@ -143,6 +143,7 @@ AWP is distributed under the [GNU General Public License version 3](../LICENSE).
         "desired_output": "Ranked critique, precise replacement wording for weak passages, and a concise adoption-oriented README outline."
       }
     ]
-  }
+  },
+  "modules": {}
 }
 <!-- awp:4f8a1c9d7b3e52a6f0c481de93b72568:snapshot:end -->

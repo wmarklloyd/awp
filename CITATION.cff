@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use or discuss AWP, cite the versioned specification."
-title: "Agent Workstate Protocol"
+title: "Agent Workshare Protocol"
 type: software
 authors:
   - family-names: Lloyd

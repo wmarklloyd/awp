@@ -172,7 +172,7 @@ Keep the existing C1 designation honest. A participant using the five operations
 
 The proposed next draft should give each requirement an owner (participant, adapter, projector, binding, publisher, evaluator), triggering operation, capability prerequisite, and expected failure outcome. A role manifest identifies who satisfies each required behavior. A composed C1 claim requires evidence for the complete applicable set, including delegation boundaries.
 
-The base participation profile supports read, intent/scope publication, interactions, result evidence, and checkpoint handoff. The experimental [CC-1 Cooperation Contract](../spec/drafts/0.7.0/cooperation-contracts.md) is the selected separately named profile: it adds bounded symbiotic interactions and known-incompatible guarded-scope blocking without redefining Coordination C1. Integration assurance activates contracts, typed preconditions, verification, readiness, and integration records when required by the work. Enforcement activates only with an identified enforcing binding.
+The base participation profile supports read, intent/scope publication, interactions, result evidence, and checkpoint handoff. The experimental [COOP-1 Cooperation Contract](../spec/drafts/0.8.0/cooperation-contracts.md) is the selected separately named profile: it adds bounded symbiotic interactions and known-incompatible guarded-scope blocking without redefining Coordination C1. Integration assurance activates contracts, typed preconditions, verification, readiness, and integration records when required by the work. Enforcement activates only with an identified enforcing binding.
 
 ## 9. Scalability without increasing model burden
 

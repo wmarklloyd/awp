@@ -1,0 +1,7 @@
+{
+  "schema": "schemas/awp-cooperation-0.1.schema.json",
+  "definition": "interaction",
+  "cases": [
+    {"document": "conformance/valid/cooperation-0.1-interaction.json", "valid": true, "expected_keywords": []}
+  ]
+}

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "awp-specification-tools"
 version = "0.1.0"
-description = "Validation and reproducible-build tools for the Agent Workstate Protocol specification"
+description = "Validation and reproducible-build tools for the Agent Workshare Protocol specification"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "GPL-3.0-only" }

@@ -13,7 +13,7 @@ The canonical published bytes are identified by Git tag `v0.6.0`. Released docum
 
 ## Working draft
 
-- [AWP 0.7.0 working draft](drafts/0.7.0/index.md)
+- [AWP 0.8.0 working draft](drafts/0.8.0/index.md)
 
 Draft contents may change and must not be represented as a published specification. Incompatible changes receive new family, module, and schema versions before publication.
 

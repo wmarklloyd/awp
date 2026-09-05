@@ -11,10 +11,11 @@ JSON Schemas validate structural constraints. Normative prose remains authoritat
 
 ## Working-draft schemas
 
-- Core: `awp-core-0.7.schema.json`
-- Module registry: `awp-module-registry-0.7.schema.json`
-- Coordination: `awp-coordination-0.4.schema.json`
+- Core: `awp-core-0.8.schema.json`
+- Module registry: `awp-module-registry-0.8.schema.json`
+- Coordination: `awp-coordination-0.5.schema.json`
+- Cooperation Contracts: `awp-cooperation-0.1.schema.json`
 - Repository discovery: `awp-discovery-0.2.schema.json`
-- Capsule metadata and security guardrail schemas are draft-only support files for the 0.7 working draft.
+- Capsule metadata and security guardrail schemas are draft-only support files for the 0.8 working draft.
 
 Published `$id` values and released schema bytes are immutable. Incompatible semantics require a new schema identifier.

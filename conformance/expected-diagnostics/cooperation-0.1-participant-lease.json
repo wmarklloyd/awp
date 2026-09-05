@@ -1,0 +1,7 @@
+{
+  "schema": "schemas/awp-cooperation-0.1.schema.json",
+  "definition": "participantLease",
+  "cases": [
+    {"document": "conformance/valid/cooperation-0.1-participant-lease.json", "valid": true, "expected_keywords": []}
+  ]
+}

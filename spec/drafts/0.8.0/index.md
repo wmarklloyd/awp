@@ -1,17 +1,17 @@
-# Agent Workshare Protocol 0.7.0
+# Agent Workshare Protocol 0.8.0
 
 **Status:** Working Draft  
 **Editor:** Mark Lloyd  
 **Updated:** 2026-09-03  
 **Target successor to:** AWP 0.6.0  
-**Canonical draft:** `https://github.com/wmarklloyd/awp/tree/main/spec/drafts/0.7.0`  
+**Canonical draft:** `https://github.com/wmarklloyd/awp/tree/main/spec/drafts/0.8.0`  
 **License:** GPL-3.0-only
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in BCP 14 when, and only when, they appear in all capitals.
 
 ## 1. Purpose
 
-AWP is a family of composable specifications for preserving, exchanging, inspecting, and resuming work performed by humans and software agents. Version 0.7.0 makes the governing specification and discovery metadata part of every self-contained shared workstate. It advances the family modules to explicit exploratory versions while retaining the Coordination design introduced in 0.6.0.
+AWP is a family of composable specifications for preserving, exchanging, inspecting, and resuming work performed by humans and software agents. Version 0.8.0 makes the governing specification and discovery metadata part of every self-contained shared workstate. It advances the family modules to explicit exploratory versions while retaining the Coordination design introduced in 0.6.0.
 
 The family has one required foundation, AWP Core. Every other subspecification is a module with its own identifier, version, dependencies, schema, and conformance claim. A module is a logical capability: it may occupy its own file in an editable workstate or be embedded in a single `.awp.md` capsule.
 
@@ -30,39 +30,39 @@ AWP does not replace an agent runtime, source control, artifact storage, or an a
 
 | Subspecification | Module identifier | Version | Status | Direct dependencies |
 |---|---|---:|---|---|
-| [AWP Core](core.md) | `urn:awp:core` | `0.7.0` | required | none |
-| [AWP Capsule](capsule.md) | `urn:awp:capsule` | `0.4.0` | optional | Core |
-| [AWP Handoff](handoff.md) | `urn:awp:handoff` | `0.4.0` | optional | Core |
-| [AWP Artifact](artifact.md) | `urn:awp:artifact` | `0.4.0` | optional | Core |
-| [AWP Synchronization](synchronization.md) | `urn:awp:sync` | `0.4.0` | optional | Core |
-| [AWP Coordination](coordination.md) | `urn:awp:coordination` | `0.4.0` | experimental | Core, Synchronization |
-| [AWP Security](security.md) | `urn:awp:security` | `0.4.0` | optional | Core; Artifact when artifact controls are used |
-| [AWP Adapter Framework](adapters.md) | not a payload module | `0.4.0` | informative | binding-specific |
-| [AWP Cooperation Contracts](cooperation-contracts.md) | not a payload module | `0.1.0` | experimental profile | Capsule, Handoff, Coordination when active coordination is selected |
+| [AWP Core](core.md) | `urn:awp:core` | `0.8.0` | required | none |
+| [AWP Capsule](capsule.md) | `urn:awp:capsule` | `0.5.0` | optional | Core |
+| [AWP Handoff](handoff.md) | `urn:awp:handoff` | `0.5.0` | optional | Core |
+| [AWP Artifact](artifact.md) | `urn:awp:artifact` | `0.5.0` | optional | Core |
+| [AWP Synchronization](synchronization.md) | `urn:awp:sync` | `0.5.0` | optional | Core |
+| [AWP Coordination](coordination.md) | `urn:awp:coordination` | `0.5.0` | experimental | Core, Synchronization |
+| [AWP Security](security.md) | `urn:awp:security` | `0.5.0` | optional | Core; Artifact when artifact controls are used |
+| [AWP Adapter Framework](adapters.md) | not a payload module | `0.5.0` | informative | binding-specific |
+| [AWP Cooperation Contracts](cooperation-contracts.md) | `urn:awp:cooperation` | `0.1.0` | experimental | Core, Capsule, Handoff; Coordination when guarded scopes are selected |
 
 The machine-readable [module registry](modules.json) is normative for the module IDs, versions, document paths, stability labels, and direct dependencies in this draft.
 
 ## 3. Module declarations
 
-Every AWP 0.7 manifest MUST contain a `modules` array. It MUST declare exactly one Core entry, and that entry MUST be required. The following is a module-declaration excerpt rather than a complete manifest:
+Every AWP 0.8 manifest MUST contain a `modules` array. It MUST declare exactly one Core entry, and that entry MUST be required. The following is a module-declaration excerpt rather than a complete manifest:
 
 ```json
 {
-  "awp_version": "0.7.0",
+  "awp_version": "0.8.0",
   "modules": [
     {
       "id": "urn:awp:core",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "required": true
     },
     {
       "id": "urn:awp:handoff",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "required": true
     },
     {
       "id": "urn:awp:coordination",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "required": false
     }
   ]
@@ -137,7 +137,7 @@ AWP `0.x` is exploratory. A new minor family or module release MAY make incompat
 
 The family version and module versions remain independent. The family version identifies a tested set of module releases, and a later family release may reuse an unchanged module version. Writers that change protocol semantics MUST publish a new versioned specification artifact and update affected workstates deliberately. Implementations MUST determine support by the declared specification, module ID, and module version, not by comparing only `awp_version`.
 
-The common event envelope is versioned independently because events may outlive a family release. AWP 0.7.0 uses event-envelope version `0.2`.
+The common event envelope is versioned independently because events may outlive a family release. AWP 0.8.0 uses event-envelope version `0.2`.
 
 ## 7. Conformance
 
@@ -147,9 +147,9 @@ An implementation declares conformance as a set of roles and module versions, fo
 {
   "roles": ["core-reader", "capsule-reader", "handoff-writer"],
   "modules": {
-    "urn:awp:core": ["0.7.x"],
-    "urn:awp:capsule": ["0.4.x"],
-    "urn:awp:handoff": ["0.4.x"]
+    "urn:awp:core": ["0.8.x"],
+    "urn:awp:capsule": ["0.5.x"],
+    "urn:awp:handoff": ["0.5.x"]
   },
   "event_schema_versions": ["0.2"]
 }
@@ -172,25 +172,25 @@ Every module and binding MUST preserve these rules:
 9. A successful byte-level merge is not proof of semantic compatibility.
 10. Private chain-of-thought is not required; concise rationale and evidence are sufficient.
 
-## 9. Migration from 0.6.0
+## 9. Migration from 0.7.0
 
-AWP 0.7.0 preserves the 0.2 event envelope and the module identifiers from AWP 0.6.0. Core advances to `0.7.0`; the dependent modules advance to `0.4.0`. Embedded discovery is defined by Capsule 0.4.0 rather than by a companion project file.
+AWP 0.8.0 preserves the 0.2 event envelope and the module identifiers from AWP 0.6.0. Core advances to `0.8.0`; the dependent modules advance to `0.5.0`. Embedded discovery is defined by Capsule 0.5.0 rather than by a companion project file.
 
-The migration is intentionally incompatible: a 0.7 self-contained capsule identifies its exact governing specification and discovery mode in its own metadata. A 0.7 reader MUST NOT silently substitute another specification. A 0.6 project that used `.awp.json` remains a valid historical input, but a 0.7 single-file capsule does not require that companion file.
+The migration is intentionally incompatible: a 0.8 self-contained capsule identifies its exact governing specification and discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. A 0.6 project that used `.awp.json` remains a valid historical input, but a 0.8 single-file capsule does not require that companion file.
 
-An upgrader from 0.6.0 MUST add the governing `specification` and `discovery: self` to capsule metadata, update Capsule to `0.4.0`, and remove any redundant companion pointer from the portable package. Historical events remain unchanged.
+An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: self` to capsule metadata, update Capsule to `0.5.0`, and remove any redundant companion pointer from the portable package. Historical events remain unchanged.
 
 ## 10. Release contents
 
-- [Core schema](../../../schemas/awp-core-0.7.schema.json)
-- [Capsule metadata schema](../../../schemas/awp-capsule-0.4.schema.json)
-- [Coordination schema](../../../schemas/awp-coordination-0.4.schema.json)
-- [Security guardrail schema](../../../schemas/awp-security-0.4.schema.json)
+- [Core schema](../../../schemas/awp-core-0.8.schema.json)
+- [Capsule metadata schema](../../../schemas/awp-capsule-0.5.schema.json)
+- [Coordination schema](../../../schemas/awp-coordination-0.5.schema.json)
+- [Security guardrail schema](../../../schemas/awp-security-0.5.schema.json)
 - [Module registry](modules.json)
 - [Open issue register](open-issues.md)
 - Validation and conformance assets in the repository root
 
-The documents listed in Section 2, their normative schemas, and the module registry constitute the AWP 0.7.0 working draft. No file under this directory is a released specification until a release process copies immutable contents into `spec/<version>/` and creates a corresponding tag.
+The documents listed in Section 2, their normative schemas, and the module registry constitute the AWP 0.8.0 working draft. No file under this directory is a released specification until a release process copies immutable contents into `spec/<version>/` and creates a corresponding tag.
 
 ## 11. References
 

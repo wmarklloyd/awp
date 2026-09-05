@@ -1,0 +1,16 @@
+{
+  "id": "lease:agent-one",
+  "type": "cooperation_lease",
+  "module": "urn:awp:cooperation",
+  "revision": 1,
+  "status": "active",
+  "actor": "actor:one",
+  "project_id": "git-root:0123456789abcdef",
+  "execution_location": "worktree:primary",
+  "base_revision": "git:abcdef0123456789",
+  "intended_scopes": ["spec/drafts/0.8.0/cooperation-contracts.md"],
+  "entered_at": "2026-09-05T16:00:00Z",
+  "renewed_at": "2026-09-05T16:00:00Z",
+  "expires_at": "2026-09-05T16:15:00Z",
+  "ttl_seconds": 900
+}

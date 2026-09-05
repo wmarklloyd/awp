@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:awp:schema:security:0.5.0",
+  "title": "AWP Security 0.5 guardrails",
+  "description": "Structural schema for a Security guardrail extension on a Core constraint record.",
+  "oneOf": [
+    { "$ref": "#/$defs/guardrail" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S+$"
+    },
+    "guardrail": {
+      "type": "object",
+      "required": [
+        "profile",
+        "effect",
+        "applies_to",
+        "operation_classes",
+        "resources",
+        "policy_owner",
+        "provenance",
+        "enforcement",
+        "propagation"
+      ],
+      "properties": {
+        "profile": { "$ref": "#/$defs/identifier" },
+        "effect": { "enum": ["deny", "require_authorization", "require_confirmation", "require_review"] },
+        "applies_to": {
+          "oneOf": [
+            { "const": "all_actors" },
+            { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true }
+          ]
+        },
+        "operation_classes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/identifier" },
+          "uniqueItems": true
+        },
+        "conditions": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "exceptions": { "type": "array", "items": { "type": "object" } },
+        "effective_from": { "type": "string", "format": "date-time" },
+        "effective_until": { "type": "string", "format": "date-time" },
+        "policy_owner": { "$ref": "#/$defs/identifier" },
+        "provenance": {
+          "type": "object",
+          "required": ["issued_by", "basis"],
+          "properties": {
+            "issued_by": { "$ref": "#/$defs/identifier" },
+            "basis": { "$ref": "#/$defs/identifier" },
+            "issued_at": { "type": "string", "format": "date-time" },
+            "authority_evidence": { "$ref": "#/$defs/identifier" }
+          },
+          "additionalProperties": true
+        },
+        "enforcement": { "enum": ["advisory", "receiver_policy", "protected_adapter"] },
+        "propagation": { "enum": ["mandatory", "inherited", "none"] }
+      },
+      "additionalProperties": true
+    }
+  }
+}

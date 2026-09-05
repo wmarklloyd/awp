@@ -32,6 +32,7 @@ jobs:
           python tools/validate_spec_0_5.py
           python tools/validate_spec_0_6.py
           python tools/validate_spec_0_7.py
+          python tools/validate_spec_0_8.py
           python tools/validate_conformance.py
           python tools/check_markdown_links.py
           python tools/verify_workstate_artifacts.py
@@ -44,4 +45,6 @@ jobs:
           python tools/build_requirements_registry.py
           python tools/build_spec_0_6_bundle.py
           python tools/build_spec_0_7_bundle.py
-          git diff --exit-code -- dist spec/drafts/0.7.0/requirements.json
+          python tools/build_requirements_registry_0_8.py
+          python tools/build_spec_0_8_bundle.py
+          git diff --exit-code -- dist spec/drafts/0.7.0/requirements.json spec/drafts/0.8.0/requirements.json

@@ -1,0 +1,23 @@
+{
+  "type": "cooperation_binding",
+  "module": "urn:awp:cooperation",
+  "contract": "COOP-1",
+  "identity": {
+    "workstate_id": "workstate:example",
+    "project_id": "git-root:0123456789abcdef",
+    "store_id": "binding:example",
+    "scope_model": "awp-repository-path-v1",
+    "binding_epoch": 1
+  },
+  "observation": {
+    "observed_at": "2026-09-05T18:30:00Z",
+    "operational_reach": "configured-unverified",
+    "frontier": ["evt:example"]
+  },
+  "atomicity_mechanism": "sqlite-begin-immediate",
+  "storage_assumptions": [
+    "All participants open the same SQLite file.",
+    "The filesystem preserves SQLite locking and atomic commit semantics."
+  ],
+  "limitations": ["Shared reach requires a successful participant handshake."]
+}

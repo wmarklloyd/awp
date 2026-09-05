@@ -1,0 +1,16 @@
+{
+  "type": "cooperation_interaction",
+  "module": "urn:awp:cooperation",
+  "interaction_id": "interaction:coop-review",
+  "workstate_id": "workstate:example",
+  "purpose": "critique",
+  "subject": {"ref": "artifact:spec"},
+  "participants": [{"id": "actor:one", "role": "requester"}, {"id": "actor:two", "role": "responder"}],
+  "decision_owner": "principal:owner",
+  "policy": {"policy_id": "coop-1-default-loop-v1", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+  "round": 1,
+  "repeat_basis": {"purpose": "critique", "subject": {"ref": "artifact:spec"}, "context_frontier": ["evt:one"], "participant_set_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+  "repeat_key": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "progress": {"kind": "evidence", "ref": "evidence:review"},
+  "result": {"outcome": "revised", "recorded_at": "2026-09-05T16:00:00Z"}
+}

@@ -46,7 +46,7 @@ def read(relative_path: str) -> str:
 
 def build() -> str:
     sections = [
-        "# Agent Workstate Protocol 0.7.0 — Working Draft Bundle",
+        "# Agent Workshare Protocol 0.7.0 — Working Draft Bundle",
         "",
         "**Status:** Generated working-draft artifact; not a release  ",
         "**Source of truth:** `spec/drafts/0.7.0/*` and the schemas named in the draft module registry  ",

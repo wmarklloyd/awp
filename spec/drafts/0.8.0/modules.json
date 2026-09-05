@@ -1,0 +1,116 @@
+{
+  "$schema": "../../../schemas/awp-module-registry-0.8.schema.json",
+  "family": "AWP",
+  "family_version": "0.8.0",
+  "event_schema_versions": ["0.2"],
+  "modules": [
+    {
+      "id": "urn:awp:core",
+      "name": "AWP Core",
+      "version": "0.8.0",
+      "status": "required",
+      "document": "core.md",
+      "schema": "../../../schemas/awp-core-0.8.schema.json",
+      "dependencies": []
+    },
+    {
+      "id": "urn:awp:capsule",
+      "name": "AWP Capsule",
+      "version": "0.5.0",
+      "status": "optional",
+      "document": "capsule.md",
+      "schema": "../../../schemas/awp-capsule-0.5.schema.json",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.8.x" }
+      ]
+    },
+    {
+      "id": "urn:awp:handoff",
+      "name": "AWP Handoff",
+      "version": "0.5.0",
+      "status": "optional",
+      "document": "handoff.md",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.8.x" }
+      ]
+    },
+    {
+      "id": "urn:awp:artifact",
+      "name": "AWP Artifact",
+      "version": "0.5.0",
+      "status": "optional",
+      "document": "artifact.md",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.8.x" }
+      ]
+    },
+    {
+      "id": "urn:awp:sync",
+      "name": "AWP Synchronization",
+      "version": "0.5.0",
+      "status": "optional",
+      "document": "synchronization.md",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.8.x" }
+      ]
+    },
+    {
+      "id": "urn:awp:coordination",
+      "name": "AWP Coordination",
+      "version": "0.5.0",
+      "status": "experimental",
+      "document": "coordination.md",
+      "schema": "../../../schemas/awp-coordination-0.5.schema.json",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.8.x" },
+        { "id": "urn:awp:sync", "version": "0.5.x" }
+      ]
+    },
+    {
+      "id": "urn:awp:security",
+      "name": "AWP Security",
+      "version": "0.5.0",
+      "status": "optional",
+      "document": "security.md",
+      "schema": "../../../schemas/awp-security-0.5.schema.json",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.8.x" }
+      ],
+      "conditional_dependencies": [
+        {
+          "when_capability": "artifact-controls",
+          "id": "urn:awp:artifact",
+          "version": "0.5.x"
+        }
+      ]
+    },
+    {
+      "id": "urn:awp:cooperation",
+      "name": "AWP Cooperation Contracts",
+      "version": "0.1.0",
+      "status": "experimental",
+      "document": "cooperation-contracts.md",
+      "schema": "../../../schemas/awp-cooperation-0.1.schema.json",
+      "dependencies": [
+        { "id": "urn:awp:core", "version": "0.8.x" },
+        { "id": "urn:awp:capsule", "version": "0.5.x" },
+        { "id": "urn:awp:handoff", "version": "0.5.x" }
+      ],
+      "conditional_dependencies": [
+        {"when_capability": "guarded-scope-coordination", "id": "urn:awp:coordination", "version": "0.5.x"}
+      ]
+    }
+  ],
+  "informative_documents": [
+    {
+      "name": "AWP Adapter Framework",
+      "version": "0.5.0",
+      "document": "adapters.md"
+    },
+    {
+      "name": "AWP Open Issues",
+      "version": "0.8.0",
+      "document": "open-issues.md"
+    }
+  ]
+}
