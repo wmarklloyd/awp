@@ -1,0 +1,49 @@
+{
+  "fixture_id": "c1-stale-reference",
+  "description": "A pinned cross-record reference is diagnosed when the target advances beyond the pinned revision.",
+  "workstate_id": "workstate:fixture-stale",
+  "events": [
+    {
+      "event_schema_version": "0.2",
+      "module": "urn:awp:coordination",
+      "kind": "scope.created",
+      "event_id": "evt:scope-create",
+      "workstate_id": "workstate:fixture-stale",
+      "parents": [],
+      "occurred_at": "2026-09-04T20:00:00Z",
+      "actor": "actor:test",
+      "payload": {"record_id": "scope:test", "revision": 1, "replacement": {"id": "scope:test", "type": "scope", "module": "urn:awp:coordination", "revision": 1, "status": "active", "created_by": "actor:test", "created_at": "2026-09-04T20:00:00Z", "selector": {"kind": "file", "repository": "repo:test", "base_revision": "git:base", "path": "src/app.py"}, "access": "write"}}
+    },
+    {
+      "event_schema_version": "0.2",
+      "module": "urn:awp:coordination",
+      "kind": "intent.announced",
+      "event_id": "evt:intent",
+      "workstate_id": "workstate:fixture-stale",
+      "parents": [],
+      "occurred_at": "2026-09-04T20:00:01Z",
+      "actor": "actor:test",
+      "payload": {"record_id": "intent:test", "revision": 1, "replacement": {"id": "intent:test", "type": "intent", "module": "urn:awp:coordination", "revision": 1, "status": "proposed", "created_by": "actor:test", "created_at": "2026-09-04T20:00:00Z", "goal": "goal:test", "summary": "Projector fixture", "base": {"repository": "repo:test", "revision": "git:base"}, "declared_scopes": ["scope:test@1"]}}
+    },
+    {
+      "event_schema_version": "0.2",
+      "module": "urn:awp:coordination",
+      "kind": "scope.updated",
+      "event_id": "evt:scope-update",
+      "workstate_id": "workstate:fixture-stale",
+      "parents": ["evt:scope-create"],
+      "occurred_at": "2026-09-04T20:00:02Z",
+      "actor": "actor:test",
+      "payload": {"record_id": "scope:test", "prior_revision": 1, "revision": 2, "transition": {"from": "active", "to": "active"}, "replacement": {"id": "scope:test", "type": "scope", "module": "urn:awp:coordination", "revision": 2, "status": "active", "created_by": "actor:test", "created_at": "2026-09-04T20:00:00Z", "selector": {"kind": "file", "repository": "repo:test", "base_revision": "git:base", "path": "src/app.py"}, "access": "write"}}
+    }
+  ],
+  "expected": {
+    "frontier": ["evt:intent", "evt:scope-update"],
+    "records": {
+      "intent:test": {"id": "intent:test", "type": "intent", "module": "urn:awp:coordination", "revision": 1, "status": "proposed", "created_by": "actor:test", "created_at": "2026-09-04T20:00:00Z", "goal": "goal:test", "summary": "Projector fixture", "base": {"repository": "repo:test", "revision": "git:base"}, "declared_scopes": ["scope:test@1"]},
+      "scope:test": {"id": "scope:test", "type": "scope", "module": "urn:awp:coordination", "revision": 2, "status": "active", "created_by": "actor:test", "created_at": "2026-09-04T20:00:00Z", "selector": {"kind": "file", "repository": "repo:test", "base_revision": "git:base", "path": "src/app.py"}, "access": "write"}
+    },
+    "contested": {},
+    "diagnostics": [{"code": "AWP-COORD-STALE", "severity": "error", "event_id": null, "record_id": "intent:test"}]
+  }
+}

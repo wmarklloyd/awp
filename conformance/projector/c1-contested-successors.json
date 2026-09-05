@@ -1,0 +1,67 @@
+{
+  "fixture_id": "c1-contested-successors",
+  "description": "Concurrent non-commuting successors remain contested regardless of transport order.",
+  "workstate_id": "workstate:fixture-contest",
+  "events": [
+    {
+      "event_schema_version": "0.2",
+      "module": "urn:awp:coordination",
+      "kind": "intent.activated",
+      "event_id": "evt:activate",
+      "workstate_id": "workstate:fixture-contest",
+      "parents": ["evt:create"],
+      "occurred_at": "2026-09-04T20:00:01Z",
+      "actor": "actor:a",
+      "payload": {
+        "record_id": "intent:test",
+        "prior_revision": 1,
+        "revision": 2,
+        "transition": {"from": "proposed", "to": "active"},
+        "replacement": {"id": "intent:test", "type": "intent", "module": "urn:awp:coordination", "revision": 2, "status": "active", "created_by": "actor:test", "created_at": "2026-09-04T20:00:00Z", "goal": "goal:test", "summary": "Projector fixture", "base": {"repository": "repo:test", "revision": "git:base"}, "declared_scopes": []}
+      }
+    },
+    {
+      "event_schema_version": "0.2",
+      "module": "urn:awp:coordination",
+      "kind": "intent.withdrawn",
+      "event_id": "evt:withdraw",
+      "workstate_id": "workstate:fixture-contest",
+      "parents": ["evt:create"],
+      "occurred_at": "2026-09-04T20:00:01Z",
+      "actor": "actor:b",
+      "payload": {
+        "record_id": "intent:test",
+        "prior_revision": 1,
+        "revision": 2,
+        "transition": {"from": "proposed", "to": "withdrawn"},
+        "replacement": {"id": "intent:test", "type": "intent", "module": "urn:awp:coordination", "revision": 2, "status": "withdrawn", "created_by": "actor:test", "created_at": "2026-09-04T20:00:00Z", "goal": "goal:test", "summary": "Projector fixture", "base": {"repository": "repo:test", "revision": "git:base"}, "declared_scopes": []}
+      }
+    },
+    {
+      "event_schema_version": "0.2",
+      "module": "urn:awp:coordination",
+      "kind": "intent.announced",
+      "event_id": "evt:create",
+      "workstate_id": "workstate:fixture-contest",
+      "parents": [],
+      "occurred_at": "2026-09-04T20:00:00Z",
+      "actor": "actor:test",
+      "payload": {
+        "record_id": "intent:test",
+        "revision": 1,
+        "replacement": {"id": "intent:test", "type": "intent", "module": "urn:awp:coordination", "revision": 1, "status": "proposed", "created_by": "actor:test", "created_at": "2026-09-04T20:00:00Z", "goal": "goal:test", "summary": "Projector fixture", "base": {"repository": "repo:test", "revision": "git:base"}, "declared_scopes": []}
+      }
+    }
+  ],
+  "expected": {
+    "frontier": ["evt:activate", "evt:withdraw"],
+    "records": {
+      "intent:test": {"id": "intent:test", "type": "intent", "module": "urn:awp:coordination", "revision": 1, "status": "proposed", "created_by": "actor:test", "created_at": "2026-09-04T20:00:00Z", "goal": "goal:test", "summary": "Projector fixture", "base": {"repository": "repo:test", "revision": "git:base"}, "declared_scopes": [], "condition": {"type": "contested", "events": ["evt:activate", "evt:withdraw"]}}
+    },
+    "contested": {"intent:test": ["evt:activate", "evt:withdraw"]},
+    "diagnostics": [
+      {"code": "AWP-COORD-RECORD-CONTESTED", "severity": "error", "event_id": null, "record_id": "intent:test"},
+      {"code": "AWP-COORD-RECORD-CONTESTED", "severity": "error", "event_id": "evt:withdraw", "record_id": "intent:test"}
+    ]
+  }
+}

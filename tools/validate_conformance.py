@@ -7,9 +7,46 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator, FormatChecker
 
+try:
+    from tools.awp_projector import C1Projector
+except ModuleNotFoundError:  # direct execution as `python tools/validate_conformance.py`
+    from awp_projector import C1Projector
+
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTATIONS = ROOT / "conformance" / "expected-diagnostics"
+PROJECTOR_FIXTURES = ROOT / "conformance" / "projector"
+
+
+def _diagnostic_signature(diagnostic: dict) -> dict:
+    return {
+        "code": diagnostic.get("code"),
+        "severity": diagnostic.get("severity"),
+        "event_id": diagnostic.get("event_id"),
+        "record_id": diagnostic.get("record_id"),
+    }
+
+
+def _validate_projector_fixture(path: Path) -> list[str]:
+    fixture = json.loads(path.read_text(encoding="utf-8"))
+    required = {"fixture_id", "workstate_id", "events", "expected"}
+    missing = sorted(required - set(fixture))
+    if missing:
+        return [f"{path}: missing fixture fields: {', '.join(missing)}"]
+    expected = fixture["expected"]
+    result = C1Projector().project(fixture["events"], fixture["workstate_id"])
+    failures: list[str] = []
+    for field in ("frontier", "records", "contested"):
+        if result[field] != expected.get(field):
+            failures.append(
+                f"{path}: expected {field}={expected.get(field)!r}, got {result[field]!r}"
+            )
+    actual_diagnostics = [_diagnostic_signature(item) for item in result["diagnostics"]]
+    if actual_diagnostics != expected.get("diagnostics"):
+        failures.append(
+            f"{path}: expected diagnostics={expected.get('diagnostics')!r}, got {actual_diagnostics!r}"
+        )
+    return failures
 
 
 def main() -> int:
@@ -54,7 +91,18 @@ def main() -> int:
         print(f"FAILED: {len(failures)} conformance fixture issue(s)")
         return 1
 
-    print(f"OK: {checked} conformance fixtures matched expected outcomes")
+    projector_checked = 0
+    for fixture_path in sorted(PROJECTOR_FIXTURES.glob("*.json")):
+        projector_checked += 1
+        failures.extend(_validate_projector_fixture(fixture_path))
+
+    if failures:
+        for failure in failures:
+            print(failure)
+        print(f"FAILED: {len(failures)} conformance fixture issue(s)")
+        return 1
+
+    print(f"OK: {checked} conformance fixtures and {projector_checked} projector fixtures matched expected outcomes")
     return 0
 
 

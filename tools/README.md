@@ -8,6 +8,8 @@ The tools in this directory provide reproducible stable and archived-draft bundl
 
 `awp_projector.py` is a transport-neutral C1 foundation. It replays Coordination event envelopes through deterministic topological ordering, validates structural and workstate identity rules, checks revision and lifecycle transitions, validates pinned cross-record and verification bindings, preserves contested concurrent successors, and emits stable diagnostics. It is not yet a complete cross-record C1 validator, semantic analyzer, authority source, or independent interoperability implementation. A local ledger event stream can be checked with `python tools/awp_coordination.py export | python tools/awp_projector.py --workstate-id <id>`.
 
+`validate_conformance.py` also runs the JSON histories in `conformance/projector/` and compares their expected frontier, materialized records, contested conditions, and diagnostic signatures. These are reusable reference fixtures, not independent implementation evidence.
+
 The remaining tools are repository-maintenance tools, not a production AWP implementation. Passing them establishes only the properties each tool explicitly checks.
 
 Run the complete command set documented in the repository [README](../README.md#validation) or rely on the same checks in GitHub Actions.

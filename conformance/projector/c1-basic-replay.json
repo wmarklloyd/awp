@@ -1,0 +1,119 @@
+{
+  "fixture_id": "c1-basic-replay",
+  "description": "Topological replay is independent of transport ordering.",
+  "workstate_id": "workstate:fixture-basic",
+  "events": [
+    {
+      "event_schema_version": "0.2",
+      "module": "urn:awp:coordination",
+      "kind": "intent.activated",
+      "event_id": "evt:activate",
+      "workstate_id": "workstate:fixture-basic",
+      "parents": ["evt:create"],
+      "occurred_at": "2026-09-04T20:00:02Z",
+      "actor": "actor:test",
+      "payload": {
+        "record_id": "intent:test",
+        "prior_revision": 1,
+        "revision": 2,
+        "transition": {"from": "proposed", "to": "active"},
+        "replacement": {
+          "id": "intent:test",
+          "type": "intent",
+          "module": "urn:awp:coordination",
+          "revision": 2,
+          "status": "active",
+          "created_by": "actor:test",
+          "created_at": "2026-09-04T20:00:00Z",
+          "goal": "goal:test",
+          "summary": "Projector fixture",
+          "base": {"repository": "repo:test", "revision": "git:base"},
+          "declared_scopes": ["scope:test@1"]
+        }
+      }
+    },
+    {
+      "event_schema_version": "0.2",
+      "module": "urn:awp:coordination",
+      "kind": "scope.created",
+      "event_id": "evt:scope",
+      "workstate_id": "workstate:fixture-basic",
+      "parents": [],
+      "occurred_at": "2026-09-04T20:00:00Z",
+      "actor": "actor:test",
+      "payload": {
+        "record_id": "scope:test",
+        "revision": 1,
+        "replacement": {
+          "id": "scope:test",
+          "type": "scope",
+          "module": "urn:awp:coordination",
+          "revision": 1,
+          "status": "active",
+          "created_by": "actor:test",
+          "created_at": "2026-09-04T20:00:00Z",
+          "selector": {"kind": "file", "repository": "repo:test", "base_revision": "git:base", "path": "src/app.py"},
+          "access": "write"
+        }
+      }
+    },
+    {
+      "event_schema_version": "0.2",
+      "module": "urn:awp:coordination",
+      "kind": "intent.announced",
+      "event_id": "evt:create",
+      "workstate_id": "workstate:fixture-basic",
+      "parents": [],
+      "occurred_at": "2026-09-04T20:00:01Z",
+      "actor": "actor:test",
+      "payload": {
+        "record_id": "intent:test",
+        "revision": 1,
+        "replacement": {
+          "id": "intent:test",
+          "type": "intent",
+          "module": "urn:awp:coordination",
+          "revision": 1,
+          "status": "proposed",
+          "created_by": "actor:test",
+          "created_at": "2026-09-04T20:00:00Z",
+          "goal": "goal:test",
+          "summary": "Projector fixture",
+          "base": {"repository": "repo:test", "revision": "git:base"},
+          "declared_scopes": ["scope:test@1"]
+        }
+      }
+    }
+  ],
+  "expected": {
+    "frontier": ["evt:activate", "evt:scope"],
+    "records": {
+      "intent:test": {
+        "id": "intent:test",
+        "type": "intent",
+        "module": "urn:awp:coordination",
+        "revision": 2,
+        "status": "active",
+        "created_by": "actor:test",
+        "created_at": "2026-09-04T20:00:00Z",
+        "goal": "goal:test",
+        "summary": "Projector fixture",
+        "base": {"repository": "repo:test", "revision": "git:base"},
+        "declared_scopes": ["scope:test@1"]
+      },
+      "scope:test": {
+        "id": "scope:test",
+        "type": "scope",
+        "module": "urn:awp:coordination",
+        "revision": 1,
+        "status": "active",
+        "created_by": "actor:test",
+        "created_at": "2026-09-04T20:00:00Z",
+        "selector": {"kind": "file", "repository": "repo:test", "base_revision": "git:base", "path": "src/app.py"},
+        "access": "write"
+      }
+    },
+    "contested": {},
+    "diagnostics": []
+  }
+}
