@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
+
+from jsonschema import Draft202012Validator, FormatChecker
 
 from tools.awp_coordination import CoordinationLedger
 from tools.awp_participation import ParticipationAdapter
@@ -18,6 +21,14 @@ class ParticipationAdapterTests(unittest.TestCase):
             project_id="project:test",
             actor="actor:one",
             base_revision="git:base",
+        )
+        self.validator = Draft202012Validator(
+            json.loads(
+                (Path(__file__).parents[1] / "schemas" / "awp-participation-0.1.schema.json").read_text(
+                    encoding="utf-8"
+                )
+            ),
+            format_checker=FormatChecker(),
         )
 
     def tearDown(self) -> None:
@@ -49,6 +60,78 @@ class ParticipationAdapterTests(unittest.TestCase):
         self.assertTrue(result["context"].startswith("ctx:"))
         self.assertEqual(result["frontier"], [])
         self.assertEqual(result["next"]["operation"], "announce")
+
+    def test_all_supported_operation_responses_match_the_contract(self) -> None:
+        responses = []
+        read = self.adapter.read(self.read_request())
+        responses.append(read)
+        announcement = self.adapter.announce(self.announce_request())
+        responses.append(announcement)
+        responses.append(
+            self.adapter.publish(
+                {
+                    "operation": "publish",
+                    "request_id": "request:contract-publish",
+                    "project": "project:test",
+                    "context": "ctx:test",
+                    "intent": announcement["intent"],
+                    "summary": "Contract validation result",
+                    "actual_scope": [{"path": "src/app.py", "access": "write"}],
+                    "evidence": ["artifact:contract-test"],
+                }
+            )
+        )
+        responses.append(
+            self.adapter.checkpoint(
+                {
+                    "operation": "checkpoint",
+                    "request_id": "request:contract-checkpoint",
+                    "project": "project:test",
+                    "context": "ctx:test",
+                    "intent": announcement["intent"],
+                    "next_action": "Continue contract validation",
+                    "mode": "continue",
+                    "capsule_confirmation": {
+                        "frontier": responses[-1]["frontier"],
+                        "digest": "sha256:contract-test",
+                    },
+                }
+            )
+        )
+        first = ParticipationAdapter(
+            self.adapter.ledger,
+            workstate_id="workstate:contract",
+            project_id="project:test",
+            actor="actor:first",
+            base_revision="git:base",
+        )
+        first.announce(self.announce_request("request:contract-first"))
+        second = ParticipationAdapter(
+            self.adapter.ledger,
+            workstate_id="workstate:contract",
+            project_id="project:test",
+            actor="actor:second",
+            base_revision="git:base",
+        )
+        second_announcement = second.announce(self.announce_request("request:contract-second"))
+        responses.append(
+            second.interact(
+                {
+                    "operation": "interact",
+                    "request_id": "request:contract-interact",
+                    "project": "project:test",
+                    "context": "ctx:test",
+                    "intent": second_announcement["intent"],
+                    "interaction": second_announcement["interactions"][0]["handle"],
+                    "disposition": "ordered",
+                    "rationale": "Contract validation disposition",
+                }
+            )
+        )
+        for response in responses:
+            self.assertEqual([], list(self.validator.iter_errors(response)))
+            if "publication_receipt" in response:
+                self.assertEqual([], list(self.validator.iter_errors(response["publication_receipt"])))
 
     def test_announce_is_confirmed_and_retry_is_idempotent(self) -> None:
         request = self.announce_request()
