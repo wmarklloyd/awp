@@ -17,6 +17,7 @@ MODULES = (
     "coordination.md",
     "security.md",
     "adapters.md",
+    "cooperation-contracts.md",
 )
 
 ASSETS = (

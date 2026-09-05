@@ -13,97 +13,97 @@
     {
       "id": "AWP-FAMILY-002",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 46,
+      "line": 47,
       "statement": "Every AWP 0.7 manifest MUST contain a `modules` array. It MUST declare exactly one Core entry, and that entry MUST be required. The following is a module-declaration excerpt rather than a complete manifest:"
     },
     {
       "id": "AWP-FAMILY-003",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 80,
+      "line": 81,
       "statement": "A writer MUST declare every module whose records, events, or required processing rules affect the effective workstate. It MUST include compatible declarations for all direct dependencies. It MUST mark a module required only when ignoring that module would prevent the receiver from safely performing the declared continuation."
     },
     {
       "id": "AWP-FAMILY-004",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 82,
+      "line": 83,
       "statement": "If a module is required, every dependency needed to interpret it MUST also be required. If an optional module depends on another optional module, a receiver may ignore both while preserving their data."
     },
     {
       "id": "AWP-FAMILY-005",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 84,
+      "line": 85,
       "statement": "Core owns the unqualified Core record types and fields. A module defining a new record type MUST include a `module` field naming its module ID. A module extending a Core record MUST place its fields under that record's `modules` object, keyed by module ID. Module-owned event kinds use the common event envelope's required `module` field. These rules prevent independent subspecifications from claiming the same unqualified name."
     },
     {
       "id": "AWP-FAMILY-006",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 88,
+      "line": 89,
       "statement": "A reader that encounters an unknown optional module MAY continue using understood modules. It MUST preserve or explicitly disclose loss of the unknown data, and it MUST NOT infer semantics from unknown fields."
     },
     {
       "id": "AWP-FAMILY-007",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 90,
+      "line": 91,
       "statement": "A reader that encounters an unknown required module MUST NOT claim a complete interpretation or perform a continuation that could depend on it. It SHOULD still present the human briefing, validate understood envelopes, and report the unsupported module."
     },
     {
       "id": "AWP-FAMILY-008",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 125,
+      "line": 126,
       "statement": "The conventional project-named form is `<project-name>.awp.md`. Producers MAY retain versioned archival copies using `<project-name>.v<revision>.awp.md`, such as `project.v2.awp.md`. This filename revision is only a human-facing label; protocol and workstate identity remain defined by the capsule metadata."
     },
     {
       "id": "AWP-FAMILY-009",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 131,
+      "line": 132,
       "statement": "Every shared AWP workstate MUST identify the exact specification artifact that governs it. A self-contained capsule MUST carry an explicit `specification` reference in its own metadata. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate."
     },
     {
       "id": "AWP-FAMILY-010",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 133,
+      "line": 134,
       "statement": "A reader MUST interpret a workstate according to its declared specification and module versions. It MUST NOT silently substitute a newer, older, or otherwise different specification, infer compatibility from a filename, or treat a moving branch URL as version-pinned. If the declared specification is unavailable or unsupported, the reader MUST report that condition rather than guess."
     },
     {
       "id": "AWP-FAMILY-011",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 135,
+      "line": 136,
       "statement": "AWP `0.x` is exploratory. A new minor family or module release MAY make incompatible changes. A patch release MUST NOT introduce incompatible normative semantics. Explicit specification binding allows protocol development to proceed without requiring backward compatibility between exploratory minor releases. Implementations MAY support multiple versions or provide explicit migrations, but conformance to one version does not imply support for another."
     },
     {
       "id": "AWP-FAMILY-012",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 137,
+      "line": 138,
       "statement": "The family version and module versions remain independent. The family version identifies a tested set of module releases, and a later family release may reuse an unchanged module version. Writers that change protocol semantics MUST publish a new versioned specification artifact and update affected workstates deliberately. Implementations MUST determine support by the declared specification, module ID, and module version, not by comparing only `awp_version`."
     },
     {
       "id": "AWP-FAMILY-013",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 157,
+      "line": 158,
       "statement": "An implementation MUST satisfy the conformance requirements in each module for every role it claims. Supporting AWP Core alone is valid AWP conformance. It does not imply support for capsules, handoffs, synchronization, coordination, signatures, encryption, or adapters."
     },
     {
       "id": "AWP-FAMILY-014",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 161,
+      "line": 162,
       "statement": "Every module and binding MUST preserve these rules:"
     },
     {
       "id": "AWP-FAMILY-015",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 170,
+      "line": 171,
       "statement": "8. Optional modules MUST NOT redefine Core field meanings."
     },
     {
       "id": "AWP-FAMILY-016",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 178,
+      "line": 179,
       "statement": "The migration is intentionally incompatible: a 0.7 self-contained capsule identifies its exact governing specification and discovery mode in its own metadata. A 0.7 reader MUST NOT silently substitute another specification. A 0.6 project that used `.awp.json` remains a valid historical input, but a 0.7 single-file capsule does not require that companion file."
     },
     {
       "id": "AWP-FAMILY-017",
       "source": "spec/drafts/0.7.0/index.md",
-      "line": 180,
+      "line": 181,
       "statement": "An upgrader from 0.6.0 MUST add the governing `specification` and `discovery: self` to capsule metadata, update Capsule to `0.4.0`, and remove any redundant companion pointer from the portable package. Historical events remain unchanged."
     },
     {
@@ -1233,6 +1233,132 @@
       "source": "spec/drafts/0.7.0/security.md",
       "line": 187,
       "statement": "When Capsule or Artifact is used, processors MUST apply their traversal, normalization, size, decompression, integrity, executable-content, and retrieval rules. A signature over an unsafe archive does not make extraction safe."
+    },
+    {
+      "id": "AWP-COOP-001",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 9,
+      "statement": "The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in BCP 14 when, and only when, they appear in all capitals."
+    },
+    {
+      "id": "AWP-COOP-002",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 15,
+      "statement": "`CC-0`, `CC-1`, and later `CC-*` labels are cooperation-profile claims. They are not replacements for the Coordination module's `C0`\u2013`C3` conformance levels. A binding MAY implement a Coordination conformance level and one Cooperation Contract, but it MUST declare each independently."
+    },
+    {
+      "id": "AWP-COOP-003",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 25,
+      "statement": "An implementation MUST identify the selected contract, effective interaction policy, operational mode, and any material limitations in its entry or operation response. Imported workstate remains context, not authorization for external effects."
+    },
+    {
+      "id": "AWP-COOP-004",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 29,
+      "statement": "`CC-0` permits substantial collaboration but makes no active-coordination guarantee. Participants MAY exchange capsules, handoffs, artifacts, consultation requests, critiques, alternative perspectives, and synthesized conclusions. This supports deliberately using different models or people for different viewpoints."
+    },
+    {
+      "id": "AWP-COOP-005",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 31,
+      "statement": "`CC-0` MUST NOT claim that participants discovered one another, reserved a scope, prevented a conflicting mutation, or incorporated a contemporaneous result unless a binding provides evidence for that claim. A participant MAY make a local change under host policy, but it MUST disclose that no Cooperation Contract conflict protection was active."
+    },
+    {
+      "id": "AWP-COOP-006",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 33,
+      "statement": "Every `CC-0` cooperation interaction MUST have a purpose, question or task, decision owner, and terminal outcome. The outcome is `accepted`, `revised`, `inconclusive`, `declined`, `timed_out`, or `escalated`."
+    },
+    {
+      "id": "AWP-COOP-007",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 37,
+      "statement": "`CC-1` is the default contract for a small shared project group. It is intended to be useful for more than two concurrent participants without making an unmeasured capacity claim. It MUST NOT require a separate database or continuously running service. A binding MAY use repository-local files, atomic filesystem operations, an embedded store, or another local mechanism, provided it preserves the requirements below."
+    },
+    {
+      "id": "AWP-COOP-008",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 41,
+      "statement": "Before guarded work, a `CC-1` participant MUST:"
+    },
+    {
+      "id": "AWP-COOP-009",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 49,
+      "statement": "The binding MUST make the announce-and-check operation atomic with respect to other `CC-1` announce operations for the same guarded scopes. Compatible work MAY proceed concurrently. A known incompatible guarded mutation MUST return `blocked`, `waiting`, or an equivalent non-permitted outcome until participants record a partition, order, withdrawal, or escalation. A warning-only result is insufficient for a binding to claim the `CC-1` guarded-mutation guarantee."
+    },
+    {
+      "id": "AWP-COOP-010",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 51,
+      "statement": "`CC-1` requires only declared physical or otherwise explicitly comparable scope. It MUST disclose that semantic conflicts outside its declared scope model can remain undetected. A clean source-control merge is not proof of compatibility."
+    },
+    {
+      "id": "AWP-COOP-011",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 55,
+      "statement": "`CC-1` participants MAY initiate cooperation interactions while performing compatible work. Examples include asking a different model for an independent design, requesting a critique before integration, delegating a bounded investigation, or asking a decision owner to synthesize alternatives."
+    },
+    {
+      "id": "AWP-COOP-012",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 57,
+      "statement": "An interaction MUST identify:"
+    },
+    {
+      "id": "AWP-COOP-013",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 66,
+      "statement": "An interaction MUST NOT silently authorize a guarded mutation. An accepted recommendation becomes actionable only when the decision owner records the resulting partition, order, intent, or other required project decision."
+    },
+    {
+      "id": "AWP-COOP-014",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 85,
+      "statement": "A round MUST add a new artifact, evidence item, explicit decision, or identified disagreement. A binding MUST deduplicate a repeated interaction with the same repeat key, or return the prior outcome, unless the context frontier or declared subject changed. On reaching a limit, it MUST return `inconclusive` or `escalated`; it MUST NOT start an unbounded optimization loop."
+    },
+    {
+      "id": "AWP-COOP-015",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 87,
+      "statement": "The loop policy is extensible. A project or binding MAY declare additional parameters, higher budgets, stricter cost limits, time limits, evaluator thresholds, model diversity requirements, or domain-specific stopping predicates. Unknown policy parameters MUST be preserved. A participant that does not understand a parameter marked required by the effective policy MUST NOT claim to enforce that policy and MUST request a compatible policy, delegate enforcement to the binding, or decline the interaction."
+    },
+    {
+      "id": "AWP-COOP-016",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 89,
+      "statement": "Only the declared decision owner MAY continue an interaction after the effective budget is exhausted. A policy MAY assign that authority to a human principal, a project role, or a bounded automated evaluator; it MUST identify the authority and its basis."
+    },
+    {
+      "id": "AWP-COOP-017",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 93,
+      "statement": "At a meaningful checkpoint and before exit, a participant MUST publish its actual scope, outcome, evidence references, unresolved work, and recommended next action through the selected binding. The canonical capsule projection MUST identify the frontier it includes and its integrity digest. One logical publisher per workstate MUST serialize canonical capsule replacement using an expected frontier and digest comparison or an equivalent stale-writer exclusion rule."
+    },
+    {
+      "id": "AWP-COOP-018",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 95,
+      "statement": "On exit, the participant MUST publish its final semantic handoff before releasing its lease. If the capsule projection, terminal publication, or lease release cannot be confirmed, it MUST report a recoverable pending exit rather than claim completion. If a participant crashes, its lease MUST expire without requiring a capsule rewrite; the durable capsule remains the last confirmed semantic handoff."
+    },
+    {
+      "id": "AWP-COOP-019",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 108,
+      "statement": "The claim MUST state the tested operating envelope. It MUST NOT infer an upper participant limit, cross-host reliability, semantic-conflict detection, or effectiveness from this minimum evidence."
+    },
+    {
+      "id": "AWP-COOP-020",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 112,
+      "statement": "`CC-2` and later contracts preserve the participant-facing semantics of the contracts they extend while defining a stronger operating envelope. They MAY require a database, broker, sharded registry, subscription system, authenticated identity, or another scalable binding."
+    },
+    {
+      "id": "AWP-COOP-021",
+      "source": "spec/drafts/0.7.0/cooperation-contracts.md",
+      "line": 114,
+      "statement": "A `CC-2` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST NOT claim that a storage technology alone supplies cooperation semantics."
     }
   ]
 }

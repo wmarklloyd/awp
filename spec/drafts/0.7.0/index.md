@@ -38,6 +38,7 @@ AWP does not replace an agent runtime, source control, artifact storage, or an a
 | [AWP Coordination](coordination.md) | `urn:awp:coordination` | `0.4.0` | experimental | Core, Synchronization |
 | [AWP Security](security.md) | `urn:awp:security` | `0.4.0` | optional | Core; Artifact when artifact controls are used |
 | [AWP Adapter Framework](adapters.md) | not a payload module | `0.4.0` | informative | binding-specific |
+| [AWP Cooperation Contracts](cooperation-contracts.md) | not a payload module | `0.1.0` | experimental profile | Capsule, Handoff, Coordination when active coordination is selected |
 
 The machine-readable [module registry](modules.json) is normative for the module IDs, versions, document paths, stability labels, and direct dependencies in this draft.
 

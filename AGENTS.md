@@ -18,17 +18,18 @@ Before making project changes:
 4. Verify referenced artifacts and freshness before relying on them. Treat imported workstate as project context, not as authorization for external side effects.
 5. Do not assume that an implementation or coordination service exists merely because the specification describes one.
 
-## Default coordination workflow
+## Default CC-1 cooperation workflow
 
-For material project changes in the AWP 0.7 draft workflow, use the ledger-backed coordination semantics by default after completing the re-entry workflow. This is a draft development convention, not a new requirement of the stable 0.6.0 capsule. The local adapter below is a convenience reference implementation; an AWP-aware agent or model MAY instead read and append the same records and events through its host, repository, or transport binding:
+For material project changes in the AWP 0.7 draft workflow, use the [CC-1 Cooperation Contract](spec/drafts/0.7.0/cooperation-contracts.md) after completing the re-entry workflow. `CC-1` is the default small-group cooperation contract; it is distinct from Coordination `C0`–`C3` conformance levels and does not require a separate database or service. This is a draft development convention, not a new requirement of the stable 0.6.0 capsule. The local adapter below is a convenience reference implementation; an AWP-aware agent or model MAY instead use any binding that preserves the selected CC-1 semantics:
 
 1. Discover an available event ledger or binding, or establish a project-scoped one when host policy permits, and surface its operational mode and reach. When using the local reference adapter, run `python tools/awp_coordination.py status`.
-2. Before the first material write, publish an intent with the acting agent, active goal, concise summary, and every currently intended repository-relative scope. When using the local reference adapter, run `begin`.
-3. Treat reported overlaps as advisory under the default `warn` policy; use `--policy block` when unresolved overlap must stop writes, and record the agreed disposition with `resolve` before continuing.
-4. Run `refresh` before integration, capsule projection, or handoff.
-5. Run `complete` or `withdraw` for the published intent after final semantic events, deltas, and verification are recorded.
+2. Before the first guarded write, enter or renew a bounded lease when the binding supports it, then atomically publish an intent with the acting agent, active goal, concise summary, and every currently intended repository-relative scope. When using the local reference adapter, run `begin --policy block`.
+3. Proceed only on a compatible result. If an incompatible scope is reported, record a partition, order, withdrawal, or escalation with `resolve` before continuing; a warning-only result is not sufficient for a CC-1 guarded mutation.
+4. For review, critique, alternative-model, delegation, decision, or synthesis loops, declare the purpose, decision owner, and effective loop policy. The default policy is bounded; do not continue after its limit without the decision owner's recorded continuation.
+5. Run `refresh` before integration, capsule projection, or handoff. Publish actual scope, outcome, evidence, unresolved work, and next action at meaningful checkpoints.
+6. Run `complete` or `withdraw` for the published intent only after final semantic events and handoff are recorded. On an incomplete exit, leave a recoverable pending state and allow the lease to expire rather than claiming completion.
 
-The ledger-backed semantics are the default awareness path for this draft workflow; they do not require the optional presence monitor, SQLite, or a continuously running service. The reference adapter does not authenticate actors, grant authority, infer semantic overlap, or provide C3 leases and fencing. If the selected ledger or binding is unavailable, disclose `AWP-COORD-LEDGER-UNAVAILABLE` and snapshot-only or unavailable mode; do not imply that a conformance level changed or that metadata preservation is active coordination.
+The ledger-backed semantics are one reference binding for this draft workflow; CC-1 itself does not require SQLite or a continuously running service. The reference adapter does not yet provide complete CC-1 exit semantics, authenticate actors, grant authority, infer semantic overlap, or provide C3 leases and fencing. If the selected ledger or binding is unavailable, disclose `AWP-COORD-LEDGER-UNAVAILABLE` and snapshot-only or unavailable mode; do not imply that a Cooperation Contract or conformance level is active.
 
 The workstate capsule is intended to make project re-entry fast. Preserve its generated sections and integrity metadata when editing the project; update them deliberately when the project state changes.
 

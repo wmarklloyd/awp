@@ -49,18 +49,18 @@ The first link binds the agent to an exact, immutable specification; the second 
 
 **Ask a focused question.** A detached consultation capsule packages a question with its context and review constraints. [`consultations/readme-refinement.awp.md`](consultations/readme-refinement.awp.md) is a working example; it uses 0.7.0 draft-only semantics and must be read against the local draft bundle.
 
-**Coordinate several agents.** Coordination records describe scopes and dependencies above source control. The service-free local ledger adapter ([`tools/awp_coordination.py`](tools/awp_coordination.py)) is the default advisory path for writable AWP projects: agents publish intents before material writes, refresh before integration, and complete or withdraw their intents at handoff. The experimental local presence registry ([`tools/awp_presence.py`](tools/awp_presence.py)) optionally adds low-latency session discovery. Both profiles are single-host and advisory: neither authenticates principals, fences writes, or infers semantic overlap.
+**Cooperate with several agents.** The experimental [CC-1 Cooperation Contract](spec/drafts/0.7.0/cooperation-contracts.md) combines guarded-scope coordination with bounded review, critique, alternative-model, delegation, and synthesis interactions. Its default binding requires no separate database or service, but a CC-1 claim requires atomic incompatible-scope blocking, bounded feedback loops, durable handoff, and recovery evidence. The service-free local ledger adapter ([`tools/awp_coordination.py`](tools/awp_coordination.py)) and optional local presence registry ([`tools/awp_presence.py`](tools/awp_presence.py)) are reusable single-host reference components, not a complete CC-1 implementation.
 
 The default workflow requires no daemon:
 
 ```bash
 python tools/awp_coordination.py status
-python tools/awp_coordination.py begin --actor actor:agent-one --goal goal:example --summary "Implement the requested change" --scope src/
+python tools/awp_coordination.py begin --actor actor:agent-one --goal goal:example --summary "Implement the requested change" --scope src/ --policy block
 python tools/awp_coordination.py refresh --actor actor:agent-one
 python tools/awp_coordination.py complete --actor actor:agent-one --intent-id intent:<generated-id> --reason "Implementation and verification completed" --output artifact:change
 ```
 
-`begin` atomically publishes scope and intent events and reports known incompatible overlaps. The default policy warns; `--policy block` records a conflicting intent as proposed and reports an advisory block until `resolve` records its disposition and `activate` records the valid lifecycle transition. The adapter prefers the Git common directory so linked worktrees share one ledger. If sandbox policy prevents that write, it uses the ignored `.awp-runtime/` directory and reports that its reach is worktree-local; pass the same `--ledger` path to agents in other worktrees. If neither location is safe, it reports `AWP-COORD-LEDGER-UNAVAILABLE` with snapshot-only or unavailable operational mode. The narrow `local-ledger-awareness-v1` profile does not claim complete C1/C2/C3 conformance.
+`begin` atomically publishes scope and intent events and reports known incompatible overlaps. The reference CLI defaults to a warning policy; CC-1 guarded writes use `--policy block`, which records a conflicting intent as proposed until `resolve` records a partition, order, withdrawal, or escalation and `activate` records the valid lifecycle transition. The adapter prefers the Git common directory so linked worktrees share one ledger. If sandbox policy prevents that write, it uses the ignored `.awp-runtime/` directory and reports that its reach is worktree-local; pass the same `--ledger` path to agents in other worktrees. If neither location is safe, it reports `AWP-COORD-LEDGER-UNAVAILABLE` with snapshot-only or unavailable operational mode. The narrow `local-ledger-awareness-v1` profile does not claim CC-1 or complete C1/C2/C3 conformance.
 
 ## Status
 
@@ -68,6 +68,7 @@ python tools/awp_coordination.py complete --actor actor:agent-one --intent-id in
 |---|---:|---|---|
 | Stable specification | 0.6.0 | Exploratory release | [Family overview](AWP_SPECIFICATION_0.6.0.md) |
 | Active development | 0.7.0 | Working draft; not a release | [Draft overview](spec/drafts/0.7.0/index.md) |
+| Default cooperation contract | CC-1 | Experimental draft profile | [Cooperation Contracts](spec/drafts/0.7.0/cooperation-contracts.md) |
 | Coordination | 0.3.0 released module / 0.4.0 draft | Normative but experimental | [Released module](spec/0.6.0/coordination.md) |
 
 The 0.6.0 release is fixed by the immutable tag [`v0.6.0`](https://github.com/wmarklloyd/awp/tree/v0.6.0). Draft material must not be represented as a published AWP release.

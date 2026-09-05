@@ -3,6 +3,7 @@
 - [Project scope](project-scope.md)
 - [Architecture](architecture.md)
 - [Model participation architecture and implementation plan](model-participation-architecture.md)
+- [Experimental Cooperation Contracts (CC-0, CC-1, and CC-2)](../spec/drafts/0.7.0/cooperation-contracts.md)
 - [Model participation responsibility matrix](model-participation-matrix.md)
 - [Model participation operation state machines](model-participation-state-machines.md)
 - [Worked model participation conversations](model-participation-conversations.md)

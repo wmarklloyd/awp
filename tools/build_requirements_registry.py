@@ -19,6 +19,7 @@ SOURCES = {
     "SYNC": "synchronization.md",
     "COORD": "coordination.md",
     "SECURITY": "security.md",
+    "COOP": "cooperation-contracts.md",
 }
 KEYWORDS = re.compile(
     r"\b(?:MUST|MUST NOT|REQUIRED|SHALL|SHALL NOT|SHOULD|SHOULD NOT|"

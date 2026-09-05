@@ -92,6 +92,11 @@
       "document": "adapters.md"
     },
     {
+      "name": "AWP Cooperation Contracts",
+      "version": "0.1.0",
+      "document": "cooperation-contracts.md"
+    },
+    {
       "name": "AWP Open Issues",
       "version": "0.7.0",
       "document": "open-issues.md"
