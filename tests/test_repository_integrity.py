@@ -79,6 +79,13 @@ class RepositoryIntegrityTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertEqual(builder.build(), expected)
 
+    def test_active_draft_bundle_is_reproducible(self) -> None:
+        builder = load_module(ROOT / "tools" / "build_spec_0_8_bundle.py", "awp_build_08")
+        expected = (
+            ROOT / "dist" / "drafts" / "0.8.0" / "AWP-0.8.0-draft.bundle.md"
+        ).read_text(encoding="utf-8")
+        self.assertEqual(builder.build(), expected)
+
     def test_released_and_draft_discovery_schemas_have_distinct_ids(self) -> None:
         released = json.loads(
             (ROOT / "schemas" / "awp-discovery-0.1.schema.json").read_text(encoding="utf-8")

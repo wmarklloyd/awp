@@ -17,18 +17,27 @@ import sqlite3
 import subprocess
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 from typing import Iterator, Sequence
 
 
 PROFILE = "local-ledger-awareness-v1"
 MODULE = "urn:awp:coordination"
+COOPERATION_MODULE = "urn:awp:cooperation"
+SCOPE_MODEL = "awp-repository-path-v1"
+ACCESS_MODE_TABLE = "awp-access-mode-compatibility-v1"
 TERMINAL_INTENT_STATES = {"completed", "withdrawn", "abandoned", "superseded"}
 MUTATING_ACCESS = {"write", "create", "delete", "propose_change", "integrate"}
 READ_ACCESS = {"observe", "read", "verify"}
 ACCESS_MODES = MUTATING_ACCESS | READ_ACCESS | {"relied_upon_read"}
 POLICIES = {"warn", "block"}
+# COOP-1 section 4.1 requires participants to record a partition, order,
+# withdrawal, or escalation. An escalation does not clear a blocking overlap.
+DISPOSITION_KINDS = {"partition", "order", "withdrawal", "escalation"}
+CLEARING_DISPOSITIONS = {"partition", "order", "withdrawal"}
+DEFAULT_LEASE_SECONDS = 900
+LEASE_STATES = {"active", "released", "expired"}
 
 
 class CoordinationError(RuntimeError):
@@ -93,8 +102,17 @@ def default_ledger(project: Path) -> Path:
 
 
 def stable_project_id(project: Path) -> str:
-    common = default_ledger(project).parent.parent.resolve()
-    return f"git:{uuid.uuid5(uuid.NAMESPACE_URL, common.as_uri())}"
+    roots = sorted(
+        line.strip()
+        for line in git_value(project, "rev-list", "--max-parents=0", "HEAD").splitlines()
+        if line.strip()
+    )
+    if not roots:
+        raise CoordinationError("the Git repository has no discoverable root commit")
+    if len(roots) == 1:
+        return f"git-root:{roots[0]}"
+    digest = hashlib.sha256("\n".join(roots).encode("ascii")).hexdigest()
+    return f"git-roots-sha256:{digest}"
 
 
 def normalize_scope(project: Path, raw: str) -> tuple[str, str]:
@@ -115,7 +133,7 @@ def normalize_scope(project: Path, raw: str) -> tuple[str, str]:
 
 def scopes_overlap(left: dict, right: dict) -> bool:
     if left["repository"] != right["repository"]:
-        return False
+        raise CoordinationError("scope repository identity mismatch; overlap decision blocked")
     if left["kind"] == "repository" or right["kind"] == "repository":
         return True
     left_path = PurePosixPath(left["path"])
@@ -196,8 +214,25 @@ class CoordinationLedger:
                     response_json TEXT NOT NULL,
                     PRIMARY KEY(workstate_id, request_id)
                 );
+                CREATE TABLE IF NOT EXISTS binding_metadata (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
                 """
             )
+            connection.execute(
+                "INSERT OR IGNORE INTO binding_metadata(key, value) VALUES ('binding_id', ?)",
+                (f"binding:{uuid.uuid4()}",),
+            )
+
+    def binding_id(self) -> str:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT value FROM binding_metadata WHERE key = 'binding_id'"
+            ).fetchone()
+        if row is None:
+            raise CoordinationError("coordination ledger has no binding identity")
+        return str(row["value"])
 
     @contextmanager
     def _transaction(self) -> Iterator[sqlite3.Connection]:
@@ -347,6 +382,14 @@ class CoordinationLedger:
                     if prior_request["request_hash"] != request_hash:
                         raise CoordinationError("request ID was reused with different content")
                     return json.loads(prior_request["response_json"])
+            self._expire_due_leases(connection, workstate_id, occurred_at)
+            acting_lease = self._active_lease(connection, workstate_id, actor, occurred_at)
+            if policy == "block" and acting_lease is None:
+                # COOP-1 section 4.1 orders the lease before the guarded announcement.
+                raise CoordinationError(
+                    "a guarded announcement requires an active lease; "
+                    "run lease-enter before begin --policy block"
+                )
             existing_intents = self._records(
                 connection, workstate_id, "intent", {"proposed", "active", "waiting"}
             )
@@ -416,6 +459,7 @@ class CoordinationLedger:
                 "summary": summary,
                 "base": {"repository": project_id, "revision": base_revision},
                 "declared_scopes": declared_scopes,
+                "lease": acting_lease["id"] if acting_lease else None,
                 "extensions": {"overlap_policy": policy, "profile": PROFILE},
             }
             event, sequence = self._append(
@@ -690,8 +734,11 @@ class CoordinationLedger:
                 "frontier": self._frontier(connection, workstate_id),
             }
 
-    def refresh(self, workstate_id: str) -> dict:
-        with self._connect() as connection:
+    def refresh(self, workstate_id: str, at: datetime | None = None) -> dict:
+        observed_at = utc_timestamp(at)
+        with self._transaction() as connection:
+            newly_expired = self._expire_due_leases(connection, workstate_id, observed_at)
+            leases = self._records(connection, workstate_id, "cooperation_lease", {"active"})
             intents = self._records(
                 connection, workstate_id, "intent", {"proposed", "active", "waiting"}
             )
@@ -699,13 +746,22 @@ class CoordinationLedger:
                 connection, workstate_id, "overlap", {"open", "negotiating", "escalated"}
             )
             blocking = [record for record in overlaps if record["policy_action"] == "block"]
+            live_actors = sorted({lease["actor"] for lease in leases})
             return {
                 "profile": PROFILE,
                 "mode": "ledger-backed-advisory",
                 "workstate_id": workstate_id,
+                "observed_at": observed_at,
                 "frontier": self._frontier(connection, workstate_id),
                 "active_intents": intents,
                 "open_overlaps": overlaps,
+                "active_leases": leases,
+                "live_participants": live_actors,
+                "expired_leases": [lease["id"] for lease in newly_expired],
+                "inactive_participants": sorted(
+                    {lease["actor"] for lease in newly_expired} - set(live_actors)
+                ),
+                "lease_enforcement": "advisory",
                 "advisory_status": "block" if blocking else ("warn" if overlaps else "clear"),
             }
 
@@ -880,15 +936,269 @@ class CoordinationLedger:
             )
             return result
 
+    # ------------------------------------------------------------------
+    # COOP-1 section 4.1 step 3: bounded participant leases.
+    #
+    # A lease is advisory. It records that a participant is present, where it is
+    # executing, and until when, so that a crashed participant becomes visibly
+    # inactive without requiring a capsule rewrite (section 4.4). Expiry is
+    # evaluated lazily on read, because this profile runs no daemon.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _lease_is_live(lease: dict, now: str) -> bool:
+        return lease["status"] == "active" and lease["expires_at"] > now
+
+    def _expire_due_leases(
+        self, connection: sqlite3.Connection, workstate_id: str, now: str
+    ) -> list[dict]:
+        expired = []
+        for lease in self._records(connection, workstate_id, "cooperation_lease", {"active"}):
+            if lease["expires_at"] > now:
+                continue
+            replacement = dict(lease)
+            replacement.update(
+                revision=lease["revision"] + 1,
+                status="expired",
+                updated_at=now,
+                expired_at=now,
+            )
+            event, sequence = self._append(
+                connection,
+                workstate_id=workstate_id,
+                actor=lease["actor"],
+                kind="lease.expired",
+                payload={
+                    "record_id": lease["id"],
+                    "prior_revision": lease["revision"],
+                    "revision": replacement["revision"],
+                    "transition": {"from": "active", "to": "expired"},
+                    "replacement": replacement,
+                },
+                occurred_at=now,
+            )
+            self._project_record(connection, workstate_id, replacement, sequence)
+            expired.append(replacement)
+        return expired
+
+    def _active_lease(
+        self, connection: sqlite3.Connection, workstate_id: str, actor: str, now: str
+    ) -> dict | None:
+        for lease in self._records(connection, workstate_id, "cooperation_lease", {"active"}):
+            if lease["actor"] == actor and self._lease_is_live(lease, now):
+                return lease
+        return None
+
+    def enter_lease(
+        self,
+        *,
+        workstate_id: str,
+        project_id: str,
+        actor: str,
+        location: str,
+        base_revision: str,
+        intended_scopes: Sequence[str] = (),
+        ttl_seconds: int = DEFAULT_LEASE_SECONDS,
+        at: datetime | None = None,
+    ) -> dict:
+        if ttl_seconds < 1:
+            raise CoordinationError("lease ttl_seconds must be positive")
+        moment = at or datetime.now(timezone.utc)
+        occurred_at = utc_timestamp(moment)
+        expires_at = utc_timestamp(moment + timedelta(seconds=ttl_seconds))
+        with self._transaction() as connection:
+            self._expire_due_leases(connection, workstate_id, occurred_at)
+            existing = self._active_lease(connection, workstate_id, actor, occurred_at)
+            if existing:
+                raise CoordinationError(
+                    f"actor already holds an active lease: {existing['id']}"
+                )
+            lease = {
+                "id": self._identifier("lease"),
+                "type": "cooperation_lease",
+                "module": COOPERATION_MODULE,
+                "revision": 1,
+                "status": "active",
+                "actor": actor,
+                "project_id": project_id,
+                "execution_location": location,
+                "base_revision": base_revision,
+                "intended_scopes": list(intended_scopes),
+                "entered_at": occurred_at,
+                "renewed_at": occurred_at,
+                "expires_at": expires_at,
+                "ttl_seconds": ttl_seconds,
+                "extensions": {"profile": PROFILE, "enforcement": "advisory"},
+            }
+            event, sequence = self._append(
+                connection,
+                workstate_id=workstate_id,
+                actor=actor,
+                kind="lease.entered",
+                payload={"record_id": lease["id"], "revision": 1, "replacement": lease},
+                occurred_at=occurred_at,
+            )
+            self._project_record(connection, workstate_id, lease, sequence)
+            return {
+                "profile": PROFILE,
+                "lease": lease,
+                "event_id": event["event_id"],
+                "frontier": self._frontier(connection, workstate_id),
+            }
+
+    def renew_lease(
+        self,
+        *,
+        workstate_id: str,
+        lease_id: str,
+        actor: str,
+        ttl_seconds: int | None = None,
+        at: datetime | None = None,
+    ) -> dict:
+        moment = at or datetime.now(timezone.utc)
+        occurred_at = utc_timestamp(moment)
+        with self._transaction() as connection:
+            self._expire_due_leases(connection, workstate_id, occurred_at)
+            row = connection.execute(
+                "SELECT record_json FROM records WHERE workstate_id = ? "
+                "AND record_id = ? AND type = 'cooperation_lease'",
+                (workstate_id, lease_id),
+            ).fetchone()
+            if not row:
+                raise CoordinationError(f"unknown lease: {lease_id}")
+            prior = json.loads(row["record_json"])
+            if prior["actor"] != actor:
+                raise CoordinationError(f"actor does not hold lease: {lease_id}")
+            if prior["status"] != "active":
+                raise CoordinationError(
+                    f"only an active lease can be renewed: {lease_id} is {prior['status']}"
+                )
+            window = ttl_seconds or prior["ttl_seconds"]
+            if window < 1:
+                raise CoordinationError("lease ttl_seconds must be positive")
+            replacement = dict(prior)
+            replacement.update(
+                revision=prior["revision"] + 1,
+                renewed_at=occurred_at,
+                updated_at=occurred_at,
+                expires_at=utc_timestamp(moment + timedelta(seconds=window)),
+                ttl_seconds=window,
+            )
+            event, sequence = self._append(
+                connection,
+                workstate_id=workstate_id,
+                actor=actor,
+                kind="lease.renewed",
+                payload={
+                    "record_id": lease_id,
+                    "prior_revision": prior["revision"],
+                    "revision": replacement["revision"],
+                    "replacement": replacement,
+                },
+                occurred_at=occurred_at,
+            )
+            self._project_record(connection, workstate_id, replacement, sequence)
+            return {
+                "profile": PROFILE,
+                "lease": replacement,
+                "event_id": event["event_id"],
+                "frontier": self._frontier(connection, workstate_id),
+            }
+
+    def release_lease(
+        self,
+        *,
+        workstate_id: str,
+        lease_id: str,
+        actor: str,
+        handoff_receipt: dict | None = None,
+        reason: str = "",
+        at: datetime | None = None,
+    ) -> dict:
+        occurred_at = utc_timestamp(at)
+        with self._transaction() as connection:
+            row = connection.execute(
+                "SELECT record_json FROM records WHERE workstate_id = ? "
+                "AND record_id = ? AND type = 'cooperation_lease'",
+                (workstate_id, lease_id),
+            ).fetchone()
+            if not row:
+                raise CoordinationError(f"unknown lease: {lease_id}")
+            prior = json.loads(row["record_json"])
+            if prior["actor"] != actor:
+                raise CoordinationError(f"actor does not hold lease: {lease_id}")
+            if prior["status"] != "active":
+                raise CoordinationError(f"lease is already terminal: {lease_id}")
+            active_intents = self._records(
+                connection, workstate_id, "intent", {"proposed", "active", "waiting"}
+            )
+            if any(intent.get("lease") == lease_id for intent in active_intents):
+                raise CoordinationError("lease has an active intent; publish a terminal intent first")
+            if not handoff_receipt:
+                raise CoordinationError(
+                    "lease release requires a verified handoff receipt for an existing artifact"
+                )
+            replacement = dict(prior)
+            replacement.update(
+                revision=prior["revision"] + 1,
+                status="released",
+                updated_at=occurred_at,
+                released_at=occurred_at,
+                handoff_receipt=handoff_receipt,
+            )
+            if reason:
+                replacement["release_reason"] = reason
+            event, sequence = self._append(
+                connection,
+                workstate_id=workstate_id,
+                actor=actor,
+                kind="lease.released",
+                payload={
+                    "record_id": lease_id,
+                    "prior_revision": prior["revision"],
+                    "revision": replacement["revision"],
+                    "transition": {"from": "active", "to": "released"},
+                    "replacement": replacement,
+                },
+                occurred_at=occurred_at,
+            )
+            self._project_record(connection, workstate_id, replacement, sequence)
+            return {
+                "profile": PROFILE,
+                "lease": replacement,
+                "event_id": event["event_id"],
+                "frontier": self._frontier(connection, workstate_id),
+            }
+
+    def leases(self, workstate_id: str, at: datetime | None = None) -> dict:
+        occurred_at = utc_timestamp(at)
+        with self._transaction() as connection:
+            expired = self._expire_due_leases(connection, workstate_id, occurred_at)
+            active = self._records(connection, workstate_id, "cooperation_lease", {"active"})
+            return {
+                "profile": PROFILE,
+                "workstate_id": workstate_id,
+                "observed_at": occurred_at,
+                "active_leases": active,
+                "expired_now": [lease["id"] for lease in expired],
+                "lease_enforcement": "advisory",
+            }
+
     def resolve_overlap(
         self,
         *,
         workstate_id: str,
         overlap_id: str,
         actor: str,
+        disposition: str,
         reason: str,
         at: datetime | None = None,
     ) -> dict:
+        if disposition not in DISPOSITION_KINDS:
+            raise CoordinationError(
+                "disposition must be one of "
+                f"{', '.join(sorted(DISPOSITION_KINDS))}: {disposition}"
+            )
         occurred_at = utc_timestamp(at)
         with self._transaction() as connection:
             row = connection.execute(
@@ -909,24 +1219,32 @@ class CoordinationLedger:
             participants = {json.loads(item["record_json"]).get("created_by") for item in rows}
             if actor not in participants and actor != prior.get("created_by"):
                 raise CoordinationError(f"actor is not an overlap participant: {overlap_id}")
+            target_status = "resolved" if disposition in CLEARING_DISPOSITIONS else "escalated"
             replacement = dict(prior)
             replacement.update(
                 revision=prior["revision"] + 1,
-                status="resolved",
+                status=target_status,
                 updated_at=occurred_at,
                 owner=actor,
-                disposition={"reason": reason, "resolved_by": actor},
+                disposition={
+                    "kind": disposition,
+                    "reason": reason,
+                    "resolved_by": actor,
+                    "recorded_at": occurred_at,
+                },
             )
             event, sequence = self._append(
                 connection,
                 workstate_id=workstate_id,
                 actor=actor,
-                kind="overlap.dispositioned",
+                kind="overlap.dispositioned"
+                if disposition in CLEARING_DISPOSITIONS
+                else "overlap.escalated",
                 payload={
                     "record_id": overlap_id,
                     "prior_revision": prior["revision"],
                     "revision": replacement["revision"],
-                    "transition": {"from": prior["status"], "to": "resolved"},
+                    "transition": {"from": prior["status"], "to": target_status},
                     "disposition": replacement["disposition"],
                     "replacement": replacement,
                 },
@@ -984,15 +1302,19 @@ def operational_context(start: Path, ledger_override: Path | None = None) -> dic
         project = find_project(start)
         workstate_id, capsule = discover_workstate(project)
         candidates = (
-            [(ledger_override.resolve(), "configured")]
+            [(ledger_override.resolve(), "configured-unverified", "configured")]
             if ledger_override
             else [
-                (default_ledger(project), "git-common"),
-                (project / ".awp-runtime" / "coordination.sqlite3", "worktree-local"),
+                (default_ledger(project), "shared", "git-common"),
+                (
+                    project / ".awp-runtime" / "coordination.sqlite3",
+                    "worktree-local",
+                    "worktree-fallback",
+                ),
             ]
         )
         failures: list[str] = []
-        for ledger_path, reach in candidates:
+        for ledger_path, reach, source in candidates:
             try:
                 ledger = CoordinationLedger(ledger_path)
                 context = {
@@ -1005,7 +1327,32 @@ def operational_context(start: Path, ledger_override: Path | None = None) -> dic
                     "capsule": capsule,
                     "ledger_path": ledger_path,
                     "ledger_reach": reach,
+                    "ledger_source": source,
                     "ledger": ledger,
+                }
+                observation = ledger.refresh(workstate_id)
+                context["binding_identity"] = {
+                    "workstate_id": workstate_id,
+                    "project_id": context["project_id"],
+                    "store_id": ledger.binding_id(),
+                    "scope_model": SCOPE_MODEL,
+                    "binding_epoch": 1,
+                }
+                context["binding_observation"] = {
+                    "observed_at": observation["observed_at"],
+                    "operational_reach": reach,
+                    "frontier": observation["frontier"],
+                    "atomicity_mechanism": "sqlite-begin-immediate",
+                    "access_mode_table": ACCESS_MODE_TABLE,
+                    "scope_model_behavior": {
+                        "case": "case-sensitive comparison after host path resolution",
+                        "unicode": "no additional normalization",
+                        "symbolic_links": "resolved by the host filesystem before repository-relative comparison",
+                    },
+                    "storage_assumptions": [
+                        "all participants open the same SQLite database file",
+                        "the filesystem preserves SQLite locking and atomic commit semantics",
+                    ],
                 }
                 if reach == "worktree-local":
                     context.update(
@@ -1069,7 +1416,43 @@ def build_parser() -> argparse.ArgumentParser:
     resolve = subparsers.add_parser("resolve", help="record an overlap disposition")
     resolve.add_argument("--actor", required=True)
     resolve.add_argument("--overlap-id", required=True)
+    resolve.add_argument(
+        "--disposition",
+        required=True,
+        choices=sorted(DISPOSITION_KINDS),
+        help="the COOP-1 section 4.1 disposition being recorded",
+    )
     resolve.add_argument("--reason", required=True)
+
+    lease_enter = subparsers.add_parser(
+        "lease-enter", help="enter a bounded participant lease"
+    )
+    lease_enter.add_argument("--actor", required=True)
+    lease_enter.add_argument(
+        "--location",
+        default=None,
+        help="execution location; defaults to the resolved project path",
+    )
+    lease_enter.add_argument("--scope", action="append", default=[])
+    lease_enter.add_argument("--ttl-seconds", type=int, default=DEFAULT_LEASE_SECONDS)
+
+    lease_renew = subparsers.add_parser("lease-renew", help="renew an active lease")
+    lease_renew.add_argument("--actor", required=True)
+    lease_renew.add_argument("--lease-id", required=True)
+    lease_renew.add_argument("--ttl-seconds", type=int, default=None)
+
+    lease_release = subparsers.add_parser("lease-release", help="release a held lease")
+    lease_release.add_argument("--actor", required=True)
+    lease_release.add_argument("--lease-id", required=True)
+    lease_release.add_argument(
+        "--handoff",
+        type=Path,
+        required=True,
+        help="repository-relative handoff artifact that must already exist",
+    )
+    lease_release.add_argument("--reason", default="")
+
+    subparsers.add_parser("leases", help="report live leases and expire due ones")
 
     scan = subparsers.add_parser("scan", help="read new ledger events from a durable cursor")
     scan.add_argument("--watcher-id", required=True)
@@ -1123,8 +1506,52 @@ def main(argv: Sequence[str] | None = None) -> int:
                 workstate_id=context["workstate_id"],
                 overlap_id=args.overlap_id,
                 actor=args.actor,
+                disposition=args.disposition,
                 reason=args.reason,
             )
+        elif args.command == "lease-enter":
+            revision = f"git:{git_value(context['project'], 'rev-parse', 'HEAD')}"
+            scopes = [
+                normalize_scope(context["project"], scope)[1] for scope in args.scope
+            ]
+            result = ledger.enter_lease(
+                workstate_id=context["workstate_id"],
+                project_id=context["project_id"],
+                actor=args.actor,
+                location=args.location or str(context["project"]),
+                base_revision=revision,
+                intended_scopes=scopes,
+                ttl_seconds=args.ttl_seconds,
+            )
+        elif args.command == "lease-renew":
+            result = ledger.renew_lease(
+                workstate_id=context["workstate_id"],
+                lease_id=args.lease_id,
+                actor=args.actor,
+                ttl_seconds=args.ttl_seconds,
+            )
+        elif args.command == "lease-release":
+            handoff_path = (context["project"] / args.handoff).resolve()
+            try:
+                relative_handoff = handoff_path.relative_to(context["project"].resolve())
+            except ValueError as error:
+                raise CoordinationError("handoff artifact resolves outside the project") from error
+            if not handoff_path.is_file():
+                raise CoordinationError("handoff artifact does not exist")
+            handoff_receipt = {
+                "path": relative_handoff.as_posix(),
+                "digest": f"sha256:{hashlib.sha256(handoff_path.read_bytes()).hexdigest()}",
+                "verified_at": utc_timestamp(),
+            }
+            result = ledger.release_lease(
+                workstate_id=context["workstate_id"],
+                lease_id=args.lease_id,
+                actor=args.actor,
+                handoff_receipt=handoff_receipt,
+                reason=args.reason,
+            )
+        elif args.command == "leases":
+            result = ledger.leases(context["workstate_id"])
         elif args.command == "scan":
             result = ledger.scan(context["workstate_id"], args.watcher_id, args.limit)
         else:

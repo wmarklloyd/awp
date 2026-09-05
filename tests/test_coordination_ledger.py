@@ -4,12 +4,18 @@ import json
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from tools.awp_coordination import CoordinationError, CoordinationLedger
+from tools.awp_coordination import (
+    CoordinationError,
+    CoordinationLedger,
+    operational_context,
+    scopes_overlap,
+    stable_project_id,
+)
 
 
 START = datetime(2026, 9, 4, 20, 0, tzinfo=timezone.utc)
@@ -24,6 +30,52 @@ class CoordinationLedgerTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
+
+    def test_project_identity_is_repository_intrinsic(self) -> None:
+        self.assertTrue(stable_project_id(ROOT).startswith("git-root:"))
+        self.assertNotIn(str(ROOT), stable_project_id(ROOT))
+
+    def test_binding_identity_is_durable(self) -> None:
+        first = self.ledger.binding_id()
+        reopened = CoordinationLedger(self.path)
+        self.assertEqual(reopened.binding_id(), first)
+
+    def test_binding_identity_is_stable_and_frontier_is_an_observation(self) -> None:
+        context = operational_context(ROOT, self.path)
+        self.assertEqual(
+            set(context["binding_identity"]),
+            {"workstate_id", "project_id", "store_id", "scope_model", "binding_epoch"},
+        )
+        self.assertEqual(context["binding_observation"]["operational_reach"], "configured-unverified")
+        self.assertIn("frontier", context["binding_observation"])
+        self.assertEqual(
+            context["binding_observation"]["atomicity_mechanism"],
+            "sqlite-begin-immediate",
+        )
+
+    def test_repository_identity_mismatch_fails_closed(self) -> None:
+        left = {"repository": "repo:one", "kind": "file", "path": "src/app.py"}
+        right = {"repository": "repo:two", "kind": "file", "path": "src/app.py"}
+        with self.assertRaises(CoordinationError):
+            scopes_overlap(left, right)
+
+    def test_mismatched_repository_identity_rolls_back_announce(self) -> None:
+        self.begin("actor:one")
+        self.enter_lease("actor:two")
+        before = self.ledger.export_events("workstate:test")
+        with self.assertRaises(CoordinationError):
+            self.ledger.begin(
+                workstate_id="workstate:test",
+                project_id="repo:other",
+                actor="actor:two",
+                goal="goal:test",
+                summary="Wrong repository identity",
+                base_revision="git:abc123",
+                scopes=[("file", "src/app.py")],
+                policy="block",
+                at=START,
+            )
+        self.assertEqual(self.ledger.export_events("workstate:test"), before)
 
     def begin(
         self,
@@ -43,6 +95,18 @@ class CoordinationLedgerTests(unittest.TestCase):
             scopes=[scope],
             access=access,
             policy=policy,
+            at=START,
+        )
+
+    def enter_lease(self, actor: str, *, ttl_seconds: int = 900):
+        return self.ledger.enter_lease(
+            workstate_id="workstate:test",
+            project_id="repo:test",
+            actor=actor,
+            location="C:/worktree",
+            base_revision="git:abc123",
+            intended_scopes=["src/app.py"],
+            ttl_seconds=ttl_seconds,
             at=START,
         )
 
@@ -79,6 +143,7 @@ class CoordinationLedgerTests(unittest.TestCase):
 
     def test_block_policy_keeps_conflicting_intent_proposed(self) -> None:
         self.begin("actor:one")
+        self.enter_lease("actor:two")
         result = self.begin("actor:two", policy="block")
         self.assertEqual(result["advisory_status"], "block")
         self.assertEqual(result["intent"]["status"], "proposed")
@@ -87,6 +152,7 @@ class CoordinationLedgerTests(unittest.TestCase):
             workstate_id="workstate:test",
             overlap_id=result["overlaps"][0]["id"],
             actor="actor:one",
+            disposition="partition",
             reason="Scopes were partitioned",
             at=START,
         )
@@ -95,6 +161,126 @@ class CoordinationLedgerTests(unittest.TestCase):
         activated = self.ledger.transition_intent(
             workstate_id="workstate:test", intent_id=result["intent"]["id"], actor="actor:two",
             target="active", reason="blocking overlap resolved",
+        )
+        self.assertEqual(activated["intent"]["status"], "active")
+
+    def test_lease_lifecycle_is_bounded_and_required_for_guarded_begin(self) -> None:
+        with self.assertRaises(CoordinationError):
+            self.begin("actor:one", policy="block")
+        lease = self.enter_lease("actor:one", ttl_seconds=5)["lease"]
+        permitted = self.begin("actor:one", policy="block")
+        self.assertEqual(permitted["intent"]["lease"], lease["id"])
+        refreshed = self.ledger.refresh("workstate:test", at=START + timedelta(seconds=6))
+        self.assertEqual(refreshed["active_leases"], [])
+        self.assertEqual(refreshed["expired_leases"], [lease["id"]])
+        with self.assertRaises(CoordinationError):
+            self.ledger.renew_lease(
+                workstate_id="workstate:test",
+                lease_id=lease["id"],
+                actor="actor:one",
+                at=START + timedelta(seconds=7),
+            )
+
+    def test_lease_release_requires_terminal_intent_and_handoff_receipt(self) -> None:
+        lease = self.enter_lease("actor:one")["lease"]
+        intent = self.begin("actor:one", policy="block")["intent"]
+        receipt = {
+            "path": "awp.awp.md",
+            "digest": "sha256:" + "a" * 64,
+            "verified_at": "2026-09-04T20:00:00Z",
+        }
+        with self.assertRaises(CoordinationError):
+            self.ledger.release_lease(
+                workstate_id="workstate:test",
+                lease_id=lease["id"],
+                actor="actor:one",
+                handoff_receipt=receipt,
+                at=START,
+            )
+        self.ledger.transition_intent(
+            workstate_id="workstate:test",
+            intent_id=intent["id"],
+            actor="actor:one",
+            target="completed",
+            reason="handoff published",
+            at=START,
+        )
+        with self.assertRaises(CoordinationError):
+            self.ledger.release_lease(
+                workstate_id="workstate:test",
+                lease_id=lease["id"],
+                actor="actor:one",
+                at=START,
+            )
+        released = self.ledger.release_lease(
+            workstate_id="workstate:test",
+            lease_id=lease["id"],
+            actor="actor:one",
+            handoff_receipt=receipt,
+            at=START,
+        )
+        self.assertEqual(released["lease"]["status"], "released")
+        self.assertEqual(released["lease"]["handoff_receipt"], receipt)
+        cooperation_schema = json.loads(
+            (ROOT / "schemas" / "awp-cooperation-0.1.schema.json").read_text(encoding="utf-8")
+        )
+        errors = list(
+            Draft202012Validator(cooperation_schema).iter_errors(released["lease"])
+        )
+        self.assertEqual(errors, [])
+
+    def test_shared_binding_two_participant_guarded_trial(self) -> None:
+        first_ledger = CoordinationLedger(self.path)
+        second_ledger = CoordinationLedger(self.path)
+        self.assertEqual(first_ledger.binding_id(), second_ledger.binding_id())
+        first_lease = self.enter_lease("actor:one")["lease"]
+        second_lease = self.enter_lease("actor:two")["lease"]
+        self.assertEqual(
+            self.ledger.refresh("workstate:test", at=START)["live_participants"],
+            ["actor:one", "actor:two"],
+        )
+
+        first = self.begin("actor:one", ("directory", "consultations"), policy="block")
+        second = self.begin("actor:two", ("directory", "docs"), policy="block")
+        self.assertEqual((first["advisory_status"], second["advisory_status"]), ("clear", "clear"))
+        self.assertEqual(first["intent"]["lease"], first_lease["id"])
+        self.assertEqual(second["intent"]["lease"], second_lease["id"])
+
+        def announce_conflict(actor: str) -> dict:
+            return CoordinationLedger(self.path).begin(
+                workstate_id="workstate:test",
+                project_id="repo:test",
+                actor=actor,
+                goal="goal:trial",
+                summary="Simultaneous guarded trial",
+                base_revision="git:abc123",
+                scopes=[("file", "spec/drafts/0.8.0/cooperation-contracts.md")],
+                policy="block",
+                at=START,
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            conflicts = list(executor.map(announce_conflict, ("actor:one", "actor:two")))
+        permitted = next(result for result in conflicts if result["intent"]["status"] == "active")
+        blocked = next(result for result in conflicts if result["intent"]["status"] == "proposed")
+        self.assertEqual(permitted["advisory_status"], "clear")
+        self.assertEqual(blocked["advisory_status"], "block")
+
+        self.ledger.resolve_overlap(
+            workstate_id="workstate:test",
+            overlap_id=blocked["overlaps"][0]["id"],
+            actor="actor:one",
+            disposition="order",
+            reason="The permitted actor integrates first.",
+            at=START,
+        )
+        activated = self.ledger.transition_intent(
+            workstate_id="workstate:test",
+            intent_id=blocked["intent"]["id"],
+            actor=blocked["intent"]["created_by"],
+            target="active",
+            reason="ordered overlap resolved",
+            at=START,
         )
         self.assertEqual(activated["intent"]["status"], "active")
 

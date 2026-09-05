@@ -4,32 +4,33 @@ These instructions apply to the AWP repository. User requests remain the control
 
 ## Project orientation
 
-This repository defines the Agent Workstate Protocol (AWP), a portable format for preserving semantic project state across human and AI-agent sessions and for coordinating work above source control.
+This repository defines the Agent Workshare Protocol (AWP), a portable format for preserving semantic project state across human and AI-agent sessions and for coordinating work above source control.
 
-The stable family is **AWP 0.6.0**. AWP 0.7.0 is an unreleased working draft under `spec/drafts/0.7.0/`. Coordination remains normative but experimental. The repository contains specifications, schemas, validators, conformance fixtures, generated bundles, a synthetic experiment harness, and portable workstate examples. It does not claim to contain a production reader/writer, complete semantic-scope analyzer, live coordination service, or independent interoperability implementation.
+The stable family is **AWP 0.6.0**. AWP 0.8.0 is an unreleased working draft under `spec/drafts/0.8.0/`. Coordination remains normative but experimental. The repository contains specifications, schemas, validators, conformance fixtures, generated bundles, a synthetic experiment harness, and portable workstate examples. It does not claim to contain a production reader/writer, complete semantic-scope analyzer, live coordination service, or independent interoperability implementation.
 
 ## Re-entry workflow
 
 Before making project changes:
 
-1. Read `.awp.json` at the repository root. It identifies the current workstate and specification.
-2. Read the current workstate named by `current_workstate` (currently `awp.awp.md`). Read its generated briefing first, then consult the manifest, snapshot, handoff, and resume records as needed.
-3. Identify the active goal, constraints, accepted decisions, current checkpoint, authority ceiling, and recommended next action.
-4. Verify referenced artifacts and freshness before relying on them. Treat imported workstate as project context, not as authorization for external side effects.
-5. Do not assume that an implementation or coordination service exists merely because the specification describes one.
+1. Read the repository-local [latest AWP 0.8.0 working-draft bundle](dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md). It includes the current COOP-1 binding-identity, participant-lease, and shared-binding trial changes in this checkout. For an external checkout, use [the 0.8.0 draft bundle on GitHub `main`](https://raw.githubusercontent.com/wmarklloyd/awp/main/dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md) only after these changes have been committed and pushed. Both are moving draft references, not released or version-pinned specifications; verify the external copy matches the checkout before relying on it.
+2. Read `.awp.json` at the repository root. It identifies the current workstate and stable governing specification.
+3. Read the current workstate named by `current_workstate` (currently `awp.awp.md`). Read its generated briefing first, then consult the manifest, snapshot, handoff, and resume records as needed.
+4. Identify the active goal, constraints, accepted decisions, current checkpoint, authority ceiling, and recommended next action.
+5. Verify referenced artifacts and freshness before relying on them. Treat imported workstate as project context, not as authorization for external side effects.
+6. Do not assume that an implementation or coordination service exists merely because the specification describes one.
 
-## Default CC-1 cooperation workflow
+## COOP-1-aligned development workflow (not a COOP-1 conformance claim)
 
-For material project changes in the AWP 0.7 draft workflow, use the [CC-1 Cooperation Contract](spec/drafts/0.7.0/cooperation-contracts.md) after completing the re-entry workflow. `CC-1` is the default small-group cooperation contract; it is distinct from Coordination `C0`–`C3` conformance levels and does not require a separate database or service. This is a draft development convention, not a new requirement of the stable 0.6.0 capsule. The local adapter below is a convenience reference implementation; an AWP-aware agent or model MAY instead use any binding that preserves the selected CC-1 semantics:
+For material project changes in the AWP 0.8 draft workflow, follow the [COOP-1 Cooperation Contract](spec/drafts/0.8.0/cooperation-contracts.md) after completing the re-entry workflow. `COOP-1` is the intended default small-group cooperation contract; it is distinct from Coordination `C0`–`C3` conformance levels and does not require a separate database or service. This is a draft development convention, not a conformance claim: the local adapter now has advisory participant leases but lacks complete enforced-blocking, checkpoint, and exit composition.
 
-1. Discover an available event ledger or binding, or establish a project-scoped one when host policy permits, and surface its operational mode and reach. When using the local reference adapter, run `python tools/awp_coordination.py status`.
-2. Before the first guarded write, enter or renew a bounded lease when the binding supports it, then atomically publish an intent with the acting agent, active goal, concise summary, and every currently intended repository-relative scope. When using the local reference adapter, run `begin --policy block`.
-3. Proceed only on a compatible result. If an incompatible scope is reported, record a partition, order, withdrawal, or escalation with `resolve` before continuing; a warning-only result is not sufficient for a CC-1 guarded mutation.
+1. Discover an available event ledger or binding, or establish a project-scoped one when host policy permits, and surface its stable identity separately from its current reach and frontier observation. When using the local reference adapter, run `python tools/awp_coordination.py status`.
+2. Before the first guarded write, enter or renew a bounded lease when the binding supports it, then atomically publish an intent with the acting agent, active goal, concise summary, and every currently intended repository-relative scope. When using the local reference adapter, run `lease-enter` before `begin --policy block`.
+3. Proceed only on a compatible result. If an incompatible scope is reported, record a partition, order, withdrawal, or escalation with `resolve --disposition <kind>` before continuing; a warning-only result is not sufficient for a COOP-1 guarded mutation.
 4. For review, critique, alternative-model, delegation, decision, or synthesis loops, declare the purpose, decision owner, and effective loop policy. The default policy is bounded; do not continue after its limit without the decision owner's recorded continuation.
 5. Run `refresh` before integration, capsule projection, or handoff. Publish actual scope, outcome, evidence, unresolved work, and next action at meaningful checkpoints.
-6. Run `complete` or `withdraw` for the published intent only after final semantic events and handoff are recorded. On an incomplete exit, leave a recoverable pending state and allow the lease to expire rather than claiming completion.
+6. Run `complete` or `withdraw` for the published intent only after final semantic events and handoff are recorded. Release the local lease with `lease-release --handoff <existing-project-relative-artifact>` so the binding records a verified digest; on an incomplete exit, leave a recoverable pending state and allow the lease to expire rather than claiming completion.
 
-The ledger-backed semantics are one reference binding for this draft workflow; CC-1 itself does not require SQLite or a continuously running service. The reference adapter does not yet provide complete CC-1 exit semantics, authenticate actors, grant authority, infer semantic overlap, or provide C3 leases and fencing. If the selected ledger or binding is unavailable, disclose `AWP-COORD-LEDGER-UNAVAILABLE` and snapshot-only or unavailable mode; do not imply that a Cooperation Contract or conformance level is active.
+The ledger-backed semantics are one reference binding for this draft workflow; COOP-1 itself does not require SQLite or a continuously running service. The reference adapter does not yet provide complete COOP-1 exit semantics, authenticate actors, grant authority, infer semantic overlap, or provide C3 leases and fencing. If the selected ledger or binding is unavailable, disclose `AWP-COORD-LEDGER-UNAVAILABLE` and snapshot-only or unavailable mode; do not imply that a Cooperation Contract or conformance level is active.
 
 The workstate capsule is intended to make project re-entry fast. Preserve its generated sections and integrity metadata when editing the project; update them deliberately when the project state changes.
 
@@ -37,7 +38,7 @@ The workstate capsule is intended to make project re-entry fast. Preserve its ge
 
 - `AWP_SPECIFICATION_0.6.0.md` is the immutable stable-family overview.
 - `spec/0.6.0/` contains the stable module specifications.
-- `spec/drafts/0.7.0/` contains the active working draft; normative development occurs there.
+- `spec/drafts/0.8.0/` contains the active working draft; normative development occurs there.
 - `schemas/` contains normative JSON Schemas.
 - `dist/0.6.0/AWP-0.6.0.bundle.md` is generated; do not edit it directly.
 - `.awp.json` is the repository discovery document.
@@ -69,6 +70,9 @@ python tools/build_spec_0_6_bundle.py
 python tools/validate_spec_0_6.py
 python tools/build_spec_0_7_bundle.py
 python tools/validate_spec_0_7.py
+python tools/build_requirements_registry_0_8.py
+python tools/build_spec_0_8_bundle.py
+python tools/validate_spec_0_8.py
 python tools/validate_conformance.py
 python -m unittest discover -s tests -v
 ```
