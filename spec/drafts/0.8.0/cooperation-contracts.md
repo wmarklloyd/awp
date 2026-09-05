@@ -151,4 +151,6 @@ checkpoint canonical handoff
 exit only after handoff confirmation; otherwise leave pending state visible
 ```
 
+The checkpoint step SHOULD use the selected canonical workstate projector. A verified `no_change` receipt is sufficient when no semantic state changed; an incomplete or stale projection is not.
+
 The agent does not need to construct raw event ancestry, revisions, capsule digests, or storage transactions. The binding or adapter owns those details and returns durable receipts. The agent remains responsible for accurately declaring its scope, respecting blocked outcomes, supplying concise rationale and evidence, and not treating context as authorization.

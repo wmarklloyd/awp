@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator
 from tools.awp_coordination import (
     CoordinationError,
     CoordinationLedger,
+    replace_capsule_projection,
     capsule_integrity,
     operational_context,
     scopes_overlap,
@@ -109,6 +110,7 @@ class CoordinationLedgerTests(unittest.TestCase):
             encoding="utf-8",
         )
         digest = "sha256:" + hashlib.sha256(b"# Test capsule").hexdigest()
+        original_capsule_digest = "sha256:" + hashlib.sha256(capsule.read_bytes()).hexdigest()
         capsule.write_text(
             capsule.read_text(encoding="utf-8").replace("sha256:PLACEHOLDER", digest),
             encoding="utf-8",
@@ -131,6 +133,16 @@ class CoordinationLedgerTests(unittest.TestCase):
             "sha256:" + hashlib.sha256(capsule.read_bytes()).hexdigest(),
         )
         self.assertEqual(result["receipt"]["frontier"], result["frontier"])
+        with self.assertRaises(CoordinationError):
+            replace_capsule_projection(
+                capsule,
+                expected_frontier=result["frontier"],
+                expected_digest=digest,
+                expected_capsule_digest=original_capsule_digest,
+                frontier=result["frontier"],
+                checkpoint_id="checkpoint:stale-whole-file",
+                generated_at="2026-09-05T19:00:00Z",
+            )
         before = capsule.read_bytes()
         with self.assertRaises(CoordinationError):
             self.ledger.publish_checkpoint(

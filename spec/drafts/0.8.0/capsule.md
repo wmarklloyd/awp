@@ -100,6 +100,16 @@ A bounded entry view MUST report `complete` only when the active Resume, its exp
 
 This two-stage presentation limits model context consumption, not validation. A Capsule reader claiming briefing-first presentation MUST still parse and validate the full representation, required modules, internal references, and integrity metadata before it reports the selected view as complete.
 
+### 3.2 Canonical workstate maintenance
+
+When a project maintains one current writable Capsule, its host SHOULD expose a canonical maintenance binding. The binding owns parsing, record projection, briefing rendering, artifact-integrity calculation, and serialization. An agent or model MAY submit semantic facts, a synchronization delta, or a checkpoint request, but MUST NOT be required to edit embedded JSON, calculate digests, or rewrite the canonical Capsule directly.
+
+A checkpoint request for a canonical Capsule MUST carry an idempotency key, the expected whole-Capsule digest, the expected generated-region digest, the expected semantic frontier, the proposed semantic frontier, the checkpoint or no-change disposition, and the semantic handoff fields required by Handoff. The host MUST compare all expected values immediately before replacement. A mismatch MUST produce `stale_base` or an equivalent recoverable result; it MUST NOT use last-write-wins.
+
+The host MUST serialize canonical replacement per workstate, write through a temporary file with flush and sync before atomic replacement, and return a receipt containing the prior and resulting whole-Capsule digests, generated-region digests, semantic frontier, checkpoint, and publication status. A no-change exit MUST return a verified receipt without rewriting identical bytes. A crash between replacement and durable publication MUST leave recoverable journal state and MUST NOT be reported as a confirmed checkpoint until recovery resolves it.
+
+Artifact locations are not artifact identity. When bytes at a mutable location change, the writer MUST preserve the prior digest as historical evidence and create or reference a new artifact revision. It MUST NOT silently rewrite an old artifact claim to match new bytes. Routine entry MAY verify only active required artifacts; a full historical audit MUST be an explicit operation.
+
 ## 4. Editable directory
 
 The default layout is:

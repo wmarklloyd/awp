@@ -55,6 +55,14 @@ python tools/awp_reentry.py --project .
 
 It reports `incomplete` or `budget_exceeded` rather than silently dropping required context. See the [re-entry cost evaluation](docs/reentry-cost-evaluation.md) for the measured reduction on this repository.
 
+**Update the workstate through its host-owned projector.** For a semantic checkpoint or a no-change exit, submit a JSON request to the canonical writer:
+
+```bash
+python tools/awp_workstate.py checkpoint --request checkpoint.json
+```
+
+The writer verifies the whole-Capsule compare-and-swap base, renders the briefing, performs atomic replacement, and returns a receipt. Use `python tools/awp_workstate.py recover` after an interrupted publication and `python tools/awp_workstate.py verify --full` for an explicit historical artifact audit. Models supply semantic facts; the host owns serialization and digests.
+
 **Ask a focused question.** A detached consultation capsule packages a question with its context and review constraints. [`consultations/readme-refinement.awp.md`](consultations/readme-refinement.awp.md) is a working example; it uses 0.8.0 draft-only semantics and must be read against the local draft bundle.
 
 **Cooperate with several agents.** The experimental [COOP-1 Cooperation Contract](spec/drafts/0.8.0/cooperation-contracts.md) combines guarded-scope coordination with bounded review, critique, alternative-model, delegation, and synthesis interactions. Its default binding requires no separate database or service, but a COOP-1 claim requires atomic incompatible-scope blocking, bounded feedback loops, durable handoff, and recovery evidence. The service-free local ledger adapter ([`tools/awp_coordination.py`](tools/awp_coordination.py)) and optional local presence registry ([`tools/awp_presence.py`](tools/awp_presence.py)) are reusable single-host reference components, not a complete COOP-1 implementation.

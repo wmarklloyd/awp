@@ -153,6 +153,8 @@ A receiver MAY implement the Capsule briefing-first presentation profile `select
 
 The projection MUST include a selection status of `complete`, `incomplete`, or `budget_exceeded`, plus every missing record identifier and every required artifact that could not be verified. In this profile, `complete` means that the Capsule integrity is current, the complete author-declared Resume selection is present, and each required local artifact with supported integrity metadata is current. It does not claim that the selection contains every fact a later task may expose as relevant. `brief_only` is an explicitly incomplete orientation mode. A receiver MUST NOT call the projection complete when it omitted the entry records to satisfy a budget, and a participant MUST NOT begin guarded work from an incomplete projection.
 
+A host MAY expose a canonical Capsule checkpoint operation. A model-facing checkpoint request supplies semantic content such as the proposed frontier, checkpoint, concise briefing fields, unresolved work, evidence references, and recommended next action. The host supplies whole-Capsule and generated-region digests, performs serialization and artifact verification, and returns a receipt or a recoverable stale or pending result. `mode: no_change` confirms that the current Capsule was checked without rewriting it.
+
 A Resume Profile receiver MUST:
 
 1. discover or receive the workstate location;

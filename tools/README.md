@@ -6,6 +6,8 @@ The tools in this directory provide reproducible stable and archived-draft bundl
 
 `awp_presence.py` is a reference implementation of the draft `local-sqlite-presence-v1` profile. It keeps advisory heartbeats and watcher cursors in a SQLite registry under the Git common directory by default, so worktrees share one registry. It is not an enforcing coordinator, authority source, semantic-scope analyzer, or production service.
 
+`awp_workstate.py` is the reference implementation of the draft `local-workstate-projector-v1` profile. It provides host-owned Capsule status, active or full artifact verification, compare-and-swap checkpoint publication, no-change receipts, atomic replacement, and recoverable projection journal state. It is not an authority source, semantic merge engine, or production distributed projector.
+
 `awp_projector.py` is a transport-neutral C1 foundation. It replays Coordination event envelopes through deterministic topological ordering, validates structural and workstate identity rules, checks revision and lifecycle transitions, validates pinned cross-record and verification bindings, preserves contested concurrent successors, and emits stable diagnostics. It is not yet a complete cross-record C1 validator, semantic analyzer, authority source, or independent interoperability implementation. A local ledger event stream can be checked with `python tools/awp_coordination.py export | python tools/awp_projector.py --workstate-id <id>`.
 
 `validate_conformance.py` also runs the JSON histories in `conformance/projector/` and compares their expected frontier, materialized records, contested conditions, and diagnostic signatures. These are reusable reference fixtures, not independent implementation evidence.

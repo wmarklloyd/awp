@@ -325,67 +325,91 @@
     {
       "id": "AWP-CAPSULE-015",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 122,
-      "statement": "`WORK.md` and `manifest.json` are REQUIRED. `events.jsonl` is REQUIRED unless the manifest declares a snapshot-only representation. `snapshot.json`, `artifacts/`, `modules/`, and `views/` are optional."
+      "line": 105,
+      "statement": "When a project maintains one current writable Capsule, its host SHOULD expose a canonical maintenance binding. The binding owns parsing, record projection, briefing rendering, artifact-integrity calculation, and serialization. An agent or model MAY submit semantic facts, a synchronization delta, or a checkpoint request, but MUST NOT be required to edit embedded JSON, calculate digests, or rewrite the canonical Capsule directly."
     },
     {
       "id": "AWP-CAPSULE-016",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 124,
-      "statement": "Each `events.jsonl` line contains one complete JSON event. Module-specific events remain in this unified ledger. Module-owned auxiliary data MAY occupy separate files under `modules/`, but their manifest locations are authoritative; directory names are conventional only."
+      "line": 107,
+      "statement": "A checkpoint request for a canonical Capsule MUST carry an idempotency key, the expected whole-Capsule digest, the expected generated-region digest, the expected semantic frontier, the proposed semantic frontier, the checkpoint or no-change disposition, and the semantic handoff fields required by Handoff. The host MUST compare all expected values immediately before replacement. A mismatch MUST produce `stale_base` or an equivalent recoverable result; it MUST NOT use last-write-wins."
     },
     {
       "id": "AWP-CAPSULE-017",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 130,
-      "statement": "A `.awp.md` file begins with briefing metadata and human Markdown, followed by machine sections. Front matter MUST declare `capsule_boundary`, a lowercase hexadecimal token containing at least 128 bits of unpredictable entropy."
+      "line": 109,
+      "statement": "The host MUST serialize canonical replacement per workstate, write through a temporary file with flush and sync before atomic replacement, and return a receipt containing the prior and resulting whole-Capsule digests, generated-region digests, semantic frontier, checkpoint, and publication status. A no-change exit MUST return a verified receipt without rewriting identical bytes. A crash between replacement and durable publication MUST leave recoverable journal state and MUST NOT be reported as a confirmed checkpoint until recovery resolves it."
     },
     {
       "id": "AWP-CAPSULE-018",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 144,
-      "statement": "It may contain attributes of the form ` name=\"value\"` before ` -->`. Attribute names match `[a-z][a-z0-9_-]*`; values MUST NOT contain a quote, CR, LF, or `-->`."
+      "line": 111,
+      "statement": "Artifact locations are not artifact identity. When bytes at a mutable location change, the writer MUST preserve the prior digest as historical evidence and create or reference a new artifact revision. It MUST NOT silently rewrite an old artifact claim to match new bytes. Routine entry MAY verify only active required artifacts; a full historical audit MUST be an explicit operation."
     },
     {
       "id": "AWP-CAPSULE-019",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 163,
-      "statement": "The boundary token MUST NOT occur in decoded section content. A writer detecting a collision MUST generate a new boundary or encode the content using a binary-safe encoding such as base64. Binary artifacts MUST use base64 or a registered binary-safe encoding."
+      "line": 132,
+      "statement": "`WORK.md` and `manifest.json` are REQUIRED. `events.jsonl` is REQUIRED unless the manifest declares a snapshot-only representation. `snapshot.json`, `artifacts/`, `modules/`, and `views/` are optional."
     },
     {
       "id": "AWP-CAPSULE-020",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 165,
-      "statement": "A reader MUST validate marker pairing, reject duplicate authoritative sections, verify each module section against a matching manifest declaration, reject malformed boundaries, and preserve unknown sections during lossless rewriting. It MUST NOT infer machine state from arbitrary Markdown headings or code examples outside marked sections."
+      "line": 134,
+      "statement": "Each `events.jsonl` line contains one complete JSON event. Module-specific events remain in this unified ledger. Module-owned auxiliary data MAY occupy separate files under `modules/`, but their manifest locations are authoritative; directory names are conventional only."
     },
     {
       "id": "AWP-CAPSULE-021",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 171,
-      "statement": "Unpacking MUST preserve logical paths, bytes, IDs, module declarations, and references. Readers MUST reject absolute paths, parent traversal, duplicate normalized paths, case-folding collisions on case-insensitive targets, symlink escapes, and members exceeding configured size or decompression limits."
+      "line": 140,
+      "statement": "A `.awp.md` file begins with briefing metadata and human Markdown, followed by machine sections. Front matter MUST declare `capsule_boundary`, a lowercase hexadecimal token containing at least 128 bits of unpredictable entropy."
     },
     {
       "id": "AWP-CAPSULE-022",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 173,
-      "statement": "Writers SHOULD place `WORK.md` and `manifest.json` before large members for preview efficiency. Physical member order has no semantic meaning."
+      "line": 154,
+      "statement": "It may contain attributes of the form ` name=\"value\"` before ` -->`. Attribute names match `[a-z][a-z0-9_-]*`; values MUST NOT contain a quote, CR, LF, or `-->`."
     },
     {
       "id": "AWP-CAPSULE-023",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 203,
-      "statement": "Standard representation kinds are `package-path`, `capsule-section`, `remote`, and `events-only`. A remote module location does not make the workstate self-contained and MUST disclose retrieval requirements. Secrets MUST NOT appear in locations."
+      "line": 173,
+      "statement": "The boundary token MUST NOT occur in decoded section content. A writer detecting a collision MUST generate a new boundary or encode the content using a binary-safe encoding such as base64. Binary artifacts MUST use base64 or a registered binary-safe encoding."
     },
     {
       "id": "AWP-CAPSULE-024",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 209,
-      "statement": "A Capsule reader MUST validate the representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures."
+      "line": 175,
+      "statement": "A reader MUST validate marker pairing, reject duplicate authoritative sections, verify each module section against a matching manifest declaration, reject malformed boundaries, and preserve unknown sections during lossless rewriting. It MUST NOT infer machine state from arbitrary Markdown headings or code examples outside marked sections."
     },
     {
       "id": "AWP-CAPSULE-025",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 211,
+      "line": 181,
+      "statement": "Unpacking MUST preserve logical paths, bytes, IDs, module declarations, and references. Readers MUST reject absolute paths, parent traversal, duplicate normalized paths, case-folding collisions on case-insensitive targets, symlink escapes, and members exceeding configured size or decompression limits."
+    },
+    {
+      "id": "AWP-CAPSULE-026",
+      "source": "spec/drafts/0.8.0/capsule.md",
+      "line": 183,
+      "statement": "Writers SHOULD place `WORK.md` and `manifest.json` before large members for preview efficiency. Physical member order has no semantic meaning."
+    },
+    {
+      "id": "AWP-CAPSULE-027",
+      "source": "spec/drafts/0.8.0/capsule.md",
+      "line": 213,
+      "statement": "Standard representation kinds are `package-path`, `capsule-section`, `remote`, and `events-only`. A remote module location does not make the workstate self-contained and MUST disclose retrieval requirements. Secrets MUST NOT appear in locations."
+    },
+    {
+      "id": "AWP-CAPSULE-028",
+      "source": "spec/drafts/0.8.0/capsule.md",
+      "line": 219,
+      "statement": "A Capsule reader MUST validate the representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures."
+    },
+    {
+      "id": "AWP-CAPSULE-029",
+      "source": "spec/drafts/0.8.0/capsule.md",
+      "line": 221,
       "statement": "A Capsule writer MUST create an unambiguous representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A self-contained Markdown writer MUST include its discovery mode and governing specification in the capsule metadata."
     },
     {
@@ -470,30 +494,36 @@
       "id": "AWP-HANDOFF-014",
       "source": "spec/drafts/0.8.0/handoff.md",
       "line": 156,
-      "statement": "A Resume Profile receiver MUST:"
+      "statement": "A host MAY expose a canonical Capsule checkpoint operation. A model-facing checkpoint request supplies semantic content such as the proposed frontier, checkpoint, concise briefing fields, unresolved work, evidence references, and recommended next action. The host supplies whole-Capsule and generated-region digests, performs serialization and artifact verification, and returns a receipt or a recoverable stale or pending result. `mode: no_change` confirms that the current Capsule was checked without rewriting it."
     },
     {
       "id": "AWP-HANDOFF-015",
       "source": "spec/drafts/0.8.0/handoff.md",
-      "line": 171,
-      "statement": "A Handoff writer MUST:"
+      "line": 158,
+      "statement": "A Resume Profile receiver MUST:"
     },
     {
       "id": "AWP-HANDOFF-016",
       "source": "spec/drafts/0.8.0/handoff.md",
-      "line": 185,
-      "statement": "A Handoff reader MUST:"
+      "line": 173,
+      "statement": "A Handoff writer MUST:"
     },
     {
       "id": "AWP-HANDOFF-017",
       "source": "spec/drafts/0.8.0/handoff.md",
-      "line": 205,
-      "statement": "Reports SHOULD record capsule size where applicable, token usage, author and receiver versions, unsupported modules, omissions, false assumptions, safety failures, and resulting artifact quality. A single successful task is not evidence of general interoperability."
+      "line": 187,
+      "statement": "A Handoff reader MUST:"
     },
     {
       "id": "AWP-HANDOFF-018",
       "source": "spec/drafts/0.8.0/handoff.md",
-      "line": 209,
+      "line": 207,
+      "statement": "Reports SHOULD record capsule size where applicable, token usage, author and receiver versions, unsupported modules, omissions, false assumptions, safety failures, and resulting artifact quality. A single successful task is not evidence of general interoperability."
+    },
+    {
+      "id": "AWP-HANDOFF-019",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 211,
       "statement": "A Handoff reader implements the receiver procedure and exposes limitations. A Handoff writer implements the producer procedure and makes accurate claims. A Resume Profile reader additionally implements Section 5 and declares the `resume-profile` capability. A system MAY support handoff and resume records without supporting the Capsule module; repository discovery requires Capsule support."
     },
     {
@@ -651,6 +681,18 @@
       "source": "spec/drafts/0.8.0/synchronization.md",
       "line": 116,
       "statement": "A deployment with one canonical Capsule MUST identify how projection ownership is serialized. An enforced deployment may use a fenced `integration_owner` lease. An advisory deployment may use a single local writer with atomic compare-and-swap. Projection ownership controls representation updates only; it does not grant authority over project changes."
+    },
+    {
+      "id": "AWP-SYNC-013",
+      "source": "spec/drafts/0.8.0/synchronization.md",
+      "line": 118,
+      "statement": "The projection base MUST include the exact whole-Capsule artifact digest in addition to the semantic frontier and generated-region digest. The generated-region digest alone does not protect changes to the manifest, snapshot, notes, or other authoritative sections. A projection writer MUST reject a stale whole-Capsule digest even when the generated briefing is unchanged."
+    },
+    {
+      "id": "AWP-SYNC-014",
+      "source": "spec/drafts/0.8.0/synchronization.md",
+      "line": 120,
+      "statement": "A projection writer MUST make the replacement recoverable across a process crash. Before replacement it MUST durably record the expected and proposed whole-Capsule digests and the request identity in a projection journal or equivalent binding-owned state. Recovery MUST classify the result as `pending`, `recovered`, or `diverged`; it MUST never resolve an unknown result by last-write-wins."
     },
     {
       "id": "AWP-COORD-001",
@@ -1431,6 +1473,12 @@
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 136,
       "statement": "A `COOP-2` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST NOT claim that a storage technology alone supplies cooperation semantics."
+    },
+    {
+      "id": "AWP-COOP-028",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 154,
+      "statement": "The checkpoint step SHOULD use the selected canonical workstate projector. A verified `no_change` receipt is sufficient when no semantic state changed; an incomplete or stale projection is not."
     }
   ]
 }

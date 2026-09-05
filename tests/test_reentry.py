@@ -72,6 +72,21 @@ class ReentryTests(unittest.TestCase):
             projection = self.module._artifact_projection(record, root)
             self.assertEqual(projection["verification_state"], "modified")
 
+    def test_historical_artifact_is_not_treated_as_active_failure(self) -> None:
+        record = {
+            "id": "artifact:historical",
+            "type": "artifact",
+            "modules": {
+                "urn:awp:artifact": {
+                    "status": "superseded",
+                    "locations": [{"kind": "local", "path": "missing-old-file"}],
+                    "integrity": {"algorithm": "sha256", "digest": "0" * 64},
+                }
+            },
+        }
+        projection = self.module._artifact_projection(record, Path.cwd())
+        self.assertEqual(projection["verification_state"], "historical")
+
     def test_stale_capsule_integrity_is_not_complete(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             capsule = Path(directory) / "awp.awp.md"

@@ -104,6 +104,9 @@ def _artifact_projection(record: dict[str, Any], root: Path) -> dict[str, Any]:
         "locations": artifact.get("locations", []),
         "integrity": artifact.get("integrity"),
     }
+    if artifact.get("status") in {"superseded", "historical", "archived"}:
+        projection["verification_state"] = "historical"
+        return projection
     local = next(
         (
             location

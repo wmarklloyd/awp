@@ -115,9 +115,12 @@ Concurrent agents publish events or deltas rather than independently replacing o
 
 A deployment with one canonical Capsule MUST identify how projection ownership is serialized. An enforced deployment may use a fenced `integration_owner` lease. An advisory deployment may use a single local writer with atomic compare-and-swap. Projection ownership controls representation updates only; it does not grant authority over project changes.
 
+The projection base MUST include the exact whole-Capsule artifact digest in addition to the semantic frontier and generated-region digest. The generated-region digest alone does not protect changes to the manifest, snapshot, notes, or other authoritative sections. A projection writer MUST reject a stale whole-Capsule digest even when the generated briefing is unchanged.
+
+A projection writer MUST make the replacement recoverable across a process crash. Before replacement it MUST durably record the expected and proposed whole-Capsule digests and the request identity in a projection journal or equivalent binding-owned state. Recovery MUST classify the result as `pending`, `recovered`, or `diverged`; it MUST never resolve an unknown result by last-write-wins.
+
 ## 10. Conformance
 
 A Synchronization reader validates ancestry and integrity, computes frontiers, applies deltas idempotently, preserves concurrency, and surfaces semantic conflicts.
 
 A Synchronization writer emits valid base and result frontiers, includes required events or declares missing ancestry, and never describes a lossy history as full.
-

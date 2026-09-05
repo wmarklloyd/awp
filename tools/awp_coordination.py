@@ -96,11 +96,17 @@ def capsule_integrity(path: Path) -> dict:
     }
 
 
+def capsule_artifact_digest(path: Path) -> str:
+    """Return the exact UTF-8 byte digest of a Capsule artifact."""
+    return f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
+
+
 def replace_capsule_projection(
     path: Path,
     *,
     expected_frontier: Sequence[str],
     expected_digest: str,
+    expected_capsule_digest: str | None = None,
     frontier: Sequence[str],
     checkpoint_id: str,
     generated_at: str,
@@ -112,6 +118,9 @@ def replace_capsule_projection(
     intentionally surfaced as recoverable frontier divergence on the next read.
     """
     original = path.read_text(encoding="utf-8")
+    actual_capsule_digest = capsule_artifact_digest(path)
+    if expected_capsule_digest and actual_capsule_digest != expected_capsule_digest:
+        raise CoordinationError("capsule whole-artifact digest is stale")
     integrity = capsule_integrity(path)
     if integrity["state"] != "current" or integrity["computed_digest"] != expected_digest:
         raise CoordinationError("capsule digest is stale or does not match expected digest")
@@ -147,7 +156,8 @@ def replace_capsule_projection(
         raise
     return {
         "path": path.name,
-        "digest": f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}",
+        "digest": capsule_artifact_digest(path),
+        "previous_digest": actual_capsule_digest,
         "generated_digest": integrity["computed_digest"],
         "frontier": list(frontier),
     }
@@ -1057,6 +1067,7 @@ class CoordinationLedger:
         expected_capsule_frontier: Sequence[str],
         expected_ledger_frontier: Sequence[str],
         expected_digest: str,
+        expected_capsule_digest: str | None = None,
         next_action: str,
         unresolved_work: Sequence[str],
         request_id: str,
@@ -1093,6 +1104,7 @@ class CoordinationLedger:
                     "expected_capsule_frontier": list(expected_capsule_frontier),
                     "expected_ledger_frontier": list(expected_ledger_frontier),
                     "expected_digest": expected_digest,
+                    "expected_capsule_digest": expected_capsule_digest,
                     "next_action": next_action,
                     "unresolved_work": list(unresolved_work),
                     "capsule": capsule.name,
@@ -1103,6 +1115,7 @@ class CoordinationLedger:
                 capsule,
                 expected_frontier=expected_capsule_frontier,
                 expected_digest=expected_digest,
+                expected_capsule_digest=expected_capsule_digest,
                 frontier=[event["event_id"]],
                 checkpoint_id=checkpoint_id,
                 generated_at=occurred_at,
@@ -1686,6 +1699,7 @@ def build_parser() -> argparse.ArgumentParser:
     checkpoint.add_argument("--expected-capsule-frontier", action="append", required=True)
     checkpoint.add_argument("--expected-ledger-frontier", action="append", required=True)
     checkpoint.add_argument("--expected-digest", required=True)
+    checkpoint.add_argument("--expected-capsule-digest")
     checkpoint.add_argument("--next-action", required=True)
     checkpoint.add_argument("--unresolved", action="append", default=[])
     checkpoint.add_argument("--request-id", required=True)
@@ -1806,6 +1820,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 expected_capsule_frontier=args.expected_capsule_frontier,
                 expected_ledger_frontier=args.expected_ledger_frontier,
                 expected_digest=args.expected_digest,
+                expected_capsule_digest=args.expected_capsule_digest,
                 next_action=args.next_action,
                 unresolved_work=args.unresolved,
                 request_id=args.request_id,
