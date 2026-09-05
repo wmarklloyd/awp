@@ -92,6 +92,14 @@ A reader reports the briefing as:
 
 Notes and content outside the generated region are non-authoritative. Importing a human edit into machine state requires an explicit proposed semantic change and acceptance by an authorized actor.
 
+### 3.1 Briefing-first machine presentation
+
+A host MAY read and validate the complete capsule without presenting every source byte to a human or model participant. A model-facing entry view SHOULD present the front matter and generated briefing first, then materialize only the active Resume, referenced Handoff and checkpoint, ordered `read_first` records, and compact descriptors for required artifacts. The source capsule remains authoritative; the entry view is a disposable projection and MUST identify its source capsule, source size, integrity state, and selection status.
+
+A bounded entry view MUST report `complete` only when the active Resume, its explicitly selected records, referenced Handoff and checkpoint, and required artifact descriptors were resolved and verified according to the declared presentation profile. This status asserts structural completeness of the author-declared entry set, not that no other historical context can be relevant. If a byte or token budget cannot carry the declared entry set, the host MUST report `budget_exceeded` or `incomplete`, identify omitted or unresolved material, and stop or obtain more context according to receiver policy. It MUST NOT silently truncate required state or treat a generated briefing alone as complete semantic re-entry.
+
+This two-stage presentation limits model context consumption, not validation. A Capsule reader claiming briefing-first presentation MUST still parse and validate the full representation, required modules, internal references, and integrity metadata before it reports the selected view as complete.
+
 ## 4. Editable directory
 
 The default layout is:

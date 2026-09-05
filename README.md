@@ -47,6 +47,14 @@ The first link binds the agent to an exact, immutable specification; the second 
 
 **Hand a capsule to an agent directly.** Because a capsule is self-contained, it can be attached to a model with no repository access at all — as a project brief, a checkpoint to resume from, or an archived record of how a decision was reached.
 
+**Keep re-entry bounded.** A host can validate the complete capsule without placing its entire history in the model context. The experimental `selective-reentry-v1` reference tool emits the generated briefing, active Resume/Handoff/checkpoint, ordered `read_first` records, and compact required-artifact descriptors:
+
+```bash
+python tools/awp_reentry.py --project .
+```
+
+It reports `incomplete` or `budget_exceeded` rather than silently dropping required context. See the [re-entry cost evaluation](docs/reentry-cost-evaluation.md) for the measured reduction on this repository.
+
 **Ask a focused question.** A detached consultation capsule packages a question with its context and review constraints. [`consultations/readme-refinement.awp.md`](consultations/readme-refinement.awp.md) is a working example; it uses 0.8.0 draft-only semantics and must be read against the local draft bundle.
 
 **Cooperate with several agents.** The experimental [COOP-1 Cooperation Contract](spec/drafts/0.8.0/cooperation-contracts.md) combines guarded-scope coordination with bounded review, critique, alternative-model, delegation, and synthesis interactions. Its default binding requires no separate database or service, but a COOP-1 claim requires atomic incompatible-scope blocking, bounded feedback loops, durable handoff, and recovery evidence. The service-free local ledger adapter ([`tools/awp_coordination.py`](tools/awp_coordination.py)) and optional local presence registry ([`tools/awp_presence.py`](tools/awp_presence.py)) are reusable single-host reference components, not a complete COOP-1 implementation.

@@ -628,6 +628,14 @@ A reader reports the briefing as:
 
 Notes and content outside the generated region are non-authoritative. Importing a human edit into machine state requires an explicit proposed semantic change and acceptance by an authorized actor.
 
+### 3.1 Briefing-first machine presentation
+
+A host MAY read and validate the complete capsule without presenting every source byte to a human or model participant. A model-facing entry view SHOULD present the front matter and generated briefing first, then materialize only the active Resume, referenced Handoff and checkpoint, ordered `read_first` records, and compact descriptors for required artifacts. The source capsule remains authoritative; the entry view is a disposable projection and MUST identify its source capsule, source size, integrity state, and selection status.
+
+A bounded entry view MUST report `complete` only when the active Resume, its explicitly selected records, referenced Handoff and checkpoint, and required artifact descriptors were resolved and verified according to the declared presentation profile. This status asserts structural completeness of the author-declared entry set, not that no other historical context can be relevant. If a byte or token budget cannot carry the declared entry set, the host MUST report `budget_exceeded` or `incomplete`, identify omitted or unresolved material, and stop or obtain more context according to receiver policy. It MUST NOT silently truncate required state or treat a generated briefing alone as complete semantic re-entry.
+
+This two-stage presentation limits model context consumption, not validation. A Capsule reader claiming briefing-first presentation MUST still parse and validate the full representation, required modules, internal references, and integrity metadata before it reports the selected view as complete.
+
 ## 4. Editable directory
 
 The default layout is:
@@ -884,6 +892,16 @@ When both a Resume and referenced Handoff record are present, the Resume record 
 A receiver that can identify the local state-space revision MUST compare it with `revision`. A mismatch makes the binding stale. When it can obtain a difference, claims, evidence, change sets, and verification results scoped to changed objects MUST be treated as stale until reverified or explicitly re-scoped. When the receiver cannot identify or compare the state-space revision, the binding is unverifiable rather than current. A matching revision does not establish that remote services, credentials, or other dependencies remain current.
 
 `read_first` is an ordered presentation hint, not causal ordering or authority. A receiver MAY load additional records required to interpret dependencies, evidence, conflicts, or safety constraints. It MUST NOT omit relevant required state merely to meet a context budget. Optional context-selection metadata MAY state a token or byte budget, priority groups, and deferred artifacts, but it cannot weaken completeness, freshness, or authority requirements.
+
+A receiver MAY implement the Capsule briefing-first presentation profile `selective-reentry-v1`. That profile reads and validates the complete source representation in the host, but returns a bounded participant-facing projection containing:
+
+- source identity, byte size, and Capsule integrity state;
+- the generated briefing and governing metadata;
+- the active Resume, its referenced Handoff and checkpoint;
+- the ordered `read_first` records; and
+- compact location, availability, and integrity descriptors for `required_artifacts`.
+
+The projection MUST include a selection status of `complete`, `incomplete`, or `budget_exceeded`, plus every missing record identifier and every required artifact that could not be verified. In this profile, `complete` means that the Capsule integrity is current, the complete author-declared Resume selection is present, and each required local artifact with supported integrity metadata is current. It does not claim that the selection contains every fact a later task may expose as relevant. `brief_only` is an explicitly incomplete orientation mode. A receiver MUST NOT call the projection complete when it omitted the entry records to satisfy a budget, and a participant MUST NOT begin guarded work from an incomplete projection.
 
 A Resume Profile receiver MUST:
 
@@ -3346,67 +3364,85 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
     {
       "id": "AWP-CAPSULE-012",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 114,
-      "statement": "`WORK.md` and `manifest.json` are REQUIRED. `events.jsonl` is REQUIRED unless the manifest declares a snapshot-only representation. `snapshot.json`, `artifacts/`, `modules/`, and `views/` are optional."
+      "line": 97,
+      "statement": "A host MAY read and validate the complete capsule without presenting every source byte to a human or model participant. A model-facing entry view SHOULD present the front matter and generated briefing first, then materialize only the active Resume, referenced Handoff and checkpoint, ordered `read_first` records, and compact descriptors for required artifacts. The source capsule remains authoritative; the entry view is a disposable projection and MUST identify its source capsule, source size, integrity state, and selection status."
     },
     {
       "id": "AWP-CAPSULE-013",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 116,
-      "statement": "Each `events.jsonl` line contains one complete JSON event. Module-specific events remain in this unified ledger. Module-owned auxiliary data MAY occupy separate files under `modules/`, but their manifest locations are authoritative; directory names are conventional only."
+      "line": 99,
+      "statement": "A bounded entry view MUST report `complete` only when the active Resume, its explicitly selected records, referenced Handoff and checkpoint, and required artifact descriptors were resolved and verified according to the declared presentation profile. This status asserts structural completeness of the author-declared entry set, not that no other historical context can be relevant. If a byte or token budget cannot carry the declared entry set, the host MUST report `budget_exceeded` or `incomplete`, identify omitted or unresolved material, and stop or obtain more context according to receiver policy. It MUST NOT silently truncate required state or treat a generated briefing alone as complete semantic re-entry."
     },
     {
       "id": "AWP-CAPSULE-014",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 122,
-      "statement": "A `.awp.md` file begins with briefing metadata and human Markdown, followed by machine sections. Front matter MUST declare `capsule_boundary`, a lowercase hexadecimal token containing at least 128 bits of unpredictable entropy."
+      "line": 101,
+      "statement": "This two-stage presentation limits model context consumption, not validation. A Capsule reader claiming briefing-first presentation MUST still parse and validate the full representation, required modules, internal references, and integrity metadata before it reports the selected view as complete."
     },
     {
       "id": "AWP-CAPSULE-015",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 136,
-      "statement": "It may contain attributes of the form ` name=\"value\"` before ` -->`. Attribute names match `[a-z][a-z0-9_-]*`; values MUST NOT contain a quote, CR, LF, or `-->`."
+      "line": 122,
+      "statement": "`WORK.md` and `manifest.json` are REQUIRED. `events.jsonl` is REQUIRED unless the manifest declares a snapshot-only representation. `snapshot.json`, `artifacts/`, `modules/`, and `views/` are optional."
     },
     {
       "id": "AWP-CAPSULE-016",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 155,
-      "statement": "The boundary token MUST NOT occur in decoded section content. A writer detecting a collision MUST generate a new boundary or encode the content using a binary-safe encoding such as base64. Binary artifacts MUST use base64 or a registered binary-safe encoding."
+      "line": 124,
+      "statement": "Each `events.jsonl` line contains one complete JSON event. Module-specific events remain in this unified ledger. Module-owned auxiliary data MAY occupy separate files under `modules/`, but their manifest locations are authoritative; directory names are conventional only."
     },
     {
       "id": "AWP-CAPSULE-017",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 157,
-      "statement": "A reader MUST validate marker pairing, reject duplicate authoritative sections, verify each module section against a matching manifest declaration, reject malformed boundaries, and preserve unknown sections during lossless rewriting. It MUST NOT infer machine state from arbitrary Markdown headings or code examples outside marked sections."
+      "line": 130,
+      "statement": "A `.awp.md` file begins with briefing metadata and human Markdown, followed by machine sections. Front matter MUST declare `capsule_boundary`, a lowercase hexadecimal token containing at least 128 bits of unpredictable entropy."
     },
     {
       "id": "AWP-CAPSULE-018",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 163,
-      "statement": "Unpacking MUST preserve logical paths, bytes, IDs, module declarations, and references. Readers MUST reject absolute paths, parent traversal, duplicate normalized paths, case-folding collisions on case-insensitive targets, symlink escapes, and members exceeding configured size or decompression limits."
+      "line": 144,
+      "statement": "It may contain attributes of the form ` name=\"value\"` before ` -->`. Attribute names match `[a-z][a-z0-9_-]*`; values MUST NOT contain a quote, CR, LF, or `-->`."
     },
     {
       "id": "AWP-CAPSULE-019",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 165,
-      "statement": "Writers SHOULD place `WORK.md` and `manifest.json` before large members for preview efficiency. Physical member order has no semantic meaning."
+      "line": 163,
+      "statement": "The boundary token MUST NOT occur in decoded section content. A writer detecting a collision MUST generate a new boundary or encode the content using a binary-safe encoding such as base64. Binary artifacts MUST use base64 or a registered binary-safe encoding."
     },
     {
       "id": "AWP-CAPSULE-020",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 195,
-      "statement": "Standard representation kinds are `package-path`, `capsule-section`, `remote`, and `events-only`. A remote module location does not make the workstate self-contained and MUST disclose retrieval requirements. Secrets MUST NOT appear in locations."
+      "line": 165,
+      "statement": "A reader MUST validate marker pairing, reject duplicate authoritative sections, verify each module section against a matching manifest declaration, reject malformed boundaries, and preserve unknown sections during lossless rewriting. It MUST NOT infer machine state from arbitrary Markdown headings or code examples outside marked sections."
     },
     {
       "id": "AWP-CAPSULE-021",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 201,
-      "statement": "A Capsule reader MUST validate the representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures."
+      "line": 171,
+      "statement": "Unpacking MUST preserve logical paths, bytes, IDs, module declarations, and references. Readers MUST reject absolute paths, parent traversal, duplicate normalized paths, case-folding collisions on case-insensitive targets, symlink escapes, and members exceeding configured size or decompression limits."
     },
     {
       "id": "AWP-CAPSULE-022",
       "source": "spec/drafts/0.8.0/capsule.md",
+      "line": 173,
+      "statement": "Writers SHOULD place `WORK.md` and `manifest.json` before large members for preview efficiency. Physical member order has no semantic meaning."
+    },
+    {
+      "id": "AWP-CAPSULE-023",
+      "source": "spec/drafts/0.8.0/capsule.md",
       "line": 203,
+      "statement": "Standard representation kinds are `package-path`, `capsule-section`, `remote`, and `events-only`. A remote module location does not make the workstate self-contained and MUST disclose retrieval requirements. Secrets MUST NOT appear in locations."
+    },
+    {
+      "id": "AWP-CAPSULE-024",
+      "source": "spec/drafts/0.8.0/capsule.md",
+      "line": 209,
+      "statement": "A Capsule reader MUST validate the representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures."
+    },
+    {
+      "id": "AWP-CAPSULE-025",
+      "source": "spec/drafts/0.8.0/capsule.md",
+      "line": 211,
       "statement": "A Capsule writer MUST create an unambiguous representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A self-contained Markdown writer MUST include its discovery mode and governing specification in the capsule metadata."
     },
     {
@@ -3479,30 +3515,42 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
       "id": "AWP-HANDOFF-012",
       "source": "spec/drafts/0.8.0/handoff.md",
       "line": 146,
-      "statement": "A Resume Profile receiver MUST:"
+      "statement": "A receiver MAY implement the Capsule briefing-first presentation profile `selective-reentry-v1`. That profile reads and validates the complete source representation in the host, but returns a bounded participant-facing projection containing:"
     },
     {
       "id": "AWP-HANDOFF-013",
       "source": "spec/drafts/0.8.0/handoff.md",
-      "line": 161,
-      "statement": "A Handoff writer MUST:"
+      "line": 154,
+      "statement": "The projection MUST include a selection status of `complete`, `incomplete`, or `budget_exceeded`, plus every missing record identifier and every required artifact that could not be verified. In this profile, `complete` means that the Capsule integrity is current, the complete author-declared Resume selection is present, and each required local artifact with supported integrity metadata is current. It does not claim that the selection contains every fact a later task may expose as relevant. `brief_only` is an explicitly incomplete orientation mode. A receiver MUST NOT call the projection complete when it omitted the entry records to satisfy a budget, and a participant MUST NOT begin guarded work from an incomplete projection."
     },
     {
       "id": "AWP-HANDOFF-014",
       "source": "spec/drafts/0.8.0/handoff.md",
-      "line": 175,
-      "statement": "A Handoff reader MUST:"
+      "line": 156,
+      "statement": "A Resume Profile receiver MUST:"
     },
     {
       "id": "AWP-HANDOFF-015",
       "source": "spec/drafts/0.8.0/handoff.md",
-      "line": 195,
-      "statement": "Reports SHOULD record capsule size where applicable, token usage, author and receiver versions, unsupported modules, omissions, false assumptions, safety failures, and resulting artifact quality. A single successful task is not evidence of general interoperability."
+      "line": 171,
+      "statement": "A Handoff writer MUST:"
     },
     {
       "id": "AWP-HANDOFF-016",
       "source": "spec/drafts/0.8.0/handoff.md",
-      "line": 199,
+      "line": 185,
+      "statement": "A Handoff reader MUST:"
+    },
+    {
+      "id": "AWP-HANDOFF-017",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 205,
+      "statement": "Reports SHOULD record capsule size where applicable, token usage, author and receiver versions, unsupported modules, omissions, false assumptions, safety failures, and resulting artifact quality. A single successful task is not evidence of general interoperability."
+    },
+    {
+      "id": "AWP-HANDOFF-018",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 209,
       "statement": "A Handoff reader implements the receiver procedure and exposes limitations. A Handoff writer implements the producer procedure and makes accurate claims. A Resume Profile reader additionally implements Section 5 and declares the `resume-profile` capability. A system MAY support handoff and resume records without supporting the Capsule module; repository discovery requires Capsule support."
     },
     {

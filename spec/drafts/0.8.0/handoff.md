@@ -143,6 +143,16 @@ A receiver that can identify the local state-space revision MUST compare it with
 
 `read_first` is an ordered presentation hint, not causal ordering or authority. A receiver MAY load additional records required to interpret dependencies, evidence, conflicts, or safety constraints. It MUST NOT omit relevant required state merely to meet a context budget. Optional context-selection metadata MAY state a token or byte budget, priority groups, and deferred artifacts, but it cannot weaken completeness, freshness, or authority requirements.
 
+A receiver MAY implement the Capsule briefing-first presentation profile `selective-reentry-v1`. That profile reads and validates the complete source representation in the host, but returns a bounded participant-facing projection containing:
+
+- source identity, byte size, and Capsule integrity state;
+- the generated briefing and governing metadata;
+- the active Resume, its referenced Handoff and checkpoint;
+- the ordered `read_first` records; and
+- compact location, availability, and integrity descriptors for `required_artifacts`.
+
+The projection MUST include a selection status of `complete`, `incomplete`, or `budget_exceeded`, plus every missing record identifier and every required artifact that could not be verified. In this profile, `complete` means that the Capsule integrity is current, the complete author-declared Resume selection is present, and each required local artifact with supported integrity metadata is current. It does not claim that the selection contains every fact a later task may expose as relevant. `brief_only` is an explicitly incomplete orientation mode. A receiver MUST NOT call the projection complete when it omitted the entry records to satisfy a budget, and a participant MUST NOT begin guarded work from an incomplete projection.
+
 A Resume Profile receiver MUST:
 
 1. discover or receive the workstate location;
