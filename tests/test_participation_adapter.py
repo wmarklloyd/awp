@@ -139,6 +139,68 @@ class ParticipationAdapterTests(unittest.TestCase):
         self.assertEqual(result["publication"], "rejected")
         self.assertIn("unknown intent", result["diagnostics"][0]["message"])
 
+    def test_interact_can_order_an_overlap_and_retry_is_idempotent(self) -> None:
+        self.adapter.announce(self.announce_request("request:first"))
+        second = ParticipationAdapter(
+            self.adapter.ledger,
+            workstate_id="workstate:test",
+            project_id="project:test",
+            actor="actor:two",
+            base_revision="git:base",
+        )
+        announcement = second.announce(self.announce_request("request:second"))
+        interaction_id = announcement["interactions"][0]["handle"]
+        request = {
+            "operation": "interact",
+            "request_id": "request:interaction",
+            "project": "project:test",
+            "context": "ctx:test",
+            "intent": announcement["intent"],
+            "interaction": interaction_id,
+            "disposition": "ordered",
+            "rationale": "The second writer proceeds after the first scope is complete.",
+        }
+        result = second.interact(request)
+        self.assertEqual(result["publication"], "confirmed")
+        self.assertEqual(result["coordination"], "clear")
+        self.assertEqual(result["next"]["operation"], "read")
+        self.assertEqual(second.ledger.refresh("workstate:test")["open_overlaps"], [])
+        retry = second.interact(request)
+        self.assertEqual(result["publication_receipt"], retry["publication_receipt"])
+        self.assertEqual(len(second.ledger.export_events("workstate:test")), 6)
+
+    def test_interact_requires_an_overlap_participant(self) -> None:
+        self.adapter.announce(self.announce_request("request:first"))
+        second = ParticipationAdapter(
+            self.adapter.ledger,
+            workstate_id="workstate:test",
+            project_id="project:test",
+            actor="actor:two",
+            base_revision="git:base",
+        )
+        announcement = second.announce(self.announce_request("request:second"))
+        outsider = ParticipationAdapter(
+            self.adapter.ledger,
+            workstate_id="workstate:test",
+            project_id="project:test",
+            actor="actor:outsider",
+            base_revision="git:base",
+        )
+        result = outsider.interact(
+            {
+                "operation": "interact",
+                "request_id": "request:outsider-interaction",
+                "project": "project:test",
+                "context": "ctx:test",
+                "intent": announcement["intent"],
+                "interaction": announcement["interactions"][0]["handle"],
+                "disposition": "ordered",
+                "rationale": "Unauthorized disposition.",
+            }
+        )
+        self.assertEqual(result["publication"], "rejected")
+        self.assertIn("not an overlap participant", result["diagnostics"][0]["message"])
+
     def test_mixed_access_scopes_are_rejected_by_local_slice(self) -> None:
         request = self.announce_request()
         request["scope"].append({"path": "README.md", "access": "read"})

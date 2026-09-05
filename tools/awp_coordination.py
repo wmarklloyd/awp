@@ -709,6 +709,122 @@ class CoordinationLedger:
                 "advisory_status": "block" if blocking else ("warn" if overlaps else "clear"),
             }
 
+    def interact_overlap(
+        self,
+        *,
+        workstate_id: str,
+        overlap_id: str,
+        actor: str,
+        disposition: str,
+        rationale: str,
+        evidence: Sequence[str] = (),
+        request_id: str | None = None,
+        request_hash: str | None = None,
+        at: datetime | None = None,
+    ) -> dict:
+        """Record one model response to an active overlap."""
+        event_kinds = {
+            "acknowledged": ("overlap.acknowledged", "open"),
+            "proposed": ("overlap.negotiation_started", "negotiating"),
+            "ordered": ("overlap.dispositioned", "resolved"),
+            "escalated": ("overlap.escalated", "escalated"),
+            "unresolved": ("overlap.acknowledged", "open"),
+        }
+        if disposition not in event_kinds:
+            raise CoordinationError(f"unsupported overlap disposition: {disposition}")
+        occurred_at = utc_timestamp(at)
+        with self._transaction() as connection:
+            if request_id:
+                prior_request = connection.execute(
+                    "SELECT request_hash, response_json FROM requests "
+                    "WHERE workstate_id = ? AND request_id = ?",
+                    (workstate_id, request_id),
+                ).fetchone()
+                if prior_request:
+                    if prior_request["request_hash"] != request_hash:
+                        raise CoordinationError("request ID was reused with different content")
+                    return json.loads(prior_request["response_json"])
+            row = connection.execute(
+                "SELECT record_json FROM records WHERE workstate_id = ? "
+                "AND record_id = ? AND type = 'overlap'",
+                (workstate_id, overlap_id),
+            ).fetchone()
+            if not row:
+                raise CoordinationError(f"unknown overlap: {overlap_id}")
+            prior = json.loads(row["record_json"])
+            if prior["status"] not in {"open", "negotiating", "escalated"}:
+                raise CoordinationError(f"overlap is not active: {overlap_id}")
+            participant_ids = {subject.split("@", 1)[0] for subject in prior.get("subjects", [])}
+            placeholders = ",".join("?" * len(participant_ids))
+            rows = connection.execute(
+                "SELECT record_json FROM records WHERE workstate_id = ? "
+                "AND record_id IN (%s)" % placeholders,
+                (workstate_id, *participant_ids),
+            ).fetchall() if participant_ids else []
+            participants = {json.loads(item["record_json"]).get("created_by") for item in rows}
+            if actor not in participants and actor != prior.get("created_by"):
+                raise CoordinationError(f"actor is not an overlap participant: {overlap_id}")
+            kind, target_status = event_kinds[disposition]
+            if disposition in {"acknowledged", "unresolved"} and prior["status"] != "open":
+                raise CoordinationError("acknowledgement requires an open overlap")
+            if disposition == "proposed" and prior["status"] != "open":
+                raise CoordinationError("a negotiation proposal requires an open overlap")
+            replacement = dict(prior)
+            replacement.update(
+                revision=prior["revision"] + 1,
+                status=target_status,
+                updated_at=occurred_at,
+                interaction={
+                    "disposition": disposition,
+                    "rationale": rationale,
+                    "evidence": list(evidence),
+                    "actor": actor,
+                },
+            )
+            if disposition == "ordered":
+                replacement["disposition"] = {
+                    "kind": "ordered",
+                    "rationale": rationale,
+                    "evidence": list(evidence),
+                    "resolved_by": actor,
+                }
+            event, sequence = self._append(
+                connection,
+                workstate_id=workstate_id,
+                actor=actor,
+                kind=kind,
+                payload={
+                    "record_id": overlap_id,
+                    "prior_revision": prior["revision"],
+                    "revision": replacement["revision"],
+                    "transition": {"from": prior["status"], "to": target_status},
+                    "disposition": replacement["interaction"],
+                    "replacement": replacement,
+                },
+                occurred_at=occurred_at,
+            )
+            self._project_record(connection, workstate_id, replacement, sequence)
+            result = {
+                "profile": PROFILE,
+                "mode": "ledger-backed-advisory",
+                "interaction": replacement["interaction"],
+                "overlap": replacement,
+                "event_ids": [event["event_id"]],
+                "frontier": self._frontier(connection, workstate_id),
+            }
+            if request_id:
+                connection.execute(
+                    "INSERT INTO requests(workstate_id, request_id, request_hash, response_json) "
+                    "VALUES (?, ?, ?, ?)",
+                    (
+                        workstate_id,
+                        request_id,
+                        request_hash or hashlib.sha256(b"").hexdigest(),
+                        json.dumps(result, sort_keys=True, separators=(",", ":")),
+                    ),
+                )
+            return result
+
     def resolve_overlap(
         self,
         *,

@@ -297,6 +297,68 @@ class ParticipationAdapter:
         except (ParticipationError, CoordinationError) as error:
             return self._rejected(request_id, str(error))
 
+    def interact(self, request: dict[str, Any]) -> dict[str, Any]:
+        request_id = self._request_id(request)
+        try:
+            self._validate(request, "interact")
+            result = self.ledger.interact_overlap(
+                workstate_id=self.workstate_id,
+                overlap_id=request["interaction"],
+                actor=self.actor,
+                disposition=request["disposition"],
+                rationale=request["rationale"],
+                evidence=request.get("evidence", []),
+                request_id=request_id,
+                request_hash=self._request_hash(request),
+            )
+            disposition = request["disposition"]
+            needs_input = disposition in {"escalated", "unresolved"}
+            coordination = "needs_input" if needs_input else (
+                "warning" if disposition in {"acknowledged", "proposed"} else "clear"
+            )
+            diagnostics = []
+            if needs_input:
+                diagnostics.append(
+                    {
+                        "code": "AWP-COORD-ARBITRATION-PENDING",
+                        "severity": "policy",
+                        "message": "The overlap remains unresolved and requires further coordination.",
+                        "recovery": "Wait for a participant or user disposition before guarded work.",
+                    }
+                )
+            receipt_id = f"receipt:{request_id}"
+            return {
+                "request_id": request_id,
+                "project": self.project_id,
+                "publication": "confirmed",
+                "coordination": coordination,
+                "authority_ceiling": self.authority_ceiling,
+                "frontier": result["frontier"],
+                "coverage": self._coverage(),
+                "diagnostics": diagnostics,
+                "interaction": request["interaction"],
+                "receipt": receipt_id,
+                "publication_receipt": {
+                    "receipt_id": receipt_id,
+                    "request_id": request_id,
+                    "status": "confirmed",
+                    "event_ids": result["event_ids"],
+                    "frontier": result["frontier"],
+                    "binding": {
+                        "profile": result["profile"],
+                        "operational_mode": "ledger_bound",
+                        "reach": "shared",
+                        "confirmation": "overlap interaction event and frontier returned by local ledger",
+                    },
+                },
+                "next": {
+                    "operation": "read",
+                    "reason": "Refresh the overlap state before taking the next coordination step.",
+                },
+            }
+        except (ParticipationError, CoordinationError) as error:
+            return self._rejected(request_id, str(error))
+
     def _rejected(self, request_id: str, message: str) -> dict[str, Any]:
         return {
             "request_id": request_id,
