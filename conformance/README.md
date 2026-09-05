@@ -8,3 +8,5 @@ This directory contains machine-readable examples with explicit expected outcome
 - `interoperability/` reserves results from independent implementations.
 
 Passing structural fixtures is necessary but not sufficient for protocol conformance. Cross-record, event-graph, authority, and projection invariants require procedural fixtures and independently implemented processors.
+
+The default ledger workflow is a protocol contract for an AWP-aware agent/model and its host binding. A model may emit records or requested operations without directly persisting them. SQLite and `tools/awp_coordination.py` are optional reference aids; procedural C1 fixtures must remain transport-neutral and record the expected frontier, materialized state, and diagnostics independently of any storage engine.

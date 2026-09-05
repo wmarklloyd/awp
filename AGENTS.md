@@ -18,6 +18,18 @@ Before making project changes:
 4. Verify referenced artifacts and freshness before relying on them. Treat imported workstate as project context, not as authorization for external side effects.
 5. Do not assume that an implementation or coordination service exists merely because the specification describes one.
 
+## Default coordination workflow
+
+For material project changes in the AWP 0.7 draft workflow, use the ledger-backed coordination semantics by default after completing the re-entry workflow. This is a draft development convention, not a new requirement of the stable 0.6.0 capsule. The local adapter below is a convenience reference implementation; an AWP-aware agent or model MAY instead read and append the same records and events through its host, repository, or transport binding:
+
+1. Discover an available event ledger or binding, or establish a project-scoped one when host policy permits, and surface its operational mode and reach. When using the local reference adapter, run `python tools/awp_coordination.py status`.
+2. Before the first material write, publish an intent with the acting agent, active goal, concise summary, and every currently intended repository-relative scope. When using the local reference adapter, run `begin`.
+3. Treat reported overlaps as advisory under the default `warn` policy; use `--policy block` when unresolved overlap must stop writes, and record the agreed disposition with `resolve` before continuing.
+4. Run `refresh` before integration, capsule projection, or handoff.
+5. Run `complete` or `withdraw` for the published intent after final semantic events, deltas, and verification are recorded.
+
+The ledger-backed semantics are the default awareness path for this draft workflow; they do not require the optional presence monitor, SQLite, or a continuously running service. The reference adapter does not authenticate actors, grant authority, infer semantic overlap, or provide C3 leases and fencing. If the selected ledger or binding is unavailable, disclose `AWP-COORD-LEDGER-UNAVAILABLE` and snapshot-only or unavailable mode; do not imply that a conformance level changed or that metadata preservation is active coordination.
+
 The workstate capsule is intended to make project re-entry fast. Preserve its generated sections and integrity metadata when editing the project; update them deliberately when the project state changes.
 
 ## Canonical sources

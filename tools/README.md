@@ -1,8 +1,12 @@
 # Specification tools
 
-The tools in this directory provide reproducible stable and archived-draft bundle generation, schema/example validation, conformance checking, link checking, workstate-integrity verification, requirement-inventory generation, and an experimental local presence monitor.
+The tools in this directory provide reproducible stable and archived-draft bundle generation, schema/example validation, conformance checking, link checking, workstate-integrity verification, requirement-inventory generation, a service-free local coordination ledger, and an experimental local presence monitor.
+
+`awp_coordination.py` is an optional convenience implementation of the informative draft `local-ledger-awareness-v1` profile. For a writable discovered AWP project it establishes or reuses a transactional ledger under the Git common directory, falling back to the ignored `.awp-runtime/` directory with an explicit worktree-local diagnostic when policy prevents the shared location. AWP-aware agents and models may use any binding that preserves the same ledger semantics; SQLite and this tool are not C1 requirements. The tool publishes intents and scopes before work, detects repository-relative physical overlaps, projects current advisory state, and supports durable cursors and JSON Lines export. If neither a shared nor an explicitly disclosed local ledger can be established, it reports `AWP-COORD-LEDGER-UNAVAILABLE` with snapshot-only or unavailable operational mode. It is not a complete C1 projector, semantic analyzer, authority source, or enforcing coordinator.
 
 `awp_presence.py` is a reference implementation of the draft `local-sqlite-presence-v1` profile. It keeps advisory heartbeats and watcher cursors in a SQLite registry under the Git common directory by default, so worktrees share one registry. It is not an enforcing coordinator, authority source, semantic-scope analyzer, or production service.
+
+`awp_projector.py` is a transport-neutral C1 foundation. It replays Coordination event envelopes through deterministic topological ordering, validates structural and workstate identity rules, checks revision and lifecycle transitions, preserves contested concurrent successors, and emits stable diagnostics. It is not yet a complete cross-record C1 validator, semantic analyzer, authority source, or independent interoperability implementation.
 
 The remaining tools are repository-maintenance tools, not a production AWP implementation. Passing them establishes only the properties each tool explicitly checks.
 

@@ -73,6 +73,8 @@ Conformance levels are cumulative:
 
 A writer MUST NOT advertise a level whose required behaviors it does not implement. A reader MAY support a lower level, but it MUST reject the workstate for safe continuation when the module is required and unsupported semantics affect the requested action.
 
+Conformance level, operational mode, and ledger reach are independent declarations. Conformance (`C0`–`C3`) describes which Coordination semantics a processor validates and enforces. Operational mode describes whether the current binding is `ledger_bound`, `snapshot_only`, `degraded`, or `unavailable`. Ledger reach describes whether the binding is `shared`, `worktree_local`, or `cross_host`. A ledger-bound C0 processor remains C0; a C1 reader may operate in `snapshot_only` mode when it can validate the available event history but cannot publish. Ledger unavailability MUST NOT be represented as a conformance downgrade.
+
 `unknown_overlap_policy` is `allow`, `warn`, `negotiate`, or `block`. `lease_enforcement` is `none`, `advisory`, or `enforced`. `block` and `enforced` have external effect only at C3 or through an identified enforcing adapter.
 
 The module defines three cumulative capability bundles independently of conformance level:
@@ -84,6 +86,45 @@ The module defines three cumulative capability bundles independently of conforma
 | `live-enforcement` | Protected concurrent mutation | authenticated principals, OCC, leases, epochs, fencing, governance |
 
 An implementation MAY adopt `coordination-awareness` before implementing the complete integration-assurance workflow. Capability declarations state what records can be processed; conformance levels state how rigorously they are processed.
+
+### 3.1 Default ledger-backed awareness
+
+An AWP-aware writer that discovers a writable shared event ledger and supports the `coordination-awareness` bundle MUST enable ledger-backed advisory coordination by default unless project or receiver policy explicitly disables it. Before materially changing shared state, the writer MUST refresh the available ledger frontier, publish its intent and revision-pinned declared scopes, evaluate known overlaps under the effective policy, and make resulting warnings or guarded outcomes visible. Before integration or handoff, it MUST refresh again and publish the terminal intent, change-set, checkpoint, or synchronization delta required to explain its result.
+
+This default is a protocol behavior, not a required runtime service. A local append-only file, immutable event package, transactional database, source-control binding, or remote event transport MAY supply the ledger when it preserves Core event identity, ancestry, atomic publication, and conflict-preserving replay. SQLite and the local adapter are optional implementation aids. Presence monitoring MAY reduce discovery latency but is not a prerequisite. C3 leases and enforcement remain separately configured.
+
+If no safe writable ledger is discoverable, the writer SHOULD attempt to establish a project-scoped ledger through an authorized writable binding, provided it can publish the binding location, workstate identity, retention, and access expectations to the intended participants. If it cannot establish or discover such a binding, it MUST disclose operational mode `snapshot_only` or `unavailable` with diagnostic `AWP-COORD-LEDGER-UNAVAILABLE` before material mutation. A private temporary file, process memory, unshared worktree, or unconfirmed model output is not a shared ledger. A worktree-local ledger MAY be used when its limited reach is disclosed. The writer MUST NOT silently describe metadata preservation, a stale snapshot, or an unvalidated event sink as active coordination. Receiver policy determines whether work may continue; the processor's declared conformance level is unchanged. A tool MUST NOT advertise C1 merely because it implements this default; its conformance claim remains limited to the behaviors it actually validates.
+
+The default is an agent/model workflow contract. A model may produce valid intents, events, deltas, diagnostics, or a requested ledger operation as output, while a host binding performs persistence and authorization. A model is not required to open a database, run a service, or possess mutation authority. A host that exposes only a capsule or read-only event view MUST make that limitation visible; it MUST NOT imply that a model-generated event was durably published until the binding confirms persistence. Prompt instructions, tool schemas, MCP resources, A2A data parts, repository files, and other bindings MAY carry the same records when they preserve the declared ledger semantics.
+
+For the default workflow, an AWP-aware agent or model SHOULD follow this sequence:
+
+1. discover the governing specification, workstate, coordination module, and available ledger binding;
+2. read and validate the known frontier before material work;
+3. publish an intent with a complete base and revision-pinned declared scopes;
+4. inspect known overlap, policy, dependency, precondition, and authority state and surface warnings or guarded outcomes;
+5. refresh the frontier immediately before integration, capsule projection, or handoff;
+6. publish the resulting change-set, verification, checkpoint, synchronization delta, and terminal intent events through the binding.
+
+The sequence is advisory with respect to external mutation at C1: an unresolved `warn` outcome is visible but does not itself grant or deny authority. A receiver MAY require `block`, user arbitration, or an external policy gate. A model's claim that it followed the sequence is reported evidence until the binding makes the event bytes and resulting frontier inspectable.
+
+### 3.2 Ledger-binding descriptor
+
+An active Coordination binding MUST expose a transport-neutral descriptor containing at least the profile identifier, workstate identity, ledger location or retrieval reference, operational mode, ledger reach, durability and retention policy, event publication semantics, frontier-read semantics, and publication confirmation method. The descriptor MAY be carried in a manifest, Capsule module state, repository discovery file, tool resource, MCP resource, A2A data part, or another binding-owned record. A location alone is not confirmation that a ledger is shared or writable. A binding that cannot provide a descriptor MUST report its mode and reach as `unverifiable` and MUST NOT claim cross-participant coordination.
+
+```json
+{
+  "profile": "local-ledger-awareness-v1",
+  "workstate_id": "urn:uuid:596ae918-e7da-4e6f-a226-b13f8b084727",
+  "location": "repo-relative:.awp/events",
+  "operational_mode": "ledger_bound",
+  "reach": "shared",
+  "durability": "retained-until-project-policy",
+  "publication": "atomic-event-create",
+  "frontier": "antichain",
+  "confirmation": "event-id-and-frontier-returned-by-binding"
+}
+```
 
 ## 4. Common coordination record fields
 
@@ -875,6 +916,8 @@ Diagnostics have stable code, severity, event or record subjects, explanation, a
 | `AWP-COORD-ARBITRATION-PENDING` | policy | A user-mediated decision is pending for a guarded scope or transition |
 | `AWP-COORD-USER-DECISION-UNVERIFIABLE` | policy | The claimed user decision cannot be bound to the declared authority and exact request revision |
 | `AWP-COORD-ARBITRATION-SCOPE-MISMATCH` | error | An implementation or integration exceeds the scopes or conditions authorized by the decision |
+| `AWP-COORD-LEDGER-UNAVAILABLE` | warning | No safe writable or readable ledger binding is available; snapshot-only or unavailable operational mode is explicit |
+| `AWP-COORD-LEDGER-WORKTREE-LOCAL` | warning | Coordination is active only for agents sharing one worktree-local ledger; other worktrees require an explicit shared path |
 
 Errors invalidate the affected transition. Warnings preserve state but MUST be visible before a safety-relevant continuation. Implementations MAY add namespaced diagnostics.
 
@@ -1207,6 +1250,8 @@ Coordination 0.4.0 is normative but experimental in AWP 0.7.0. It should not adv
 7. the A2A and MPAC mappings are reviewed for semantic overclaiming;
 8. security review confirms that records cannot self-authorize external actions;
 9. the brokered/sharded profile has independent interoperability, load, failover, loss, and projection-race evidence across its declared operating envelope.
+
+The repository's `tools/awp_projector.py` is an informative C1 foundation. It is transport-neutral and currently covers structural event validation, workstate and ancestry checks, deterministic topological replay, revision and lifecycle checks for the declared transition tables, and preservation of concurrent contested successors. Its tests do not yet constitute the complete C1 fixture suite, a complete cross-record validator, or independent interoperability evidence.
 
 ## 26. Open issues
 
