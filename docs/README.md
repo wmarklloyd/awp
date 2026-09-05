@@ -4,6 +4,7 @@
 - [Architecture](architecture.md)
 - [Model participation architecture and implementation plan](model-participation-architecture.md)
 - [Model participation responsibility matrix](model-participation-matrix.md)
+- [Model participation operation state machines](model-participation-state-machines.md)
 - [Informative formal model](formal-model.md)
 - [Design rationale](design-rationale.md)
 - [Related work and novelty boundary](related-work.md)
