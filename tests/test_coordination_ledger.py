@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 import unittest
@@ -12,6 +13,7 @@ from jsonschema import Draft202012Validator
 from tools.awp_coordination import (
     CoordinationError,
     CoordinationLedger,
+    capsule_integrity,
     operational_context,
     scopes_overlap,
     stable_project_id,
@@ -52,6 +54,98 @@ class CoordinationLedgerTests(unittest.TestCase):
             context["binding_observation"]["atomicity_mechanism"],
             "sqlite-begin-immediate",
         )
+        cooperation_schema = json.loads(
+            (ROOT / "schemas" / "awp-cooperation-0.1.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(
+            list(Draft202012Validator(cooperation_schema).iter_errors(context["cooperation_binding"])),
+            [],
+        )
+
+    def test_explicit_store_becomes_shared_after_two_distinct_lease_entries(self) -> None:
+        project_id = stable_project_id(ROOT)
+        workstate_id = "urn:uuid:conversation-awp-design-2026-09-03"
+        self.ledger.enter_lease(
+            workstate_id=workstate_id,
+            project_id=project_id,
+            actor="actor:one",
+            location="C:/one",
+            base_revision="git:test",
+            intended_scopes=[],
+            ttl_seconds=900,
+            at=START,
+        )
+        self.ledger.enter_lease(
+            workstate_id=workstate_id,
+            project_id=project_id,
+            actor="actor:two",
+            location="C:/two",
+            base_revision="git:test",
+            intended_scopes=[],
+            ttl_seconds=900,
+            at=START,
+        )
+        context = operational_context(ROOT, self.path)
+        self.assertEqual(context["binding_observation"]["operational_reach"], "shared")
+        self.assertEqual(context["shared_reach_evidence"]["actors"], ["actor:one", "actor:two"])
+
+    def test_checkpoint_projection_rejects_stale_frontier_and_returns_matching_receipt(self) -> None:
+        initial = self.begin("actor:one")["frontier"]
+        capsule = Path(self.temporary.name) / "project.awp.md"
+        capsule.write_text(
+            "---\n"
+            "awp_version: 0.8.0\n"
+            "frontier:\n"
+            f"  - {initial[0]}\n"
+            "checkpoint: checkpoint:before\n"
+            "generated_at: 2026-09-05T19:00:00Z\n"
+            "generated_digest: sha256:PLACEHOLDER\n"
+            "---\n\n"
+            "<!-- awp:generated:start -->\n"
+            "# Test capsule\n"
+            "<!-- awp:generated:end -->\n",
+            encoding="utf-8",
+        )
+        digest = "sha256:" + hashlib.sha256(b"# Test capsule").hexdigest()
+        capsule.write_text(
+            capsule.read_text(encoding="utf-8").replace("sha256:PLACEHOLDER", digest),
+            encoding="utf-8",
+        )
+        result = self.ledger.publish_checkpoint(
+            workstate_id="workstate:test",
+            actor="actor:one",
+            capsule=capsule,
+            expected_capsule_frontier=initial,
+            expected_ledger_frontier=initial,
+            expected_digest=digest,
+            next_action="continue",
+            unresolved_work=[],
+            request_id="request:checkpoint",
+            request_hash="hash:checkpoint",
+        )
+        self.assertEqual(capsule_integrity(capsule)["state"], "current")
+        self.assertEqual(
+            result["receipt"]["digest"],
+            "sha256:" + hashlib.sha256(capsule.read_bytes()).hexdigest(),
+        )
+        self.assertEqual(result["receipt"]["frontier"], result["frontier"])
+        before = capsule.read_bytes()
+        with self.assertRaises(CoordinationError):
+            self.ledger.publish_checkpoint(
+                workstate_id="workstate:test",
+                actor="actor:one",
+                capsule=capsule,
+                expected_capsule_frontier=initial,
+                expected_ledger_frontier=initial,
+                expected_digest=digest,
+                next_action="stale",
+                unresolved_work=[],
+                request_id="request:stale-checkpoint",
+                request_hash="hash:stale",
+            )
+        self.assertEqual(capsule.read_bytes(), before)
 
     def test_repository_identity_mismatch_fails_closed(self) -> None:
         left = {"repository": "repo:one", "kind": "file", "path": "src/app.py"}
@@ -163,6 +257,21 @@ class CoordinationLedgerTests(unittest.TestCase):
             target="active", reason="blocking overlap resolved",
         )
         self.assertEqual(activated["intent"]["status"], "active")
+
+    def test_escalation_does_not_silently_clear_a_blocking_overlap(self) -> None:
+        self.begin("actor:one")
+        self.enter_lease("actor:two")
+        blocked = self.begin("actor:two", policy="block")
+        overlap_id = blocked["overlaps"][0]["id"]
+        self.ledger.resolve_overlap(
+            workstate_id="workstate:test",
+            overlap_id=overlap_id,
+            actor="actor:one",
+            disposition="escalation",
+            reason="Decision owner must choose an order.",
+            at=START,
+        )
+        self.assertEqual(self.ledger.refresh("workstate:test")["advisory_status"], "block")
 
     def test_lease_lifecycle_is_bounded_and_required_for_guarded_begin(self) -> None:
         with self.assertRaises(CoordinationError):

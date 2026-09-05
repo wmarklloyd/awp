@@ -23,6 +23,13 @@ def load_module(path: Path, name: str):
 
 
 class RepositoryIntegrityTests(unittest.TestCase):
+    def test_root_capsule_generated_digest_is_current(self) -> None:
+        coordination = load_module(
+            ROOT / "tools" / "awp_coordination.py", "awp_coordination_integrity"
+        )
+        integrity = coordination.capsule_integrity(ROOT / "awp.awp.md")
+        self.assertEqual(integrity["state"], "current")
+
     def test_stable_bundle_matches_release_manifest(self) -> None:
         manifest_path = ROOT / "dist" / "0.6.0" / "release-manifest.json"
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

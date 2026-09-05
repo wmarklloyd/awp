@@ -12,9 +12,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sqlite3
 import subprocess
+import tempfile
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -38,6 +40,13 @@ DISPOSITION_KINDS = {"partition", "order", "withdrawal", "escalation"}
 CLEARING_DISPOSITIONS = {"partition", "order", "withdrawal"}
 DEFAULT_LEASE_SECONDS = 900
 LEASE_STATES = {"active", "released", "expired"}
+GENERATED_REGION = re.compile(
+    r"<!-- awp:generated:start -->\n(.*?)\n<!-- awp:generated:end -->", re.DOTALL
+)
+GENERATED_DIGEST = re.compile(r"(?m)^generated_digest:\s*(sha256:[0-9a-f]{64})\s*$")
+FRONTIER_BLOCK = re.compile(r"(?m)^frontier:\n(?:[ \t]*-\s*[^\n]+\n?)*")
+CHECKPOINT_FIELD = re.compile(r"(?m)^checkpoint:\s*[^\n]*$")
+GENERATED_AT_FIELD = re.compile(r"(?m)^generated_at:\s*[^\n]*$")
 
 
 class CoordinationError(RuntimeError):
@@ -49,6 +58,99 @@ def utc_timestamp(value: datetime | None = None) -> str:
     return current.astimezone(timezone.utc).isoformat(timespec="microseconds").replace(
         "+00:00", "Z"
     )
+
+
+def generated_region_digest(text: str) -> str:
+    """Return the Capsule generated-region digest after newline normalization."""
+    normalized = text.replace("\r\n", "\n")
+    match = GENERATED_REGION.search(normalized)
+    if not match:
+        raise CoordinationError("capsule has no generated region")
+    return f"sha256:{hashlib.sha256(match.group(1).encode('utf-8')).hexdigest()}"
+
+
+def capsule_integrity(path: Path) -> dict:
+    """Read the current Capsule integrity state without changing it."""
+    text = path.read_text(encoding="utf-8")
+    declared = GENERATED_DIGEST.search(text)
+    try:
+        computed = generated_region_digest(text)
+    except CoordinationError as error:
+        return {
+            "state": "stale",
+            "path": path.name,
+            "reason": str(error),
+        }
+    if not declared:
+        return {
+            "state": "stale",
+            "path": path.name,
+            "computed_digest": computed,
+            "reason": "capsule has no generated_digest",
+        }
+    return {
+        "state": "current" if declared.group(1) == computed else "modified",
+        "path": path.name,
+        "declared_digest": declared.group(1),
+        "computed_digest": computed,
+    }
+
+
+def replace_capsule_projection(
+    path: Path,
+    *,
+    expected_frontier: Sequence[str],
+    expected_digest: str,
+    frontier: Sequence[str],
+    checkpoint_id: str,
+    generated_at: str,
+) -> dict:
+    """Replace only Capsule projection metadata after optimistic checks.
+
+    The caller holds the binding transaction.  `os.replace` gives readers either
+    the old or new capsule; a crash between replacement and SQLite commit is
+    intentionally surfaced as recoverable frontier divergence on the next read.
+    """
+    original = path.read_text(encoding="utf-8")
+    integrity = capsule_integrity(path)
+    if integrity["state"] != "current" or integrity["computed_digest"] != expected_digest:
+        raise CoordinationError("capsule digest is stale or does not match expected digest")
+    frontier_match = FRONTIER_BLOCK.search(original)
+    if not frontier_match:
+        raise CoordinationError("capsule has no readable frontier")
+    actual_frontier = re.findall(r"(?m)^\s*-\s*(\S+)\s*$", frontier_match.group(0))
+    if actual_frontier != list(expected_frontier):
+        raise CoordinationError("capsule frontier is stale")
+    replacement_frontier = "frontier:\n" + "".join(f"  - {item}\n" for item in frontier)
+    rewritten, count = FRONTIER_BLOCK.subn(replacement_frontier, original, count=1)
+    if count != 1:
+        raise CoordinationError("could not replace capsule frontier")
+    rewritten, count = CHECKPOINT_FIELD.subn(f"checkpoint: {checkpoint_id}", rewritten, count=1)
+    if count != 1:
+        raise CoordinationError("capsule has no readable checkpoint")
+    rewritten, count = GENERATED_AT_FIELD.subn(f"generated_at: {generated_at}", rewritten, count=1)
+    if count != 1:
+        raise CoordinationError("capsule has no readable generated_at")
+    # The generated region is unchanged, so its declared digest remains valid.
+    handle, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8", newline="") as temporary:
+            temporary.write(rewritten)
+            temporary.flush()
+            os.fsync(temporary.fileno())
+        os.replace(temporary_name, path)
+    except Exception:
+        try:
+            os.unlink(temporary_name)
+        except FileNotFoundError:
+            pass
+        raise
+    return {
+        "path": path.name,
+        "digest": f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}",
+        "generated_digest": integrity["computed_digest"],
+        "frontier": list(frontier),
+    }
 
 
 def git_value(project: Path, *arguments: str) -> str:
@@ -233,6 +335,16 @@ class CoordinationLedger:
         if row is None:
             raise CoordinationError("coordination ledger has no binding identity")
         return str(row["value"])
+
+    def participant_actors(self, workstate_id: str) -> list[str]:
+        """Return actors that have independently entered this binding."""
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT DISTINCT actor FROM events WHERE workstate_id = ? "
+                "AND kind = 'lease.entered' ORDER BY actor",
+                (workstate_id,),
+            ).fetchall()
+        return [str(row["actor"]) for row in rows]
 
     @contextmanager
     def _transaction(self) -> Iterator[sqlite3.Connection]:
@@ -936,6 +1048,92 @@ class CoordinationLedger:
             )
             return result
 
+    def publish_checkpoint(
+        self,
+        *,
+        workstate_id: str,
+        actor: str,
+        capsule: Path,
+        expected_capsule_frontier: Sequence[str],
+        expected_ledger_frontier: Sequence[str],
+        expected_digest: str,
+        next_action: str,
+        unresolved_work: Sequence[str],
+        request_id: str,
+        request_hash: str,
+    ) -> dict:
+        """Publish a receipt-backed canonical Capsule projection.
+
+        This local profile serializes publishers with SQLite and atomically
+        replaces the Capsule file.  It deliberately reports a recoverable
+        mismatch if a process crashes between the file replacement and commit.
+        """
+        occurred_at = utc_timestamp()
+        with self._transaction() as connection:
+            prior_request = connection.execute(
+                "SELECT request_hash, response_json FROM requests "
+                "WHERE workstate_id = ? AND request_id = ?",
+                (workstate_id, request_id),
+            ).fetchone()
+            if prior_request:
+                if prior_request["request_hash"] != request_hash:
+                    raise CoordinationError("request ID was reused with different content")
+                return json.loads(prior_request["response_json"])
+            current_frontier = self._frontier(connection, workstate_id)
+            if list(expected_ledger_frontier) != current_frontier:
+                raise CoordinationError("expected ledger frontier is stale")
+            checkpoint_id = self._identifier("checkpoint")
+            event, _ = self._append(
+                connection,
+                workstate_id=workstate_id,
+                actor=actor,
+                kind="checkpoint.published",
+                payload={
+                    "checkpoint": checkpoint_id,
+                    "expected_capsule_frontier": list(expected_capsule_frontier),
+                    "expected_ledger_frontier": list(expected_ledger_frontier),
+                    "expected_digest": expected_digest,
+                    "next_action": next_action,
+                    "unresolved_work": list(unresolved_work),
+                    "capsule": capsule.name,
+                },
+                occurred_at=occurred_at,
+            )
+            projection = replace_capsule_projection(
+                capsule,
+                expected_frontier=expected_capsule_frontier,
+                expected_digest=expected_digest,
+                frontier=[event["event_id"]],
+                checkpoint_id=checkpoint_id,
+                generated_at=occurred_at,
+            )
+            result = {
+                "profile": PROFILE,
+                "mode": "ledger-backed-advisory",
+                "checkpoint": checkpoint_id,
+                "expected_capsule_frontier": list(expected_capsule_frontier),
+                "expected_ledger_frontier": list(expected_ledger_frontier),
+                "next_action": next_action,
+                "unresolved_work": list(unresolved_work),
+                "receipt": projection,
+                "frontier": [event["event_id"]],
+                "atomicity": {
+                    "mechanism": "sqlite-begin-immediate plus atomic file replace",
+                    "recovery": "a crash between file replacement and database commit is reported as recoverable frontier divergence",
+                },
+            }
+            connection.execute(
+                "INSERT INTO requests(workstate_id, request_id, request_hash, response_json) "
+                "VALUES (?, ?, ?, ?)",
+                (
+                    workstate_id,
+                    request_id,
+                    request_hash,
+                    json.dumps(result, sort_keys=True, separators=(",", ":")),
+                ),
+            )
+            return result
+
     # ------------------------------------------------------------------
     # COOP-1 section 4.1 step 3: bounded participant leases.
     #
@@ -1331,6 +1529,14 @@ def operational_context(start: Path, ledger_override: Path | None = None) -> dic
                     "ledger": ledger,
                 }
                 observation = ledger.refresh(workstate_id)
+                independent_participants = ledger.participant_actors(workstate_id)
+                if ledger_override and len(independent_participants) >= 2:
+                    reach = "shared"
+                    context["ledger_reach"] = reach
+                    context["shared_reach_evidence"] = {
+                        "kind": "distinct-lease-actors",
+                        "actors": independent_participants,
+                    }
                 context["binding_identity"] = {
                     "workstate_id": workstate_id,
                     "project_id": context["project_id"],
@@ -1352,6 +1558,21 @@ def operational_context(start: Path, ledger_override: Path | None = None) -> dic
                     "storage_assumptions": [
                         "all participants open the same SQLite database file",
                         "the filesystem preserves SQLite locking and atomic commit semantics",
+                    ],
+                }
+                context["capsule_integrity"] = capsule_integrity(capsule)
+                context["cooperation_binding"] = {
+                    "type": "cooperation_binding",
+                    "module": COOPERATION_MODULE,
+                    "contract": "COOP-1",
+                    "identity": context["binding_identity"],
+                    "observation": context["binding_observation"],
+                    "atomicity_mechanism": "sqlite-begin-immediate",
+                    "storage_assumptions": context["binding_observation"]["storage_assumptions"],
+                    "limitations": [
+                        "advisory enforcement; source-control writes are not fenced",
+                        "path-like physical scopes only; semantic conflicts can remain undetected",
+                        "local checkpoint projection recovers explicitly from a crash between file replacement and database commit",
                     ],
                 }
                 if reach == "worktree-local":
@@ -1458,6 +1679,17 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--watcher-id", required=True)
     scan.add_argument("--limit", type=int, default=1000)
 
+    checkpoint = subparsers.add_parser(
+        "checkpoint", help="publish a receipt-backed canonical capsule projection"
+    )
+    checkpoint.add_argument("--actor", required=True)
+    checkpoint.add_argument("--expected-capsule-frontier", action="append", required=True)
+    checkpoint.add_argument("--expected-ledger-frontier", action="append", required=True)
+    checkpoint.add_argument("--expected-digest", required=True)
+    checkpoint.add_argument("--next-action", required=True)
+    checkpoint.add_argument("--unresolved", action="append", default=[])
+    checkpoint.add_argument("--request-id", required=True)
+
     subparsers.add_parser("export", help="write the unified event stream as JSON Lines")
     return parser
 
@@ -1475,6 +1707,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     ledger: CoordinationLedger = context["ledger"]
     try:
         if args.command == "begin":
+            if args.policy == "block" and context["capsule_integrity"]["state"] != "current":
+                raise CoordinationError(
+                    "canonical capsule integrity is not current; refresh or re-project before guarded work"
+                )
             revision = f"git:{git_value(context['project'], 'rev-parse', 'HEAD')}"
             scopes = [normalize_scope(context["project"], scope) for scope in args.scope]
             result = ledger.begin(
@@ -1554,6 +1790,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = ledger.leases(context["workstate_id"])
         elif args.command == "scan":
             result = ledger.scan(context["workstate_id"], args.watcher_id, args.limit)
+        elif args.command == "checkpoint":
+            request = {
+                "actor": args.actor,
+                "expected_capsule_frontier": args.expected_capsule_frontier,
+                "expected_ledger_frontier": args.expected_ledger_frontier,
+                "expected_digest": args.expected_digest,
+                "next_action": args.next_action,
+                "unresolved_work": args.unresolved,
+            }
+            result = ledger.publish_checkpoint(
+                workstate_id=context["workstate_id"],
+                actor=args.actor,
+                capsule=context["capsule"],
+                expected_capsule_frontier=args.expected_capsule_frontier,
+                expected_ledger_frontier=args.expected_ledger_frontier,
+                expected_digest=args.expected_digest,
+                next_action=args.next_action,
+                unresolved_work=args.unresolved,
+                request_id=args.request_id,
+                request_hash=hashlib.sha256(
+                    json.dumps(request, sort_keys=True, separators=(",", ":")).encode("utf-8")
+                ).hexdigest(),
+            )
         else:
             for event in ledger.export_events(context["workstate_id"]):
                 print(json.dumps(event, sort_keys=True))

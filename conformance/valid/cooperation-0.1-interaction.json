@@ -7,7 +7,17 @@
   "subject": {"ref": "artifact:spec"},
   "participants": [{"id": "actor:one", "role": "requester"}, {"id": "actor:two", "role": "responder"}],
   "decision_owner": "principal:owner",
-  "policy": {"policy_id": "coop-1-default-loop-v1", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+  "binding": {
+    "type": "cooperation_binding",
+    "module": "urn:awp:cooperation",
+    "contract": "COOP-1",
+    "identity": {"workstate_id": "workstate:example", "project_id": "git-root:0123456789abcdef", "store_id": "binding:example", "scope_model": "awp-repository-path-v1", "binding_epoch": 1},
+    "observation": {"observed_at": "2026-09-05T16:00:00Z", "operational_reach": "shared", "frontier": ["evt:one"]},
+    "atomicity_mechanism": "sqlite-begin-immediate",
+    "storage_assumptions": ["All participants open the same SQLite file."],
+    "limitations": ["Advisory scope enforcement."]
+  },
+  "policy": {"policy_id": "coop-1-default-loop-v1", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "definition": {"policy_id": "coop-1-default-loop-v1", "max_rounds": 2, "max_participant_responses": 3, "max_tool_calls": 8, "progress_requirement": "new_artifact_evidence_decision_or_disagreement", "repeat_key_algorithm": "rfc8785-sha256-v1", "on_limit": "inconclusive_or_escalated", "continuation_authority": "decision_owner"}},
   "round": 1,
   "repeat_basis": {"purpose": "critique", "subject": {"ref": "artifact:spec"}, "context_frontier": ["evt:one"], "participant_set_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
   "repeat_key": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
