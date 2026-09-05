@@ -132,7 +132,8 @@
             "result": { "$ref": "#/$defs/identifier" },
             "next_action": { "type": "string", "minLength": 1 },
             "unresolved_work": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-            "mode": { "enum": ["continue", "exit"] }
+            "mode": { "enum": ["continue", "exit"] },
+            "capsule_confirmation": { "$ref": "#/$defs/capsuleConfirmation" }
           },
           "anyOf": [
             { "required": ["intent"] },
@@ -173,6 +174,15 @@
       },
       "additionalProperties": true
     },
+    "capsuleConfirmation": {
+      "type": "object",
+      "required": ["frontier", "digest"],
+      "properties": {
+        "frontier": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
+        "digest": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": true
+    },
     "operationResponse": {
       "type": "object",
       "required": ["request_id", "project", "publication", "coordination", "authority_ceiling", "frontier", "coverage", "diagnostics", "next"],
@@ -190,7 +200,8 @@
         "intent": { "$ref": "#/$defs/identifier" },
         "interaction": { "$ref": "#/$defs/identifier" },
         "result": { "$ref": "#/$defs/identifier" },
-        "receipt": { "$ref": "#/$defs/identifier" }
+        "receipt": { "$ref": "#/$defs/identifier" },
+        "checkpoint": { "$ref": "#/$defs/identifier" }
       },
       "additionalProperties": true
     },

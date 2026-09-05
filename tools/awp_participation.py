@@ -359,6 +359,96 @@ class ParticipationAdapter:
         except (ParticipationError, CoordinationError) as error:
             return self._rejected(request_id, str(error))
 
+    def checkpoint(self, request: dict[str, Any]) -> dict[str, Any]:
+        request_id = self._request_id(request)
+        try:
+            self._validate(request, "checkpoint")
+            if request["mode"] == "exit":
+                return self._pending(
+                    request_id,
+                    "Exit requires terminal intent, capsule, and presence-release bindings.",
+                    "AWP-CAPSULE-INCOMPLETE-HANDOFF",
+                    "needs_input",
+                )
+            confirmation = request.get("capsule_confirmation")
+            if not confirmation:
+                return self._pending(
+                    request_id,
+                    "A capsule frontier and digest confirmation are required.",
+                    "AWP-CAPSULE-CONFIRMATION-MISSING",
+                    "needs_input",
+                )
+            current_frontier = self.ledger.refresh(self.workstate_id)["frontier"]
+            if confirmation["frontier"] != current_frontier:
+                return self._pending(
+                    request_id,
+                    "The supplied capsule frontier does not include the current ledger frontier.",
+                    "AWP-CAPSULE-FRONTIER-STALE",
+                    "stale",
+                )
+            result = self.ledger.record_checkpoint(
+                workstate_id=self.workstate_id,
+                actor=self.actor,
+                mode=request["mode"],
+                next_action=request["next_action"],
+                unresolved_work=request.get("unresolved_work", []),
+                capsule_frontier=confirmation["frontier"],
+                capsule_digest=confirmation["digest"],
+                request_id=request_id,
+                request_hash=self._request_hash(request),
+            )
+            receipt_id = f"receipt:{request_id}"
+            return {
+                "request_id": request_id,
+                "project": self.project_id,
+                "publication": "confirmed",
+                "coordination": "clear",
+                "authority_ceiling": self.authority_ceiling,
+                "frontier": result["frontier"],
+                "coverage": self._coverage(),
+                "diagnostics": [],
+                "checkpoint": result["checkpoint"],
+                "receipt": receipt_id,
+                "publication_receipt": {
+                    "receipt_id": receipt_id,
+                    "request_id": request_id,
+                    "status": "confirmed",
+                    "event_ids": result["event_ids"],
+                    "frontier": result["frontier"],
+                    "binding": {
+                        "profile": result["profile"],
+                        "operational_mode": "ledger_bound",
+                        "reach": "shared",
+                        "confirmation": "publisher-supplied capsule frontier and digest recorded by local ledger",
+                    },
+                },
+                "next": {
+                    "operation": "read",
+                    "reason": "Checkpoint is recorded; refresh the bounded context before continuing.",
+                },
+            }
+        except (ParticipationError, CoordinationError) as error:
+            return self._rejected(request_id, str(error))
+
+    def _pending(
+        self,
+        request_id: str,
+        message: str,
+        code: str,
+        coordination: str,
+    ) -> dict[str, Any]:
+        return {
+            "request_id": request_id,
+            "project": self.project_id,
+            "publication": "pending",
+            "coordination": coordination,
+            "authority_ceiling": self.authority_ceiling,
+            "frontier": self.ledger.refresh(self.workstate_id)["frontier"],
+            "coverage": self._coverage(),
+            "diagnostics": [{"code": code, "severity": "error", "message": message}],
+            "next": {"operation": "checkpoint", "reason": "Provide the missing or refreshed checkpoint binding."},
+        }
+
     def _rejected(self, request_id: str, message: str) -> dict[str, Any]:
         return {
             "request_id": request_id,

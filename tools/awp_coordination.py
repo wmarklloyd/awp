@@ -825,6 +825,61 @@ class CoordinationLedger:
                 )
             return result
 
+    def record_checkpoint(
+        self,
+        *,
+        workstate_id: str,
+        actor: str,
+        mode: str,
+        next_action: str,
+        unresolved_work: Sequence[str],
+        capsule_frontier: Sequence[str],
+        capsule_digest: str,
+        request_id: str,
+        request_hash: str,
+    ) -> dict:
+        """Record a publisher-confirmed checkpoint without inventing a Core event."""
+        if mode != "continue":
+            raise CoordinationError("local checkpoint binding supports continue mode only")
+        with self._transaction() as connection:
+            prior_request = connection.execute(
+                "SELECT request_hash, response_json FROM requests "
+                "WHERE workstate_id = ? AND request_id = ?",
+                (workstate_id, request_id),
+            ).fetchone()
+            if prior_request:
+                if prior_request["request_hash"] != request_hash:
+                    raise CoordinationError("request ID was reused with different content")
+                return json.loads(prior_request["response_json"])
+            current_frontier = self._frontier(connection, workstate_id)
+            if list(capsule_frontier) != current_frontier:
+                raise CoordinationError("capsule frontier is stale")
+            checkpoint_id = self._identifier("checkpoint")
+            result = {
+                "profile": PROFILE,
+                "mode": "ledger-backed-advisory",
+                "checkpoint": checkpoint_id,
+                "checkpoint_mode": mode,
+                "next_action": next_action,
+                "unresolved_work": list(unresolved_work),
+                "capsule_frontier": list(capsule_frontier),
+                "capsule_digest": capsule_digest,
+                "actor": actor,
+                "event_ids": [],
+                "frontier": current_frontier,
+            }
+            connection.execute(
+                "INSERT INTO requests(workstate_id, request_id, request_hash, response_json) "
+                "VALUES (?, ?, ?, ?)",
+                (
+                    workstate_id,
+                    request_id,
+                    request_hash,
+                    json.dumps(result, sort_keys=True, separators=(",", ":")),
+                ),
+            )
+            return result
+
     def resolve_overlap(
         self,
         *,

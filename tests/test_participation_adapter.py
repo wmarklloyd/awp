@@ -201,6 +201,69 @@ class ParticipationAdapterTests(unittest.TestCase):
         self.assertEqual(result["publication"], "rejected")
         self.assertIn("not an overlap participant", result["diagnostics"][0]["message"])
 
+    def test_checkpoint_continue_requires_and_records_capsule_confirmation(self) -> None:
+        announcement = self.adapter.announce(self.announce_request())
+        request = {
+            "operation": "checkpoint",
+            "request_id": "request:checkpoint",
+            "project": "project:test",
+            "context": "ctx:test",
+            "intent": announcement["intent"],
+            "next_action": "Run the integration review",
+            "unresolved_work": [],
+            "mode": "continue",
+            "capsule_confirmation": {
+                "frontier": announcement["frontier"],
+                "digest": "sha256:capsule-test",
+            },
+        }
+        result = self.adapter.checkpoint(request)
+        self.assertEqual(result["publication"], "confirmed")
+        self.assertEqual(result["coordination"], "clear")
+        self.assertTrue(result["checkpoint"].startswith("checkpoint:"))
+        self.assertEqual(result["publication_receipt"]["event_ids"], [])
+        retry = self.adapter.checkpoint(request)
+        self.assertEqual(result["publication_receipt"], retry["publication_receipt"])
+        self.assertEqual(len(self.adapter.ledger.export_events("workstate:test")), 2)
+
+    def test_checkpoint_returns_pending_for_stale_capsule_frontier(self) -> None:
+        announcement = self.adapter.announce(self.announce_request())
+        result = self.adapter.checkpoint(
+            {
+                "operation": "checkpoint",
+                "request_id": "request:stale-checkpoint",
+                "project": "project:test",
+                "context": "ctx:test",
+                "intent": announcement["intent"],
+                "next_action": "Refresh the capsule",
+                "mode": "continue",
+                "capsule_confirmation": {
+                    "frontier": ["evt:not-current"],
+                    "digest": "sha256:stale",
+                },
+            }
+        )
+        self.assertEqual(result["publication"], "pending")
+        self.assertEqual(result["coordination"], "stale")
+        self.assertEqual(result["diagnostics"][0]["code"], "AWP-CAPSULE-FRONTIER-STALE")
+
+    def test_checkpoint_exit_stays_pending_without_terminal_bindings(self) -> None:
+        announcement = self.adapter.announce(self.announce_request())
+        result = self.adapter.checkpoint(
+            {
+                "operation": "checkpoint",
+                "request_id": "request:exit-checkpoint",
+                "project": "project:test",
+                "context": "ctx:test",
+                "intent": announcement["intent"],
+                "next_action": "Stop this session",
+                "mode": "exit",
+            }
+        )
+        self.assertEqual(result["publication"], "pending")
+        self.assertEqual(result["coordination"], "needs_input")
+        self.assertEqual(result["diagnostics"][0]["code"], "AWP-CAPSULE-INCOMPLETE-HANDOFF")
+
     def test_mixed_access_scopes_are_rejected_by_local_slice(self) -> None:
         request = self.announce_request()
         request["scope"].append({"path": "README.md", "access": "read"})
