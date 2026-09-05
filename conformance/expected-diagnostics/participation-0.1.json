@@ -1,0 +1,8 @@
+{
+  "schema": "schemas/awp-participation-0.1.schema.json",
+  "cases": [
+    {"document": "conformance/valid/participation-0.1-announce.json", "valid": true, "expected_keywords": []},
+    {"document": "conformance/valid/participation-0.1-response.json", "valid": true, "expected_keywords": []},
+    {"document": "conformance/valid/participation-0.1-receipt.json", "valid": true, "expected_keywords": []}
+  ]
+}

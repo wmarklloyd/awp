@@ -1,0 +1,13 @@
+{
+  "request_id": "request:81",
+  "project": "project:watches",
+  "publication": "confirmed",
+  "coordination": "warning",
+  "authority_ceiling": ["read_only", "local_write"],
+  "frontier": ["evt:81"],
+  "coverage": {"scope_complete": true, "history": "complete", "semantic_analysis": "unavailable"},
+  "diagnostics": [],
+  "next": {"operation": "interact", "reason": "Record an ordering proposal before continuing under project policy"},
+  "intent": "intent:81",
+  "interaction": "interaction:9"
+}

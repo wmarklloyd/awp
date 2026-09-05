@@ -1,0 +1,13 @@
+{
+  "receipt_id": "receipt:81",
+  "request_id": "request:81",
+  "status": "confirmed",
+  "event_ids": ["evt:81"],
+  "frontier": ["evt:81"],
+  "binding": {
+    "profile": "local-ledger-awareness-v1",
+    "operational_mode": "ledger_bound",
+    "reach": "shared",
+    "confirmation": "event-id-and-frontier-returned-by-binding"
+  }
+}

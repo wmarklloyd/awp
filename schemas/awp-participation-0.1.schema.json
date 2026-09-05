@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:awp:schema:participation:0.1.0",
+  "title": "AWP Model Participation 0.1",
+  "description": "Experimental adapter contract for simpler model participation in AWP coordination.",
+  "oneOf": [
+    { "$ref": "#/$defs/readRequest" },
+    { "$ref": "#/$defs/announceRequest" },
+    { "$ref": "#/$defs/interactRequest" },
+    { "$ref": "#/$defs/publishRequest" },
+    { "$ref": "#/$defs/checkpointRequest" },
+    { "$ref": "#/$defs/operationResponse" },
+    { "$ref": "#/$defs/publicationReceipt" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S+$"
+    },
+    "requestCommon": {
+      "type": "object",
+      "properties": {
+        "request_id": { "$ref": "#/$defs/identifier" },
+        "project": { "$ref": "#/$defs/identifier" },
+        "context": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": true
+    },
+    "scope": {
+      "type": "object",
+      "required": ["path", "access"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "access": { "enum": ["observe", "read", "relied_upon_read", "write", "create", "delete", "integrate", "verify"] },
+        "selector": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "reliance": {
+      "type": "object",
+      "required": ["ref", "reason"],
+      "properties": {
+        "ref": { "type": "string", "pattern": "^\\S+@[1-9][0-9]*$" },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "readRequest": {
+      "allOf": [
+        { "$ref": "#/$defs/requestCommon" },
+        {
+          "type": "object",
+          "required": ["operation"],
+          "properties": {
+            "operation": { "const": "read" },
+            "goal": { "$ref": "#/$defs/identifier" },
+            "requested_scope": { "type": "array", "items": { "$ref": "#/$defs/scope" }, "minItems": 1 },
+            "page": { "type": "integer", "minimum": 1 }
+          },
+          "anyOf": [
+            { "required": ["goal"] },
+            { "required": ["requested_scope"] }
+          ],
+          "additionalProperties": true
+        }
+      ]
+    },
+    "announceRequest": {
+      "allOf": [
+        { "$ref": "#/$defs/requestCommon" },
+        {
+          "type": "object",
+          "required": ["operation", "context", "summary", "scope"],
+          "properties": {
+            "operation": { "const": "announce" },
+            "summary": { "type": "string", "minLength": 1 },
+            "scope": { "type": "array", "items": { "$ref": "#/$defs/scope" }, "minItems": 1 },
+            "relies_on": { "type": "array", "items": { "$ref": "#/$defs/reliance" }, "uniqueItems": true }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "interactRequest": {
+      "allOf": [
+        { "$ref": "#/$defs/requestCommon" },
+        {
+          "type": "object",
+          "required": ["operation", "context", "intent", "interaction", "disposition", "rationale"],
+          "properties": {
+            "operation": { "const": "interact" },
+            "intent": { "$ref": "#/$defs/identifier" },
+            "interaction": { "$ref": "#/$defs/identifier" },
+            "disposition": { "enum": ["acknowledged", "proposed", "ordered", "escalated", "unresolved"] },
+            "rationale": { "type": "string", "minLength": 1 },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "publishRequest": {
+      "allOf": [
+        { "$ref": "#/$defs/requestCommon" },
+        {
+          "type": "object",
+          "required": ["operation", "context", "intent", "summary", "actual_scope"],
+          "properties": {
+            "operation": { "const": "publish" },
+            "intent": { "$ref": "#/$defs/identifier" },
+            "summary": { "type": "string", "minLength": 1 },
+            "actual_scope": { "type": "array", "items": { "$ref": "#/$defs/scope" }, "minItems": 1 },
+            "evidence": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
+            "unfinished_work": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "checkpointRequest": {
+      "allOf": [
+        { "$ref": "#/$defs/requestCommon" },
+        {
+          "type": "object",
+          "required": ["operation", "context", "next_action", "mode"],
+          "properties": {
+            "operation": { "const": "checkpoint" },
+            "intent": { "$ref": "#/$defs/identifier" },
+            "result": { "$ref": "#/$defs/identifier" },
+            "next_action": { "type": "string", "minLength": 1 },
+            "unresolved_work": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+            "mode": { "enum": ["continue", "exit"] }
+          },
+          "anyOf": [
+            { "required": ["intent"] },
+            { "required": ["result"] }
+          ],
+          "additionalProperties": true
+        }
+      ]
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["code", "severity", "message"],
+      "properties": {
+        "code": { "$ref": "#/$defs/identifier" },
+        "severity": { "enum": ["info", "warning", "error", "policy"] },
+        "message": { "type": "string", "minLength": 1 },
+        "recovery": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["scope_complete", "history", "semantic_analysis"],
+      "properties": {
+        "scope_complete": { "type": "boolean" },
+        "history": { "enum": ["complete", "partial", "missing", "unknown"] },
+        "semantic_analysis": { "enum": ["complete", "reported_only", "unavailable", "unknown"] },
+        "missing": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      },
+      "additionalProperties": true
+    },
+    "nextStep": {
+      "type": "object",
+      "required": ["operation", "reason"],
+      "properties": {
+        "operation": { "enum": ["read", "announce", "interact", "publish", "checkpoint"] },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "operationResponse": {
+      "type": "object",
+      "required": ["request_id", "project", "publication", "coordination", "authority_ceiling", "frontier", "coverage", "diagnostics", "next"],
+      "properties": {
+        "request_id": { "$ref": "#/$defs/identifier" },
+        "project": { "$ref": "#/$defs/identifier" },
+        "publication": { "enum": ["confirmed", "pending", "rejected", "not_applicable"] },
+        "coordination": { "enum": ["clear", "warning", "needs_input", "blocked", "unverifiable", "stale"] },
+        "authority_ceiling": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
+        "frontier": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
+        "coverage": { "$ref": "#/$defs/coverage" },
+        "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+        "next": { "$ref": "#/$defs/nextStep" },
+        "context": { "$ref": "#/$defs/identifier" },
+        "intent": { "$ref": "#/$defs/identifier" },
+        "interaction": { "$ref": "#/$defs/identifier" },
+        "result": { "$ref": "#/$defs/identifier" },
+        "receipt": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": true
+    },
+    "publicationReceipt": {
+      "type": "object",
+      "required": ["receipt_id", "request_id", "status", "event_ids", "frontier", "binding"],
+      "properties": {
+        "receipt_id": { "$ref": "#/$defs/identifier" },
+        "request_id": { "$ref": "#/$defs/identifier" },
+        "status": { "enum": ["confirmed", "pending", "rejected", "not_applicable"] },
+        "event_ids": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
+        "frontier": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
+        "binding": {
+          "type": "object",
+          "required": ["profile", "operational_mode", "reach", "confirmation"],
+          "properties": {
+            "profile": { "$ref": "#/$defs/identifier" },
+            "operational_mode": { "enum": ["ledger_bound", "snapshot_only", "degraded", "unavailable"] },
+            "reach": { "enum": ["shared", "worktree_local", "cross_host", "unverifiable"] },
+            "confirmation": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

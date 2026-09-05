@@ -1,0 +1,9 @@
+{
+  "operation": "announce",
+  "request_id": "request:81",
+  "project": "project:watches",
+  "context": "ctx:17",
+  "summary": "Update watch battery comparisons",
+  "scope": [{"path": "data/battery.csv", "access": "write"}],
+  "relies_on": [{"ref": "claim:battery-method@2", "reason": "Comparison uses this measurement method"}]
+}
