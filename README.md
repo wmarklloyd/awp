@@ -74,7 +74,7 @@ The 0.6.0 release is fixed by the immutable tag [`v0.6.0`](https://github.com/wm
 
 AWP is not an agent runtime, source-control system, artifact store, authentication or authorization system, consensus protocol, or policy engine. Imported workstate describes claims and requested actions; it never grants authority for external side effects.
 
-The repository provides normative prose, JSON Schemas, generated bundles, positive and negative conformance fixtures, reproducibility tests, a service-free local ledger-awareness reference adapter, and a synthetic coordination-awareness pilot. It does **not** yet provide a production general-purpose reader/writer, a complete cross-record validator, a semantic-scope analyzer, a live coordinator, two independent implementations, or empirical evidence that AWP improves real multi-agent outcomes. That distinction is deliberate and is maintained throughout the repository.
+The repository provides normative prose, JSON Schemas, generated bundles, positive and negative conformance fixtures, reproducibility tests, a service-free local ledger-awareness reference adapter, an informative transport-neutral C1 projector foundation, and a synthetic coordination-awareness pilot. It does **not** yet provide a production general-purpose reader/writer, a complete cross-record validator, a semantic-scope analyzer, a live coordinator, two independent implementations, or empirical evidence that AWP improves real multi-agent outcomes. That distinction is deliberate and is maintained throughout the repository.
 
 ## Start here
 

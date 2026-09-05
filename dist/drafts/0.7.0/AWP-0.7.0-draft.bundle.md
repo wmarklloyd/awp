@@ -2448,7 +2448,7 @@ Coordination 0.4.0 is normative but experimental in AWP 0.7.0. It should not adv
 8. security review confirms that records cannot self-authorize external actions;
 9. the brokered/sharded profile has independent interoperability, load, failover, loss, and projection-race evidence across its declared operating envelope.
 
-The repository's `tools/awp_projector.py` is an informative C1 foundation. It is transport-neutral and currently covers structural event validation, workstate and ancestry checks, deterministic topological replay, revision and lifecycle checks for the declared transition tables, and preservation of concurrent contested successors. Its tests do not yet constitute the complete C1 fixture suite, a complete cross-record validator, or independent interoperability evidence.
+The repository's `tools/awp_projector.py` is an informative C1 foundation. It is transport-neutral and currently covers structural event validation, workstate and ancestry checks, deterministic topological replay, revision and lifecycle checks for the declared transition tables, cross-record pinned-reference checks, and preservation of concurrent contested successors. Its tests do not yet constitute the complete C1 fixture suite, a complete cross-record validator, or independent interoperability evidence.
 
 ## 26. Open issues
 

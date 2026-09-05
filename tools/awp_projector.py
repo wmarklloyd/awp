@@ -12,10 +12,11 @@ from __future__ import annotations
 import argparse
 import heapq
 import json
+import re
 from pathlib import Path
 from typing import Iterable, Sequence
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -116,9 +117,12 @@ class C1Projector:
     """Project a Coordination event set independently of transport ordering."""
 
     def __init__(self) -> None:
-        self._core = Draft202012Validator(json.loads(CORE_SCHEMA.read_text(encoding="utf-8")))
+        checker = FormatChecker()
+        self._core = Draft202012Validator(
+            json.loads(CORE_SCHEMA.read_text(encoding="utf-8")), format_checker=checker
+        )
         self._coordination = Draft202012Validator(
-            json.loads(COORDINATION_SCHEMA.read_text(encoding="utf-8"))
+            json.loads(COORDINATION_SCHEMA.read_text(encoding="utf-8")), format_checker=checker
         )
 
     @staticmethod
@@ -226,6 +230,56 @@ class C1Projector:
         return ordered
 
     @staticmethod
+    def _reference_values(record: dict) -> list[tuple[str, str]]:
+        fields = {
+            "scope": ("semantic_targets",),
+            "intent": ("declared_scopes", "expected_effects", "preserves"),
+            "observed_scope": ("subject", "observed"),
+            "overlap": ("subjects",),
+            "conflict": ("subjects",),
+            "negotiation": ("subject",),
+            "arbitration": ("subjects", "blocked_scopes"),
+            "precondition": ("subject",),
+            "precondition_result": ("precondition",),
+            "change_set": ("intent", "declared_scopes", "preconditions", "observed_scope", "verification"),
+            "verification_result": ("subjects",),
+            "dependency": ("source", "target"),
+            "integration_plan": ("change_sets", "order", "verification"),
+            "integration_result": ("plan",),
+            "lease": ("scope",),
+            "presence": ("declared_scopes",),
+        }.get(record.get("type"), ())
+        values: list[tuple[str, str]] = []
+        for field in fields:
+            value = record.get(field)
+            if isinstance(value, str):
+                values.append((field, value))
+            elif isinstance(value, list):
+                values.extend((field, item) for item in value if isinstance(item, str))
+        return values
+
+    def _validate_cross_record_references(
+        self, records: dict[str, dict], diagnostics: list[dict]
+    ) -> None:
+        pinned = re.compile(r"^(\S+)@([1-9][0-9]*)$")
+        for record_id in sorted(records):
+            record = records[record_id]
+            if record.get("condition", {}).get("type") == "contested":
+                diagnostics.append(self._diagnostic("AWP-COORD-RECORD-CONTESTED", None, "cross-record validation cannot safely resolve references from a contested record", record_id=record_id))
+                continue
+            for field, value in self._reference_values(record):
+                match = pinned.fullmatch(value)
+                if not match:
+                    diagnostics.append(self._diagnostic("AWP-COORD-MISSING-DEPENDENCY", None, f"{field} is not a pinned record reference: {value}", record_id=record_id))
+                    continue
+                target_id, revision_text = match.groups()
+                target = records.get(target_id)
+                if target is None:
+                    diagnostics.append(self._diagnostic("AWP-COORD-MISSING-DEPENDENCY", None, f"{field} references unavailable record {value}", record_id=record_id))
+                elif target.get("revision") != int(revision_text):
+                    diagnostics.append(self._diagnostic("AWP-COORD-REVISION-CONFLICT", None, f"{field} references {value}, but the projected record is revision {target.get('revision')}", record_id=record_id))
+
+    @staticmethod
     def _heads(events: dict[str, dict]) -> list[str]:
         referenced = {parent for event in events.values() for parent in event["parents"]}
         return sorted(event_id for event_id in events if event_id not in referenced)
@@ -306,6 +360,7 @@ class C1Projector:
             heads[record_id] = {event_id}
             records[record_id] = dict(replacement)
 
+        self._validate_cross_record_references(records, diagnostics)
         diagnostics.sort(key=lambda item: (item.get("event_id") or "", item["code"], item.get("record_id") or ""))
         return {
             "conformance_level": "C1",
