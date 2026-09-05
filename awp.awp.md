@@ -30,6 +30,8 @@ Recommended next action: expand the transition fixtures across the remaining C1 
 <!-- awp:generated:end -->
 
 <!-- awp:notes:start -->
+Planning update: the user requested an architecture that smaller models can implement. See [Model participation architecture and implementation plan](docs/model-participation-architecture.md). This informative proposal defines five model operations, delegated processing responsibilities, bounded context, receipt-based publication, freshness, and recoverable checkpoint/exit behavior. The next proposed work package is a requirement-to-role matrix, operation and receipt schemas, and ten worked conversations before further runtime expansion. The architecture is proposed; it does not establish new C1 conformance or change the governing capsule version. The generated checkpoint below records the preceding implementation milestone.
+
 This capsule was migrated from the 0.3.0 design conversation. The prior monolithic drafts and review documents remain available as historical design input. Human notes are non-authoritative unless explicitly imported as proposed semantic events.
 <!-- awp:notes:end -->
 

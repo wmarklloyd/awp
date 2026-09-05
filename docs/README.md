@@ -2,6 +2,7 @@
 
 - [Project scope](project-scope.md)
 - [Architecture](architecture.md)
+- [Model participation architecture and implementation plan](model-participation-architecture.md)
 - [Informative formal model](formal-model.md)
 - [Design rationale](design-rationale.md)
 - [Related work and novelty boundary](related-work.md)
