@@ -10,6 +10,7 @@ writes, or claim complete C1/C2/C3 conformance.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sqlite3
@@ -188,6 +189,13 @@ class CoordinationLedger:
                     cursor INTEGER NOT NULL,
                     PRIMARY KEY(workstate_id, watcher_id)
                 );
+                CREATE TABLE IF NOT EXISTS requests (
+                    workstate_id TEXT NOT NULL,
+                    request_id TEXT NOT NULL,
+                    request_hash TEXT NOT NULL,
+                    response_json TEXT NOT NULL,
+                    PRIMARY KEY(workstate_id, request_id)
+                );
                 """
             )
 
@@ -317,6 +325,8 @@ class CoordinationLedger:
         access: str = "write",
         policy: str = "warn",
         at: datetime | None = None,
+        request_id: str | None = None,
+        request_hash: str | None = None,
     ) -> dict:
         if not scopes:
             raise CoordinationError("at least one scope is required")
@@ -327,6 +337,16 @@ class CoordinationLedger:
         occurred_at = utc_timestamp(at)
         events: list[dict] = []
         with self._transaction() as connection:
+            if request_id:
+                prior_request = connection.execute(
+                    "SELECT request_hash, response_json FROM requests "
+                    "WHERE workstate_id = ? AND request_id = ?",
+                    (workstate_id, request_id),
+                ).fetchone()
+                if prior_request:
+                    if prior_request["request_hash"] != request_hash:
+                        raise CoordinationError("request ID was reused with different content")
+                    return json.loads(prior_request["response_json"])
             existing_intents = self._records(
                 connection, workstate_id, "intent", {"proposed", "active", "waiting"}
             )
@@ -441,7 +461,7 @@ class CoordinationLedger:
                 events.append(overlap_event)
                 overlaps.append(overlap)
 
-            return {
+            result = {
                 "profile": PROFILE,
                 "mode": "ledger-backed-advisory",
                 "intent": intent,
@@ -450,6 +470,18 @@ class CoordinationLedger:
                 "event_ids": [event["event_id"] for event in events],
                 "frontier": self._frontier(connection, workstate_id),
             }
+            if request_id:
+                connection.execute(
+                    "INSERT INTO requests(workstate_id, request_id, request_hash, response_json) "
+                    "VALUES (?, ?, ?, ?)",
+                    (
+                        workstate_id,
+                        request_id,
+                        request_hash or hashlib.sha256(b"").hexdigest(),
+                        json.dumps(result, sort_keys=True, separators=(",", ":")),
+                    ),
+                )
+            return result
 
     def transition_intent(
         self,

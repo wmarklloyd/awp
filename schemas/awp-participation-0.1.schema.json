@@ -74,9 +74,11 @@
           "required": ["operation", "context", "summary", "scope"],
           "properties": {
             "operation": { "const": "announce" },
+            "goal": { "$ref": "#/$defs/identifier" },
             "summary": { "type": "string", "minLength": 1 },
             "scope": { "type": "array", "items": { "$ref": "#/$defs/scope" }, "minItems": 1 },
-            "relies_on": { "type": "array", "items": { "$ref": "#/$defs/reliance" }, "uniqueItems": true }
+            "relies_on": { "type": "array", "items": { "$ref": "#/$defs/reliance" }, "uniqueItems": true },
+            "policy": { "enum": ["warn", "block"] }
           },
           "additionalProperties": true
         }

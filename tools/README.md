@@ -10,6 +10,8 @@ The tools in this directory provide reproducible stable and archived-draft bundl
 
 `validate_conformance.py` also runs the JSON histories in `conformance/projector/` and compares their expected frontier, materialized records, contested conditions, and diagnostic signatures. These are reusable reference fixtures, not independent implementation evidence.
 
+`awp_participation.py` is an experimental local adapter for the proposed model-facing `read` and `announce` operations. It validates participation requests, returns bounded context and coordination outcomes, and uses the ledger's durable request table for idempotent announcement receipts. It does not implement `interact`, `publish`, or `checkpoint`, and it does not provide authority or complete C1 conformance.
+
 The remaining tools are repository-maintenance tools, not a production AWP implementation. Passing them establishes only the properties each tool explicitly checks.
 
 Run the complete command set documented in the repository [README](../README.md#validation) or rely on the same checks in GitHub Actions.

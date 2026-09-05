@@ -6,6 +6,7 @@ This directory contains machine-readable examples with explicit expected outcome
 - `invalid/` contains documents that must fail for the stated reason.
 - `expected-diagnostics/` records stable expected validation outcomes.
 - `projector/` contains transport-neutral C1 event histories with expected frontiers, materialized records, contested conditions, and diagnostic signatures.
+- `valid/participation-0.1-*.json` and its expectation manifest contain structural examples for the experimental model participation request, response, and publication receipt contract.
 - `interoperability/` reserves results from independent implementations.
 
 Passing structural fixtures is necessary but not sufficient for protocol conformance. Cross-record, event-graph, authority, and projection invariants require procedural fixtures and independently implemented processors.
