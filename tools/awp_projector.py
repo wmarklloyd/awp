@@ -1,10 +1,10 @@
-"""Transport-neutral deterministic projector for the AWP Coordination 0.4 draft.
+"""Transport-neutral deterministic projector for the AWP Coordination 0.5 draft.
 
 The projector consumes Coordination event envelopes and returns a deterministic
 materialized view.  It is deliberately independent of the SQLite ledger: a
 file, broker, database, or host binding can supply the same event sequence.
-This is a C1 foundation, not an authority source, semantic analyzer, or C3
-enforcer.
+This is a deterministic Coordination projector foundation, not a complete
+COOP-1 binding, authority source, semantic analyzer, or COOP-2 enforcer.
 """
 
 from __future__ import annotations
@@ -162,7 +162,7 @@ CREATION_KINDS = {
 }
 
 
-class C1Projector:
+class DeterministicProjector:
     """Project a Coordination event set independently of transport ordering."""
 
     def __init__(self) -> None:
@@ -460,7 +460,7 @@ class C1Projector:
         self._validate_bindings(records, diagnostics)
         diagnostics.sort(key=lambda item: (item.get("event_id") or "", item["code"], item.get("record_id") or ""))
         return {
-            "conformance_level": "C1",
+            "capability_profile": "deterministic-coordination-projector-v1",
             "workstate_id": workstate_id or (ordered[0]["workstate_id"] if ordered else None),
             "frontier": self._heads(by_id),
             "records": {record_id: records[record_id] for record_id in sorted(records)},
@@ -475,7 +475,7 @@ def main() -> int:
     parser.add_argument("--workstate-id")
     args = parser.parse_args()
     events = [json.loads(line) for line in __import__("sys").stdin if line.strip()]
-    print(json.dumps(C1Projector().project(events, args.workstate_id), indent=2, sort_keys=True))
+    print(json.dumps(DeterministicProjector().project(events, args.workstate_id), indent=2, sort_keys=True))
     return 0
 
 

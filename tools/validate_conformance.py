@@ -8,9 +8,9 @@ from pathlib import Path
 from jsonschema import Draft202012Validator, FormatChecker
 
 try:
-    from tools.awp_projector import C1Projector
+    from tools.awp_projector import DeterministicProjector
 except ModuleNotFoundError:  # direct execution as `python tools/validate_conformance.py`
-    from awp_projector import C1Projector
+    from awp_projector import DeterministicProjector
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,7 +34,7 @@ def _validate_projector_fixture(path: Path) -> list[str]:
     if missing:
         return [f"{path}: missing fixture fields: {', '.join(missing)}"]
     expected = fixture["expected"]
-    result = C1Projector().project(fixture["events"], fixture["workstate_id"])
+    result = DeterministicProjector().project(fixture["events"], fixture["workstate_id"])
     failures: list[str] = []
     for field in ("frontier", "records", "contested"):
         if result[field] != expected.get(field):

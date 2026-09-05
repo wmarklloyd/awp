@@ -140,7 +140,12 @@
             "frontier": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
             "checkpoint": { "$ref": "#/$defs/identifier" },
             "briefing": { "type": "string", "minLength": 1 },
-            "briefing_fields": { "$ref": "#/$defs/briefingFields" }
+            "briefing_fields": { "$ref": "#/$defs/briefingFields" },
+            "module_updates": {
+              "type": "object",
+              "propertyNames": { "pattern": "^urn:awp:" },
+              "additionalProperties": { "type": "object" }
+            }
           },
           "anyOf": [
             { "required": ["intent"] },

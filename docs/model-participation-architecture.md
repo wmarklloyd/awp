@@ -1,6 +1,6 @@
 # Model participation architecture and implementation plan
 
-Status: informative proposal for review. The operations, response fields, and role names below are proposed interfaces, not existing AWP wire records or new conformance claims. Adoption that changes released semantics requires a new versioned draft. This document does not change the meaning of C1 in an existing version.
+Status: informative proposal for review. The operations, response fields, and role names below are proposed interfaces, not existing AWP wire records or new conformance claims. Adoption that changes released semantics requires a new versioned draft. In AWP 0.8, COOP is the sole cooperation and coordination conformance ladder; released and historical versions retain their original labels.
 
 ## 1. Intended outcome
 
@@ -127,7 +127,7 @@ For each mutating request the adapter validates the request/session, resolves th
 
 The binding atomically records request identity and accepted event identities. Identical retries return the original receipt. Reusing a request identity with different content is rejected. A lost response after commit therefore does not duplicate an intent or checkpoint.
 
-A publication receipt distinguishes successful storage from successful semantic application. A conflict discovered while publishing remains visible in the response and subsequent projection. Project mutations outside the binding still require a host gate for stronger concurrency guarantees; advisory C1 cannot eliminate the interval between checking and writing.
+A publication receipt distinguishes successful storage from successful semantic application. A conflict discovered while publishing remains visible in the response and subsequent projection. Project mutations outside the binding still require a host gate for stronger concurrency guarantees; COOP-1 cooperative blocking cannot eliminate the interval between checking and an unprotected external write.
 
 | Failure | Required proposed behavior |
 |---|---|
@@ -168,11 +168,11 @@ Heartbeats and watcher cursors remain runtime state outside the capsule. A host 
 
 ## 8. Conformance and implementation scope
 
-Keep the existing C1 designation honest. A participant using the five operations is a participant in a declared binding; this alone does not make that model or adapter a complete C1 processor.
+Keep the COOP-1 designation honest. A participant using the five operations is a participant in a declared binding; this alone does not make that model or adapter a complete COOP-1 implementation.
 
-The proposed next draft should give each requirement an owner (participant, adapter, projector, binding, publisher, evaluator), triggering operation, capability prerequisite, and expected failure outcome. A role manifest identifies who satisfies each required behavior. A composed C1 claim requires evidence for the complete applicable set, including delegation boundaries.
+The proposed next draft should give each requirement an owner (participant, adapter, projector, binding, publisher, evaluator), triggering operation, capability prerequisite, and expected failure outcome. A role manifest identifies who satisfies each required behavior. A composed COOP-1 claim requires evidence for the complete applicable set, including delegation boundaries.
 
-The base participation profile supports read, intent/scope publication, interactions, result evidence, and checkpoint handoff. The experimental [COOP-1 Cooperation Contract](../spec/drafts/0.8.0/cooperation-contracts.md) is the selected separately named profile: it adds bounded symbiotic interactions and known-incompatible guarded-scope blocking without redefining Coordination C1. Integration assurance activates contracts, typed preconditions, verification, readiness, and integration records when required by the work. Enforcement activates only with an identified enforcing binding.
+The base participation profile supports read, intent/scope publication, interactions, result evidence, and checkpoint handoff. The experimental [COOP-1 Cooperation Contract](../spec/drafts/0.8.0/cooperation-contracts.md) is the default composed profile: it includes portable collaboration, deterministic projection, bounded symbiotic interactions, known-incompatible guarded-scope blocking, checkpoint freshness, and recovery. COOP-2 adds semantic awareness, integration assurance, and authenticated protected enforcement.
 
 ## 9. Scalability without increasing model burden
 
@@ -224,7 +224,7 @@ Gate: failures are attributable to a specific operation or context requirement; 
 
 Create the correctly versioned draft, schemas, operation-to-record mappings, conformance roles, migration guide, and generated bundle. Have an independent implementation consume the same portable fixtures and compare projections and receipts at the semantic level. Scale and fault-test only the deployment profiles claimed.
 
-Gate: compatibility differences are explicit; delegated responsibilities have evidence; the advertised profile matches implementation coverage. Promotion to complete C1 follows its applicable normative requirements, not the number of model operations implemented.
+Gate: compatibility differences are explicit; delegated responsibilities have evidence; the advertised profile matches implementation coverage. Promotion to complete COOP-1 follows its applicable normative requirements, not the number of model operations implemented.
 
 ## 11. First concrete work package
 

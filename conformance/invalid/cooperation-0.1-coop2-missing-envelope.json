@@ -1,0 +1,23 @@
+{
+  "type": "cooperation_binding",
+  "module": "urn:awp:cooperation",
+  "contract": "COOP-2",
+  "claim_state": "conformant",
+  "capabilities": ["semantic-awareness", "integration-assurance", "protected-mutation-enforcement"],
+  "operational_mode": "ledger-bound",
+  "identity": {
+    "workstate_id": "workstate:example",
+    "project_id": "git-root:0123456789abcdef",
+    "store_id": "binding:coop2-example",
+    "scope_model": "awp-semantic-scope-v1",
+    "binding_epoch": 4
+  },
+  "observation": {
+    "observed_at": "2026-09-05T18:30:00Z",
+    "operational_reach": "shared",
+    "frontier": ["evt:coop2-example"]
+  },
+  "atomicity_mechanism": "consensus-log-and-fenced-gateway",
+  "storage_assumptions": ["A quorum and protected gateway are reachable."],
+  "limitations": []
+}

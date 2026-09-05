@@ -1,5 +1,5 @@
 {
-  "fixture_id": "c1-precondition-binding",
+  "fixture_id": "deterministic-precondition-binding",
   "description": "A final precondition result may depend on a pinned precondition and a pinned input revision.",
   "workstate_id": "workstate:fixture-precondition",
   "events": [

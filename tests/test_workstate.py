@@ -103,6 +103,26 @@ class WorkstateWriterTests(unittest.TestCase):
         self.assertIn("task:projected-checkpoint", task_ids)
         self.assertEqual(result["updated_record_ids"], ["task:projected-checkpoint"])
 
+    def test_checkpoint_replaces_explicit_module_projection(self) -> None:
+        temporary, project, capsule = self.copy_capsule()
+        self.addCleanup(temporary.cleanup)
+        module_state = {
+            "contract": "COOP-1",
+            "claim_state": "partial",
+            "capabilities": ["deterministic-coordination-projector"],
+        }
+        result = self.module.checkpoint(
+            project,
+            capsule,
+            self.request(
+                capsule,
+                module_updates={"urn:awp:cooperation": module_state},
+            ),
+        )
+        sections = self.module._sections(capsule.read_text(encoding="utf-8"))
+        self.assertEqual(sections["snapshot"]["modules"]["urn:awp:cooperation"], module_state)
+        self.assertEqual(result["updated_module_ids"], ["urn:awp:cooperation"])
+
     def test_changed_artifact_requires_revision_or_new_identity(self) -> None:
         temporary, project, capsule = self.copy_capsule()
         self.addCleanup(temporary.cleanup)

@@ -159,6 +159,27 @@ def _apply_records(snapshot: dict[str, Any], request: dict[str, Any]) -> list[st
     return updated_ids
 
 
+def _apply_module_updates(snapshot: dict[str, Any], request: dict[str, Any]) -> list[str]:
+    """Replace explicitly named module projections under the same Capsule CAS."""
+    updates = request.get("module_updates", {})
+    if updates is None:
+        return []
+    if not isinstance(updates, dict):
+        raise CoordinationError("module_updates must be an object")
+    modules = snapshot.setdefault("modules", {})
+    if not isinstance(modules, dict):
+        raise CoordinationError("snapshot modules must be an object")
+    updated_ids: list[str] = []
+    for module_id, value in updates.items():
+        if not isinstance(module_id, str) or not module_id.startswith("urn:awp:"):
+            raise CoordinationError("module_updates keys must be AWP module identifiers")
+        if not isinstance(value, dict):
+            raise CoordinationError(f"module update {module_id} must be an object")
+        modules[module_id] = value
+        updated_ids.append(module_id)
+    return sorted(updated_ids)
+
+
 def _render_snapshot(snapshot: dict[str, Any]) -> str:
     """Render a stable Capsule snapshot without pretty-printing every record."""
     lines = ["{"]
@@ -223,6 +244,7 @@ def _proposal(capsule: Path, request: dict[str, Any]) -> tuple[bytes, dict[str, 
     sections = _sections(original)
     snapshot = sections["snapshot"]
     updated_records = _apply_records(snapshot, request)
+    updated_modules = _apply_module_updates(snapshot, request)
     snapshot["frontier"] = new_frontier
     snapshot["generated_at"] = request.get("generated_at") or utc_timestamp()
     generated_match = GENERATED.search(original)
@@ -235,7 +257,7 @@ def _proposal(capsule: Path, request: dict[str, Any]) -> tuple[bytes, dict[str, 
     )
     replacement = generated_marker_start + "\n" + briefing + "\n" + generated_marker_end
     rewritten = original[:generated_match.start()] + replacement + original[generated_match.end():]
-    if updated_records:
+    if updated_records or updated_modules:
         snapshot_payload = _render_snapshot(snapshot)
         rewritten = _replace_once(
             SNAPSHOT_SECTION,
@@ -273,6 +295,7 @@ def _proposal(capsule: Path, request: dict[str, Any]) -> tuple[bytes, dict[str, 
         "frontier": new_frontier,
         "checkpoint": checkpoint,
         "updated_record_ids": updated_records,
+        "updated_module_ids": updated_modules,
     }
 
 

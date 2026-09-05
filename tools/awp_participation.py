@@ -3,7 +3,7 @@
 This is an experimental read/announce slice. It accepts the proposed
 participation requests, keeps Core event construction in the host adapter, and
 delegates durable publication and request idempotency to CoordinationLedger.
-It does not authenticate actors, authorize project mutations, or claim full C1.
+It does not authenticate actors, authorize project mutations, or claim complete COOP-1.
 """
 
 from __future__ import annotations

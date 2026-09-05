@@ -2,6 +2,9 @@
   "type": "cooperation_binding",
   "module": "urn:awp:cooperation",
   "contract": "COOP-1",
+  "claim_state": "partial",
+  "capabilities": ["coordination-awareness", "guarded-scope-announce-check", "participant-leases"],
+  "operational_mode": "ledger-backed-advisory",
   "identity": {
     "workstate_id": "workstate:example",
     "project_id": "git-root:0123456789abcdef",
@@ -19,5 +22,6 @@
     "All participants open the same SQLite file.",
     "The filesystem preserves SQLite locking and atomic commit semantics."
   ],
+  "interaction_policy": {"policy_id": "coop-1-default-loop-v1", "enforcement": "not-implemented"},
   "limitations": ["Shared reach requires a successful participant handshake."]
 }

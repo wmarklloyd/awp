@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 from tools.awp_coordination import CoordinationLedger
-from tools.awp_projector import C1Projector
+from tools.awp_projector import DeterministicProjector
 
 
 WORKSTATE = "workstate:test"
@@ -61,9 +61,9 @@ def event(event_id: str, parents: list[str], kind: str, record: dict, **payload:
     }
 
 
-class C1ProjectorTests(unittest.TestCase):
+class DeterministicProjectorTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.projector = C1Projector()
+        self.projector = DeterministicProjector()
         self.scope_created = event("evt:scope", [], "scope.created", scope_record())
         self.created = event("evt:create", [], "intent.announced", intent_record("proposed", 1))
 

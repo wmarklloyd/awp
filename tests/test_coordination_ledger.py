@@ -55,6 +55,12 @@ class CoordinationLedgerTests(unittest.TestCase):
             context["binding_observation"]["atomicity_mechanism"],
             "sqlite-begin-immediate",
         )
+        self.assertEqual(context["cooperation_binding"]["contract"], "COOP-1")
+        self.assertEqual(context["cooperation_binding"]["claim_state"], "partial")
+        self.assertNotIn("conformance_level", context["cooperation_binding"])
+        self.assertIn(
+            "coordination-awareness", context["cooperation_binding"]["capabilities"]
+        )
         cooperation_schema = json.loads(
             (ROOT / "schemas" / "awp-cooperation-0.1.schema.json").read_text(
                 encoding="utf-8"

@@ -33,7 +33,7 @@ These questions are intentionally unresolved. A module must not imply that an op
 ## Coordination questions
 
 14. Which Python, TypeScript, and later language selector profiles best preserve semantic identity across rename, move, extraction, and replacement?
-15. What formally verified C3 coordinator algorithm and enforcing adapter should become the first interoperability profile?
+15. What formally verified COOP-2 coordinator algorithm and enforcing adapter should become the first interoperability profile?
 16. Which semantic effects can tools infer reliably, how should confidence be calibrated, and which effects must remain actor assertions?
 17. Which verification procedures provide adequate evidence for particular contract and invariant classes?
 18. Which Git, worktree, CI, and forge mappings should become standard adapter profiles?

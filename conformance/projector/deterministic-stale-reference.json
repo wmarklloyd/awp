@@ -1,5 +1,5 @@
 {
-  "fixture_id": "c1-stale-reference",
+  "fixture_id": "deterministic-stale-reference",
   "description": "A pinned cross-record reference is diagnosed when the target advances beyond the pinned revision.",
   "workstate_id": "workstate:fixture-stale",
   "events": [

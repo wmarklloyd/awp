@@ -1,5 +1,5 @@
 {
-  "fixture_id": "c1-basic-replay",
+  "fixture_id": "deterministic-basic-replay",
   "description": "Topological replay is independent of transport ordering.",
   "workstate_id": "workstate:fixture-basic",
   "events": [

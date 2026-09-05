@@ -25,7 +25,17 @@ A capsule is one portable `.awp.md` file. It has no required filename or locatio
 - **Coordination** — work intent, physical and semantic scopes, overlaps, contracts, preconditions, verification, staleness, and integration state, with bounded user-mediated arbitration when agents cannot safely resolve an interaction themselves.
 - **Integrity** — an exact governing-specification binding, machine-readable module declarations, and digests over generated sections.
 
-Core is required; Capsule, Handoff, Artifact, Synchronization, Coordination, and Security are separately declared modules, so a producer adopts only what it needs. Every record type is backed by a versioned JSON Schema and executable conformance fixtures.
+Core is required; Capsule, Handoff, Artifact, Synchronization, Coordination, Cooperation, and Security are separately declared modules, so a producer adopts only what it needs. Every record type is backed by a versioned JSON Schema and executable conformance fixtures.
+
+## Cooperation is a first-class AWP feature
+
+AWP defines cooperation as an explicit profile choice, not an informal promise between agents. The Cooperation Contracts family describes what participants can expect while exchanging perspectives, reviewing work, delegating bounded tasks, synthesizing results, and changing shared project artifacts. A project should disclose its selected contract, effective interaction policy, operating mode, and material limitations at entry.
+
+- **COOP-0 — substantive uncoordinated collaboration.** Participants may exchange capsules, consultations, critiques, alternative analyses, and synthesized conclusions. It supports using different models or people for independent points of view, but it makes no contract-level guarantee of participant discovery, scope reservation, conflict prevention, or contemporaneous incorporation.
+- **COOP-1 — default small-group cooperation.** Participants use bounded leases, atomic guarded-scope announce-and-check, compatible concurrent work, durable checkpoint and exit handoff, and bounded feedback loops. It requires no separate database or continuously running service and is intended to support more than two participants within a tested operating envelope.
+- **COOP-2 — aware, enforced, and scalable cooperation.** COOP-2 adds semantic scope awareness, integration assurance, authenticated protected mutation, epochs and fencing, and a declared higher-scale or higher-performance operating envelope. It may use a database, broker, sharded registry, or other service. The draft specifies the contract, but this repository does not yet implement or claim it.
+
+COOP is AWP's single cumulative cooperation and coordination conformance ladder. The Coordination module supplies the records and mechanisms used by the contracts; it does not define a competing `C0`–`C3` axis in the 0.8 draft. Selecting COOP-1 does not imply COOP-2 authority, fencing, authentication, semantic conflict detection, or any untested participant capacity. The [Cooperation Contracts specification](spec/drafts/0.8.0/cooperation-contracts.md) defines the contracts and their evidence requirements.
 
 ## Adopting AWP
 
@@ -44,6 +54,8 @@ as authorization for external side effects.
 ```
 
 The first link binds the agent to an exact, immutable specification; the second identifies the project's current workstate. Do not substitute a moving branch URL. A sandboxed or offline project may point both at a repository-relative copy of the same bundle. An explicitly configured capsule path or a discovery document such as [`.awp.json`](.awp.json) is an advanced option, not a prerequisite.
+
+Cooperation Contracts are currently an AWP 0.8 working-draft feature, not part of the immutable 0.6 release. A project experimenting with COOP should bind its agents and capsule to the same exact 0.8 draft snapshot; a moving `main` URL is suitable for active co-development only, not a stable conformance claim.
 
 **Hand a capsule to an agent directly.** Because a capsule is self-contained, it can be attached to a model with no repository access at all — as a project brief, a checkpoint to resume from, or an archived record of how a decision was reached.
 
@@ -65,7 +77,7 @@ The writer verifies the whole-Capsule compare-and-swap base, renders the briefin
 
 **Ask a focused question.** A detached consultation capsule packages a question with its context and review constraints. [`consultations/readme-refinement.awp.md`](consultations/readme-refinement.awp.md) is a working example; it uses 0.8.0 draft-only semantics and must be read against the local draft bundle.
 
-**Cooperate with several agents.** The experimental [COOP-1 Cooperation Contract](spec/drafts/0.8.0/cooperation-contracts.md) combines guarded-scope coordination with bounded review, critique, alternative-model, delegation, and synthesis interactions. Its default binding requires no separate database or service, but a COOP-1 claim requires atomic incompatible-scope blocking, bounded feedback loops, durable handoff, and recovery evidence. The service-free local ledger adapter ([`tools/awp_coordination.py`](tools/awp_coordination.py)) and optional local presence registry ([`tools/awp_presence.py`](tools/awp_presence.py)) are reusable single-host reference components, not a complete COOP-1 implementation.
+**Use COOP-1 when several agents cooperate on one project.** The experimental [COOP-1 Cooperation Contract](spec/drafts/0.8.0/cooperation-contracts.md) combines guarded-scope coordination with bounded review, critique, alternative-model, delegation, and synthesis interactions. Its default binding requires no separate database or service, but a COOP-1 claim requires atomic incompatible-scope blocking, bounded feedback loops, durable handoff, and recovery evidence. The service-free local ledger adapter ([`tools/awp_coordination.py`](tools/awp_coordination.py)) and optional local presence registry ([`tools/awp_presence.py`](tools/awp_presence.py)) are reusable single-host reference components, not a complete COOP-1 implementation.
 
 The default workflow requires no daemon:
 
@@ -78,7 +90,7 @@ python tools/awp_coordination.py complete --actor actor:agent-one --intent-id in
 python tools/awp_coordination.py lease-release --actor actor:agent-one --lease-id lease:<generated-id> --handoff awp.awp.md --reason "Final handoff published"
 ```
 
-`lease-enter` creates a bounded advisory participant-liveness record; `lease-renew`, `lease-release`, and `leases` renew, release, and inspect it. `begin` atomically publishes scope and intent events and reports known incompatible overlaps. The reference CLI defaults to a warning policy; guarded `--policy block` announcements require an active lease and record a conflicting intent as proposed until `resolve --disposition partition|order|withdrawal|escalation` records the outcome and `activate` records the valid lifecycle transition. `lease-release` rejects an active linked intent and requires `--handoff` to name an existing repository artifact whose digest is recorded in the release receipt. The adapter prefers the Git common directory so linked worktrees share one ledger. If sandbox policy prevents that write, it uses the ignored `.awp-runtime/` directory and reports that its reach is worktree-local; an explicit `--ledger` starts as configured-unverified until participants compare the stable store identity. If neither location is safe, it reports `AWP-COORD-LEDGER-UNAVAILABLE` with snapshot-only or unavailable operational mode. The narrow `local-ledger-awareness-v1` profile does not claim COOP-1 or complete C1/C2/C3 conformance.
+`lease-enter` creates a bounded advisory participant-liveness record; `lease-renew`, `lease-release`, and `leases` renew, release, and inspect it. `begin` atomically publishes scope and intent events and reports known incompatible overlaps. The reference CLI defaults to a warning policy; guarded `--policy block` announcements require an active lease and record a conflicting intent as proposed until `resolve --disposition partition|order|withdrawal|escalation` records the outcome and `activate` records the valid lifecycle transition. `lease-release` rejects an active linked intent and requires `--handoff` to name an existing repository artifact whose digest is recorded in the release receipt. The adapter prefers the Git common directory so linked worktrees share one ledger. If sandbox policy prevents that write, it uses the ignored `.awp-runtime/` directory and reports that its reach is worktree-local; an explicit `--ledger` starts as configured-unverified until participants compare the stable store identity. If neither location is safe, it reports `AWP-COORD-LEDGER-UNAVAILABLE` with snapshot-only or unavailable operational mode. The narrow `local-ledger-awareness-v1` profile is a component, not a complete COOP-1 binding, and it does not provide COOP-2 semantic awareness or protected enforcement.
 
 ## Status
 
@@ -86,14 +98,14 @@ python tools/awp_coordination.py lease-release --actor actor:agent-one --lease-i
 |---|---:|---|---|
 | Stable specification | 0.6.0 | Exploratory release | [Family overview](AWP_SPECIFICATION_0.6.0.md) |
 | Active development | 0.8.0 | Working draft; not a release | [Draft overview](spec/drafts/0.8.0/index.md) |
-| Default cooperation contract | COOP-1 | Experimental draft profile | [Cooperation Contracts](spec/drafts/0.8.0/cooperation-contracts.md) |
-| Coordination | 0.3.0 released module / 0.4.0 draft | Normative but experimental | [Released module](spec/0.6.0/coordination.md) |
+| Cooperation Contracts | 0.1.0 | Experimental single ladder: COOP-0, COOP-1, and COOP-2 | [Cooperation Contracts](spec/drafts/0.8.0/cooperation-contracts.md) |
+| Coordination mechanisms | 0.3.0 released module / 0.5.0 draft | Normative but experimental; no separate draft conformance ladder | [Draft mechanisms](spec/drafts/0.8.0/coordination.md) |
 
 The 0.6.0 release is fixed by the immutable tag [`v0.6.0`](https://github.com/wmarklloyd/awp/tree/v0.6.0). Draft material must not be represented as a published AWP release.
 
 AWP is not an agent runtime, source-control system, artifact store, authentication or authorization system, consensus protocol, or policy engine. Imported workstate describes claims and requested actions; it never grants authority for external side effects.
 
-The repository provides normative prose, JSON Schemas, generated bundles, positive and negative conformance fixtures, reproducibility tests, a service-free local ledger-awareness reference adapter, an informative transport-neutral C1 projector foundation, and a synthetic coordination-awareness pilot. It does **not** yet provide a production general-purpose reader/writer, a complete cross-record validator, a semantic-scope analyzer, a live coordinator, two independent implementations, or empirical evidence that AWP improves real multi-agent outcomes. That distinction is deliberate and is maintained throughout the repository.
+The repository provides normative prose, JSON Schemas, generated bundles, positive and negative conformance fixtures, reproducibility tests, Cooperation Contract definitions, a service-free local ledger-awareness reference adapter, an informative transport-neutral deterministic projector foundation, and a synthetic coordination-awareness pilot. It does **not** yet provide a production general-purpose reader/writer, a complete cross-record validator, a semantic-scope analyzer, a live coordinator, a complete COOP-1 or COOP-2 binding, two independent implementations, or empirical evidence that AWP improves real multi-agent outcomes. That distinction is deliberate and is maintained throughout the repository.
 
 ## Start here
 

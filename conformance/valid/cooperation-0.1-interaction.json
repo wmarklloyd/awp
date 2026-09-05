@@ -11,11 +11,15 @@
     "type": "cooperation_binding",
     "module": "urn:awp:cooperation",
     "contract": "COOP-1",
+    "claim_state": "conformant",
+    "capabilities": ["deterministic-coordination-projector", "coordination-awareness", "guarded-scope-announce-check", "participant-leases", "bounded-interactions", "checkpoint-handoff"],
+    "operational_mode": "ledger-bound",
     "identity": {"workstate_id": "workstate:example", "project_id": "git-root:0123456789abcdef", "store_id": "binding:example", "scope_model": "awp-repository-path-v1", "binding_epoch": 1},
     "observation": {"observed_at": "2026-09-05T16:00:00Z", "operational_reach": "shared", "frontier": ["evt:one"]},
     "atomicity_mechanism": "sqlite-begin-immediate",
     "storage_assumptions": ["All participants open the same SQLite file."],
-    "limitations": ["Advisory scope enforcement."]
+    "interaction_policy": {"policy_id": "coop-1-default-loop-v1", "enforcement": "enforced", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+    "limitations": ["The fixture demonstrates record shape, not independent implementation evidence."]
   },
   "policy": {"policy_id": "coop-1-default-loop-v1", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "definition": {"policy_id": "coop-1-default-loop-v1", "max_rounds": 2, "max_participant_responses": 3, "max_tool_calls": 8, "progress_requirement": "new_artifact_evidence_decision_or_disagreement", "repeat_key_algorithm": "rfc8785-sha256-v1", "on_limit": "inconclusive_or_escalated", "continuation_authority": "decision_owner"}},
   "round": 1,

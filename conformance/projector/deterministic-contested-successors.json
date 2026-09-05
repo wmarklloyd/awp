@@ -1,5 +1,5 @@
 {
-  "fixture_id": "c1-contested-successors",
+  "fixture_id": "deterministic-contested-successors",
   "description": "Concurrent non-commuting successors remain contested regardless of transport order.",
   "workstate_id": "workstate:fixture-contest",
   "events": [

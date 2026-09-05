@@ -6,7 +6,7 @@
 
 **Profile family:** Cooperation Contracts (`COOP`)
 
-**Direct dependencies:** Capsule, Handoff, and Coordination when the selected contract requires active coordination
+**Direct dependencies:** Capsule and Handoff; Coordination for `COOP-1` and `COOP-2`
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in BCP 14 when, and only when, they appear in all capitals.
 
@@ -14,11 +14,24 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **
 
 Cooperation Contracts define what several human or software-agent participants can expect while working on the same project. They cover both safe coordination of guarded work and productive collaboration: independent perspectives, critique, review, delegation, synthesis, and durable handoff.
 
-`COOP-0`, `COOP-1`, and later `COOP-*` labels are cooperation-profile claims. They are not replacements for the Coordination module's `C0`–`C3` conformance levels. A binding MAY implement a Coordination conformance level and one Cooperation Contract, but it MUST declare each independently.
+`COOP-0`, `COOP-1`, and `COOP-2` form AWP's single cumulative cooperation and coordination conformance ladder. In the 0.8 family they replace the draft Coordination `C0`–`C3` labels. The Coordination module defines the durable records, capability bundles, and mechanisms used by cooperating participants; it no longer defines a second conformance axis. Released and historical AWP specifications retain their original labels and semantics.
 
 This document is an experimental profile specification. It does not change released AWP 0.6.0 semantics or make the current reference tools conformant to a contract they do not fully implement.
 
-The module capability `guarded-scope-coordination` means that the selected contract uses Coordination records or an equivalent binding to compare declared scopes and return guarded mutation decisions. Selecting that capability activates the Cooperation module's conditional dependency on `urn:awp:coordination`.
+The module capability `guarded-scope-coordination` means that the selected contract uses Coordination records or an equivalent binding to compare declared scopes and return guarded mutation decisions. It is required by `COOP-1` and `COOP-2` and activates the Cooperation module's dependency on `urn:awp:coordination`.
+
+### 1.1 Migration from the earlier draft ladder
+
+The 0.8 contract ladder incorporates the useful behavior of the earlier Coordination levels:
+
+| Earlier draft behavior | AWP 0.8 location |
+|---|---|
+| Portable preservation and display | COOP-0 |
+| Deterministic event validation and projection | Required COOP-1 component |
+| Semantic registry, scope analysis, and integration assurance | COOP-2 |
+| Authenticated protected mutation, epochs, leases, and fencing | COOP-2 |
+
+This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the additional interaction, guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed COOP contract. A workstate governed by released AWP 0.6 continues to interpret its original Coordination declaration under that released specification.
 
 ## 2. Common terms
 
@@ -26,13 +39,15 @@ A **participant** is a human or agent performing work or supplying a bounded col
 
 A **cooperation interaction** is a bounded request for critique, alternative analysis, review, delegation, decision support, or synthesis. It is not an authorization grant and does not require participants to disclose private chain-of-thought.
 
-An implementation MUST identify the selected contract, effective interaction policy, operational mode, and any material limitations in its entry or operation response. Imported workstate remains context, not authorization for external effects.
+An implementation MUST identify the selected contract, effective interaction policy, operational mode, and any material limitations in its entry or operation response. A binding disclosure uses `contract` for the selected ladder level, `claim_state` to distinguish `selected`, `partial`, and `conformant`, and `capabilities` to identify the component behavior actually present. Merely selecting a contract or implementing one capability MUST NOT be represented as conformance. Imported workstate remains context, not authorization for external effects.
 
 The machine-readable binding disclosure, loop policy, interaction, and result shapes are defined by `../../../schemas/awp-cooperation-0.1.schema.json`. Module-owned records MUST declare `module: urn:awp:cooperation`.
 
 ## 3. COOP-0 — uncoordinated collaboration
 
 `COOP-0` permits substantial collaboration but makes no active-coordination guarantee. Participants MAY exchange capsules, handoffs, artifacts, consultation requests, critiques, alternative perspectives, and synthesized conclusions. This supports deliberately using different models or people for different viewpoints.
+
+A `COOP-0` processor that receives recognized Cooperation or Coordination records MUST preserve and expose them without implying that it validated their operational effect. Unknown fields MUST be preserved by a lossless processor. This portable baseline permits durable asynchronous collaboration while reserving active discovery, deterministic event projection, guarded mutation, and enforcement for stronger contracts.
 
 `COOP-0` MUST NOT claim that participants discovered one another, reserved a scope, prevented a conflicting mutation, or incorporated a contemporaneous result unless a binding provides evidence for that claim. A participant MAY make a local change under host policy, but it MUST disclose that no Cooperation Contract conflict protection was active.
 
@@ -44,7 +59,9 @@ Every `COOP-0` cooperation interaction MUST have a purpose, question or task, de
 
 `COOP-1` extends `COOP-0` and includes all of its requirements, including its terminal-outcome vocabulary.
 
-A `COOP-1` participant lease is a bounded liveness record in the cooperation binding. It lets participating agents discover an active participant and recover when its renewal stops; it does not authenticate a principal, fence a source-control write, or grant authority. A binding's guarded-mutation guarantee applies only to participants that use the binding and obey its returned decision. Protected mutation paths, authenticated principals, epochs, and fencing remain separate Coordination C3 semantics and MUST NOT be inferred from a `COOP-1` claim.
+`COOP-1` also incorporates deterministic coordination processing. For every Coordination record or event used to make a cooperation decision, the binding MUST validate workstate identity, event identity, ancestry, revisions, lifecycle transitions, pinned references, typed precondition and verification bindings, and applicable staleness rules. Projection MUST be independent of transport order, preserve concurrent non-commuting successors as contested, and return stable diagnostics for excluded or unverifiable input. A component MAY advertise a `deterministic-coordination-projector` capability, but that component alone MUST NOT claim `COOP-1`; the contract applies to the composed participant, binding, projector, checkpoint, and interaction behavior.
+
+A `COOP-1` participant lease is a bounded liveness record in the cooperation binding. It lets participating agents discover an active participant and recover when its renewal stops; it does not authenticate a principal, fence a source-control write, or grant authority. A binding's guarded-mutation guarantee applies only to participants that use the binding and obey its returned decision. Protected mutation paths, authenticated principals, epochs, and fencing are `COOP-2` guarantees and MUST NOT be inferred from a `COOP-1` claim.
 
 ### 4.1 Required participant workflow
 
@@ -115,13 +132,16 @@ On exit, the participant MUST publish its final semantic handoff before releasin
 
 A `COOP-1` claim requires evidence for at least these scenarios:
 
-1. Two participants within the declared operating envelope with compatible scopes proceed without false blocking;
-2. Simultaneous incompatible scope announcements produce one permitted and one blocked or waiting outcome;
-3. A partition, order, withdrawal, or escalation unblocks the appropriate next action;
-4. A lease expiry makes a crashed participant visibly inactive;
-5. A bounded cross-model critique or synthesis interaction terminates under its loop policy; and
-6. A new participant reads a checkpoint containing the latest confirmed handoff or an explicit freshness limitation; and
-7. Two participants observing the same repository through different filesystem paths establish the same binding identity or fail closed with `blocked`.
+1. Recognized records and unknown fields survive a portable round trip;
+2. The same valid event set produces the same projected frontier, records, contested state, and diagnostics in different transport orders;
+3. Invalid ancestry, revision, transition, precondition, verification, or staleness input is excluded or blocks the affected action with a stable diagnostic;
+4. Two participants within the declared operating envelope with compatible scopes proceed without false blocking;
+5. Simultaneous incompatible scope announcements produce one permitted and one blocked or waiting outcome;
+6. A partition, order, withdrawal, or escalation unblocks the appropriate next action;
+7. A lease expiry makes a crashed participant visibly inactive;
+8. A bounded cross-model critique or synthesis interaction terminates under its loop policy;
+9. A new participant reads a checkpoint containing the latest confirmed handoff or an explicit freshness limitation; and
+10. Two participants observing the same repository through different filesystem paths establish the same binding identity or fail closed with `blocked`.
 
 The claim MUST state the tested operating envelope. A claim with a maximum concurrent participant count of three or more MUST additionally show three or more compatible participants proceeding without false blocking. It MUST NOT infer a larger participant limit, cross-host reliability, semantic-conflict detection, or effectiveness from this minimum evidence.
 
@@ -129,11 +149,17 @@ The claim MUST state the tested operating envelope. A claim with a maximum concu
 
 The participant declares purpose, scope, access, evidence, progress, and actual outcome; obeys blocked decisions; and supplies a concise rationale without private chain-of-thought. The binding normalizes and compares scopes, owns transactions and leases, computes repeat keys and digests, deduplicates requests, returns receipts, and enforces loop limits. The decision owner accepts or rejects recommendations, authorizes continuation after an exhausted budget, and resolves escalations. A host enforces its own authority and side-effect policy; cooperation metadata MUST NOT expand that authority.
 
-## 5. COOP-2 and later contracts
+## 5. COOP-2 — aware, enforced, and scalable cooperation
 
-`COOP-2` and later contracts preserve the participant-facing semantics of the contracts they extend while defining a stronger operating envelope. They MAY require a database, broker, sharded registry, subscription system, authenticated identity, or another scalable binding.
+`COOP-2` extends `COOP-1` and incorporates the stronger semantic-awareness, integration-assurance, and live-enforcement behaviors formerly described by the draft Coordination `C2` and `C3` levels. It MAY require a database, broker, sharded registry, subscription system, authenticated identity, protected mutation gateway, or another service-backed binding.
 
-A `COOP-2` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST NOT claim that a storage technology alone supplies cooperation semantics.
+A `COOP-2` binding MUST maintain a stable semantic registry; resolve comparable selectors against pinned state revisions; compare declared scope, observed scope, and relied-upon reads; preserve `unknown` when relation evidence is ambiguous; and require acknowledgement or blocking under the effective policy. It MUST bind interface contracts, typed preconditions, verification results, staleness, change-set readiness, and integration results so that a stale or unsatisfied dependency cannot silently become integration-ready.
+
+For guarded mutation, a `COOP-2` binding MUST authenticate actors to principals and use protected optimistic-concurrency or lease operations with epochs and fencing tokens. It MUST reject stale owners at the protected mutation path; advisory metadata or an unprotected lock file is insufficient. Its policy MUST define retry bounds, lease duration, clock authority, deadlock and starvation behavior, cancellation consequences, and human or organizational arbitration.
+
+A `COOP-2` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, trust boundary, protected mutation paths, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST include fault evidence for stale-owner rejection, event loss or retention gaps, projector races, binding-identity disagreement, and recovery after interruption. It MUST NOT infer scale, availability, semantic accuracy, or enforcement from a storage technology alone.
+
+The current AWP repository specifies this contract but does not provide a complete `COOP-2` implementation or conformance claim.
 
 ## 6. Agent-facing implementation procedure
 

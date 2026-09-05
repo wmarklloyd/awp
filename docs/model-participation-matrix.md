@@ -35,6 +35,6 @@ The publisher owns the serialized capsule projection. It must compare the expect
 
 ## Conformance composition
 
-An implementation may claim the proposed model participation profile only for operations whose owners and failure outcomes it can demonstrate. A model plus adapter may claim request-level participation while delegating deterministic projection and atomic publication. A complete C1 claim additionally requires evidence for the applicable projector behavior, binding semantics, and cross-record freshness rules. Delegation is valid only when the response identifies the delegated owner and its coverage.
+An implementation may claim the proposed model participation profile only for operations whose owners and failure outcomes it can demonstrate. A model plus adapter may claim request-level participation while delegating deterministic projection and atomic publication. A complete COOP-1 claim additionally requires evidence for the applicable projector behavior, binding semantics, bounded interaction, checkpoint, exit, and cross-record freshness rules. Delegation is valid only when the response identifies the delegated owner and its coverage.
 
 The matrix should be reviewed against each operation schema, worked conversation, fixture, and test. A schema field without an owner is an unresolved design issue; an owner without a failure result is an incomplete contract.
