@@ -132,6 +132,28 @@ class C1ProjectorTests(unittest.TestCase):
         result = self.projector.project([orphan_event], WORKSTATE)
         self.assertEqual(result["diagnostics"][0]["code"], "AWP-COORD-MISSING-DEPENDENCY")
 
+    def test_verification_must_bind_to_subject_base_revision(self) -> None:
+        verification = {
+            "id": "verification:test",
+            "type": "verification_result",
+            "module": "urn:awp:coordination",
+            "revision": 1,
+            "status": "final",
+            "created_by": "actor:test",
+            "created_at": "2026-09-04T20:00:00Z",
+            "subjects": ["intent:test@1"],
+            "repository": "repo:test",
+            "base_revision": "git:wrong",
+            "result_revision": "git:result",
+            "procedure": {"kind": "command", "command_id": "test:fixture", "tool": "fixture", "tool_version": "1"},
+            "environment": {"platform": "test"},
+            "outcome": "pass",
+            "observations": {"passed": 1},
+        }
+        verification_event = event("evt:verification", [], "verification.completed", verification)
+        result = self.projector.project([self.created, verification_event, self.scope_created], WORKSTATE)
+        self.assertIn("AWP-COORD-VERIFICATION-UNBOUND", {item["code"] for item in result["diagnostics"]})
+
     def test_workstate_mismatch_is_not_applied(self) -> None:
         mismatched = self.created.copy()
         mismatched["event_id"] = "evt:other"

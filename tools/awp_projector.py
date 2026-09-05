@@ -277,7 +277,50 @@ class C1Projector:
                 if target is None:
                     diagnostics.append(self._diagnostic("AWP-COORD-MISSING-DEPENDENCY", None, f"{field} references unavailable record {value}", record_id=record_id))
                 elif target.get("revision") != int(revision_text):
-                    diagnostics.append(self._diagnostic("AWP-COORD-REVISION-CONFLICT", None, f"{field} references {value}, but the projected record is revision {target.get('revision')}", record_id=record_id))
+                    diagnostics.append(self._diagnostic("AWP-COORD-STALE", None, f"{field} references stale {value}; the projected record is revision {target.get('revision')}", record_id=record_id))
+
+    def _validate_bindings(self, records: dict[str, dict], diagnostics: list[dict]) -> None:
+        for record_id in sorted(records):
+            record = records[record_id]
+            record_type = record.get("type")
+            if record_type == "precondition_result":
+                precondition_ref = record.get("precondition")
+                if isinstance(precondition_ref, str):
+                    target_id = precondition_ref.rsplit("@", 1)[0]
+                    target = records.get(target_id)
+                    if target is not None and target.get("type") != "precondition":
+                        diagnostics.append(self._diagnostic("AWP-COORD-VERIFICATION-UNBOUND", None, f"precondition result points to {target.get('type')} rather than a precondition", record_id=record_id))
+                for dependency in record.get("depends_on", []):
+                    if not isinstance(dependency, dict) or not isinstance(dependency.get("id"), str) or not isinstance(dependency.get("revision"), int):
+                        diagnostics.append(self._diagnostic("AWP-COORD-MISSING-DEPENDENCY", None, "precondition result depends_on entry lacks an id and integer revision", record_id=record_id))
+                        continue
+                    target = records.get(dependency["id"])
+                    if target is None:
+                        diagnostics.append(self._diagnostic("AWP-COORD-MISSING-DEPENDENCY", None, f"precondition dependency is unavailable: {dependency['id']}@{dependency['revision']}", record_id=record_id))
+                    elif target.get("revision") != dependency["revision"]:
+                        diagnostics.append(self._diagnostic("AWP-COORD-STALE", None, f"precondition dependency is stale: {dependency['id']}@{dependency['revision']}", record_id=record_id))
+            elif record_type == "verification_result":
+                for subject in record.get("subjects", []):
+                    if not isinstance(subject, str) or "@" not in subject:
+                        continue
+                    target = records.get(subject.rsplit("@", 1)[0])
+                    if target is None:
+                        continue
+                    expected = None
+                    if isinstance(target.get("base"), dict):
+                        expected = target["base"].get("revision")
+                    if expected is None and isinstance(target.get("selector"), dict):
+                        expected = target["selector"].get("base_revision")
+                    if expected is not None and record.get("base_revision") != expected:
+                        diagnostics.append(self._diagnostic("AWP-COORD-VERIFICATION-UNBOUND", None, f"verification base {record.get('base_revision')} does not match subject base {expected}", record_id=record_id))
+            elif record_type == "change_set":
+                for field, expected_type in (("preconditions", "precondition"), ("verification", "verification_result")):
+                    for reference in record.get(field, []):
+                        if not isinstance(reference, str) or "@" not in reference:
+                            continue
+                        target = records.get(reference.rsplit("@", 1)[0])
+                        if target is not None and target.get("type") != expected_type:
+                            diagnostics.append(self._diagnostic("AWP-COORD-MISSING-DEPENDENCY", None, f"{field} points to {target.get('type')} rather than {expected_type}", record_id=record_id))
 
     @staticmethod
     def _heads(events: dict[str, dict]) -> list[str]:
@@ -361,6 +404,7 @@ class C1Projector:
             records[record_id] = dict(replacement)
 
         self._validate_cross_record_references(records, diagnostics)
+        self._validate_bindings(records, diagnostics)
         diagnostics.sort(key=lambda item: (item.get("event_id") or "", item["code"], item.get("record_id") or ""))
         return {
             "conformance_level": "C1",
