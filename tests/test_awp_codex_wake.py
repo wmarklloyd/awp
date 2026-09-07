@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
@@ -58,6 +59,22 @@ class CodexQueueWatcherTests(unittest.TestCase):
         self.assertEqual(result["queued_events"], ["evt:request"])
         self.assertEqual(second["queued_events"], [])
         self.assertEqual(queue.call_count, 1)
+
+    def test_concurrent_watchers_claim_an_event_only_once(self) -> None:
+        watchers = [
+            CodexQueueWatcher(
+                FakeRendezvous([event("evt:request", "coop2.interaction.requested", "actor:codex")]),
+                "actor:codex", "thread:test", "ws://test", self.state
+            )
+            for _ in range(2)
+        ]
+        calls: list[str] = []
+        for watcher in watchers:
+            watcher.queue = lambda item: calls.append(item["event_id"])
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(lambda watcher: watcher.step(), watchers))
+        self.assertEqual(sum(len(result["queued_events"]) for result in results), 1)
+        self.assertEqual(calls, ["evt:request"])
 
 
 if __name__ == "__main__":

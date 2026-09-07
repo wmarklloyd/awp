@@ -10,6 +10,7 @@ started it.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import json
 import os
 import shutil
@@ -60,6 +61,34 @@ class CodexQueueWatcher:
             return {"profile": PROFILE, "initialized": False, "notified_events": []}
         return value if value.get("profile") == PROFILE else {"profile": PROFILE, "initialized": False, "notified_events": []}
 
+    @contextmanager
+    def _claim_lock(self):
+        """Serialize cursor claim and queue publication across watcher processes."""
+        lock_path = self.state_path.with_name(self.state_path.name + ".lock")
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with lock_path.open("a+b") as lock:
+            lock.seek(0, os.SEEK_END)
+            if lock.tell() == 0:
+                lock.write(b"0")
+                lock.flush()
+            lock.seek(0)
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                if os.name == "nt":
+                    lock.seek(0)
+                    import msvcrt
+                    msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
     def pending_events(self, state: dict[str, Any]) -> list[dict[str, Any]]:
         notified = set(state.get("notified_events", []))
         answered = {
@@ -106,27 +135,28 @@ class CodexQueueWatcher:
         )
 
     def step(self) -> dict[str, Any]:
-        state = self._state()
-        initializing = not state.get("initialized", False)
-        queued: list[str] = []
-        for event in self.pending_events(state):
-            self.queue(event)
-            queued.append(event["event_id"])
-            state["notified_events"] = [*state.get("notified_events", []), event["event_id"]]
-            atomic_json(self.state_path, state)
-        if initializing:
-            historical_responses = [
-                event["event_id"]
-                for event in self.rendezvous._events()
-                if event["kind"] == "coop2.interaction.responded"
-                and event["payload"].get("recipient") == self.actor
-            ]
-            state["notified_events"] = list(dict.fromkeys([
-                *state.get("notified_events", []), *historical_responses
-            ]))
-            state["initialized"] = True
-            atomic_json(self.state_path, state)
-        return {"profile": PROFILE, "queued_events": queued, "state_path": str(self.state_path)}
+        with self._claim_lock():
+            state = self._state()
+            initializing = not state.get("initialized", False)
+            queued: list[str] = []
+            for event in self.pending_events(state):
+                self.queue(event)
+                queued.append(event["event_id"])
+                state["notified_events"] = [*state.get("notified_events", []), event["event_id"]]
+                atomic_json(self.state_path, state)
+            if initializing:
+                historical_responses = [
+                    event["event_id"]
+                    for event in self.rendezvous._events()
+                    if event["kind"] == "coop2.interaction.responded"
+                    and event["payload"].get("recipient") == self.actor
+                ]
+                state["notified_events"] = list(dict.fromkeys([
+                    *state.get("notified_events", []), *historical_responses
+                ]))
+                state["initialized"] = True
+                atomic_json(self.state_path, state)
+            return {"profile": PROFILE, "queued_events": queued, "state_path": str(self.state_path)}
 
 
 def parser() -> argparse.ArgumentParser:
