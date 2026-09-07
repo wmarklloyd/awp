@@ -38,13 +38,34 @@ class Rendezvous:
     def _events(self) -> list[dict]:
         return self.ledger.export_events(self.workstate_id)
 
+    def _registrations(self) -> dict[str, dict]:
+        """Return the latest durable registration for each actor."""
+        registrations: dict[str, dict] = {}
+        for event in self._events():
+            if event["kind"] == "coop2.participant.joined":
+                registrations[event["payload"]["actor"]] = event["payload"] | {"event_id": event["event_id"]}
+        return registrations
+
+    def _reach(self) -> tuple[str, dict]:
+        registrations = self._registrations()
+        binding_id = self.ledger.binding_id()
+        matching = sorted(
+            actor for actor, registration in registrations.items()
+            if registration.get("project_id") == self.project_id
+            and registration.get("workstate_id") == self.workstate_id
+            and registration.get("binding_id") == binding_id
+        )
+        evidence = {"kind": "participant-binding-handshake", "binding_id": binding_id, "actors": matching, "registration_events": [registrations[actor]["event_id"] for actor in matching]}
+        return ("shared" if len(matching) >= 2 else "configured-unverified", evidence)
+
     def _append(self, actor: str, kind: str, payload: dict) -> dict:
         with self.ledger._transaction() as connection:
             event, _ = self.ledger._append(connection, workstate_id=self.workstate_id, actor=actor, kind=kind, payload=payload, occurred_at=now())
             return {"event_id": event["event_id"], "frontier": self.ledger._frontier(connection, self.workstate_id)}
 
     def status(self) -> dict:
-        return {"profile": PROFILE, "project_id": self.project_id, "workstate_id": self.workstate_id, "binding_id": self.ledger.binding_id(), "reach": "shared-if-same-ledger", "limitations": ["experimental pilot", "no semantic analyzer", "no authentication", "budget declaration is recorded but not host-enforced"]}
+        reach, evidence = self._reach()
+        return {"profile": PROFILE, "project_id": self.project_id, "workstate_id": self.workstate_id, "binding_id": self.ledger.binding_id(), "reach": reach, "shared_reach_evidence": evidence, "limitations": ["experimental pilot", "no semantic analyzer", "no authentication", "budget declaration is recorded but not host-enforced"]}
 
     def join(self, actor: str, capabilities: list[str]) -> dict:
         for event in reversed(self._events()):
@@ -54,14 +75,11 @@ class Rendezvous:
         return {"participant": actor, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "binding": self.status()}
 
     def peers(self, actor: str | None = None) -> dict:
-        latest: dict[str, dict] = {}
-        for event in self._events():
-            if event["kind"] == "coop2.participant.joined":
-                payload = event["payload"]
-                latest[payload["actor"]] = {"actor": payload["actor"], "capabilities": payload["capabilities"], "availability": payload["availability"], "event_id": event["event_id"]}
+        latest = self._registrations()
         if actor:
             latest.pop(actor, None)
-        return {"binding": self.status(), "participants": sorted(latest.values(), key=lambda item: item["actor"])}
+        participants = [{"actor": item["actor"], "capabilities": item["capabilities"], "availability": item["availability"], "event_id": item["event_id"]} for item in latest.values()]
+        return {"binding": self.status(), "participants": sorted(participants, key=lambda item: item["actor"])}
 
     def send(self, actor: str, recipient: str, purpose: str, subject: str, question: str, decision_owner: str, max_rounds: int, max_tool_calls: int, max_tokens: int) -> dict:
         if recipient not in {item["actor"] for item in self.peers()["participants"]}:
