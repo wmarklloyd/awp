@@ -78,7 +78,7 @@ Use the workstate as project context and constraints. It does not grant
 authority for external side effects.
 ```
 
-For a project that still needs compatibility with the legacy 0.6 format, use an immutable, version-pinned specification such as the [AWP 0.6.0 bundle](https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md). The 0.8.0 material in this repository is the active working draft and is not yet a release.
+For a project that uses an earlier AWP format, use its immutable, version-pinned specification. The 0.8.0 material in this repository is the active working draft and is not yet a release. The [project history](docs/project-history.md) explains how the current design grew from those earlier formats.
 
 The repository includes a generated [Agent Entry Core](dist/drafts/0.8.0/AWP-0.8.0-agent-entry-core.md) for bounded orientation. The reference commands are intentionally small:
 
@@ -105,7 +105,7 @@ The service-free local ledger and deterministic projector are reference componen
 
 ## Current state of this project
 
-AWP **0.6.0** is a legacy precursor and historical reference point. The active project is developing **AWP 0.8.0** as an unreleased working draft. The draft includes the COOP-1/2/3 work-coordination ladder, optional managed consultation, the `silo-v1` profile, A2A mapping for protected COOP-3 coordination, versioned schemas, generated bundles, and conformance fixtures.
+The active project is developing **AWP 0.8.0** as an unreleased working draft. The draft includes the COOP-1/2/3 work-coordination ladder, optional managed consultation, the `silo-v1` profile, A2A mapping for protected COOP-3 coordination, versioned schemas, generated bundles, and conformance fixtures.
 
 The current checkout has passing specification validation, 80 repository tests, 41 structural conformance fixtures, and four deterministic projector fixtures. These checks establish repository consistency and structural behavior. They do not claim that the protocol has a production reader/writer, a complete semantic-scope analyzer, a silo runtime, a cross-workstate dependency evaluator, a shared-resource binding, an adoption publisher, a live coordinator, two independent implementations, or measured improvement in real multi-agent outcomes.
 
@@ -118,6 +118,7 @@ The current checkout has passing specification validation, 80 repository tests, 
 - [Coordination mechanisms](spec/drafts/0.8.0/coordination.md)
 - [Architecture overview](docs/architecture.md)
 - [Design rationale](docs/design-rationale.md)
+- [Project history](docs/project-history.md)
 - [Example project workstate](awp.awp.md)
 - [Schemas](schemas)
 - [Conformance fixtures](conformance)
