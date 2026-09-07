@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -92,7 +93,7 @@ class ReentryTests(unittest.TestCase):
             capsule = Path(directory) / "awp.awp.md"
             source = (ROOT / "awp.awp.md").read_text(encoding="utf-8")
             capsule.write_text(
-                source.replace("# Agent Workshare Protocol design", "# Modified design", 1),
+                source.replace("The active 0.8.0 draft now makes entry-time COOP-2 recovery normative", "Modified generated briefing", 1),
                 encoding="utf-8",
             )
             view = self.module.build_reentry_view(capsule)
@@ -133,6 +134,22 @@ class ReentryTests(unittest.TestCase):
         self.assertEqual(
             view["selection"]["output_bytes"], len(rendered.encode("utf-8"))
         )
+
+    def test_coordination_entry_view_reads_mailbox_and_doorbell(self) -> None:
+        binding = {"profile": "local-coop2-rendezvous-v1", "doorbell": {"state": "current"}}
+        inbox = {"binding": binding, "inbox": [{"interaction_id": "interaction:test"}], "responses": []}
+        with patch("tools.awp_coop2.Rendezvous") as rendezvous_type:
+            rendezvous_type.return_value.inbox.return_value = inbox
+            view = self.module.coordination_entry_view(ROOT, "actor:codex")
+        self.assertEqual(view["state"], "available")
+        self.assertEqual(view["inbox"][0]["interaction_id"], "interaction:test")
+        rendezvous_type.return_value.inbox.assert_called_once_with("actor:codex")
+
+    def test_coordination_entry_view_discloses_unavailable_binding(self) -> None:
+        with patch("tools.awp_coop2.Rendezvous", side_effect=OSError("locked")):
+            view = self.module.coordination_entry_view(ROOT, "actor:codex")
+        self.assertEqual(view["state"], "unavailable")
+        self.assertEqual(view["diagnostic"], "AWP-COORD-LEDGER-UNAVAILABLE")
 
 
 if __name__ == "__main__":

@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
@@ -255,11 +256,43 @@ def bounded_json(view: dict[str, Any], max_output_bytes: int) -> tuple[str, bool
     return rendered, bool(view["selection"].get("complete"))
 
 
+def coordination_entry_view(project: Path, actor: str) -> dict[str, Any]:
+    """Read the durable COOP-2 mailbox and doorbell during project entry.
+
+    This is intentionally a read-only safety net.  The doorbell watcher remains
+    the low-latency wake path; entry-time inspection guarantees that a missed
+    wake cannot hide an authorized interaction from a newly started session.
+    """
+    try:
+        project_root = str(Path(__file__).resolve().parent.parent)
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+        from tools.awp_coop2 import Rendezvous
+
+        rendezvous = Rendezvous(project)
+        inbox = rendezvous.inbox(actor)
+        return {
+            "state": "available",
+            "actor": actor,
+            "binding": inbox["binding"],
+            "inbox": inbox["inbox"],
+            "responses": inbox["responses"],
+        }
+    except (CoordinationError, OSError, ValueError) as error:
+        return {
+            "state": "unavailable",
+            "actor": actor,
+            "diagnostic": "AWP-COORD-LEDGER-UNAVAILABLE",
+            "reason": str(error),
+        }
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", type=Path, default=Path.cwd())
     parser.add_argument("--capsule", type=Path)
     parser.add_argument("--brief-only", action="store_true")
+    parser.add_argument("--actor", help="actor identity for the bounded COOP-2 entry check")
     parser.add_argument("--max-output-bytes", type=int, default=24_000)
     return parser
 
@@ -274,6 +307,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             discovery = json.loads((project / ".awp.json").read_text(encoding="utf-8"))
             capsule = (project / discovery["current_workstate"]).resolve()
         view = build_reentry_view(capsule, brief_only=args.brief_only)
+        if args.actor and not args.brief_only:
+            view["coordination"] = coordination_entry_view(project, args.actor)
         rendered, complete = bounded_json(view, args.max_output_bytes)
         print(rendered, end="")
         return 0 if complete or args.brief_only else 2
