@@ -5,6 +5,7 @@ import hashlib
 import json
 import subprocess
 import sys
+import sqlite3
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -93,7 +94,7 @@ class ReentryTests(unittest.TestCase):
             capsule = Path(directory) / "awp.awp.md"
             source = (ROOT / "awp.awp.md").read_text(encoding="utf-8")
             capsule.write_text(
-                source.replace("The active 0.8.0 draft now makes entry-time COOP-2 recovery normative", "Modified generated briefing", 1),
+                source.replace("<!-- awp:generated:start -->\n", "<!-- awp:generated:start -->\nModified generated briefing\n", 1),
                 encoding="utf-8",
             )
             view = self.module.build_reentry_view(capsule)
@@ -171,6 +172,12 @@ class ReentryTests(unittest.TestCase):
 
     def test_coordination_entry_view_discloses_unavailable_binding(self) -> None:
         with patch("tools.awp_coop2.Rendezvous", side_effect=OSError("locked")):
+            view = self.module.coordination_entry_view(ROOT, "actor:codex")
+        self.assertEqual(view["state"], "unavailable")
+        self.assertEqual(view["diagnostic"], "AWP-COORD-LEDGER-UNAVAILABLE")
+
+    def test_coordination_entry_view_discloses_sqlite_failure(self) -> None:
+        with patch("tools.awp_coop2.Rendezvous", side_effect=sqlite3.OperationalError("locked")):
             view = self.module.coordination_entry_view(ROOT, "actor:codex")
         self.assertEqual(view["state"], "unavailable")
         self.assertEqual(view["diagnostic"], "AWP-COORD-LEDGER-UNAVAILABLE")

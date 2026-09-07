@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import json
 import re
+import sqlite3
 import sys
 from pathlib import Path
 from typing import Any, Iterable, Sequence
@@ -280,7 +281,7 @@ def coordination_entry_view(project: Path, actor: str) -> dict[str, Any]:
             "inbox": inbox["inbox"],
             "responses": inbox["responses"],
         }
-    except (CoordinationError, OSError, ValueError) as error:
+    except (CoordinationError, OSError, ValueError, sqlite3.Error) as error:
         return {
             "state": "unavailable",
             "actor": actor,
