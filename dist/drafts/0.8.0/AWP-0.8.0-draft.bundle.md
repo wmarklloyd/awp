@@ -3212,6 +3212,8 @@ AWP specifies the project rendezvous identity, interaction and receipt semantics
 
 The `codex-local-queue-watcher-v1` cursor MUST be protected by a recoverable host lock or equivalent atomic claim spanning cursor read, event claim, queue submission, and cursor persistence. Concurrent watchers and restarts MUST NOT queue one event identifier more than once; first startup MUST mark historical responses seen while still queuing current open requests.
 
+The local Codex watcher MUST bound queue submission with a timeout and catch endpoint, process, and timeout failures. It MUST record an unavailable delivery state, retain the unclaimed event for retry, and continue with bounded backoff rather than exiting silently or holding the claim lock indefinitely.
+
 ## 6. COOP-2 — semantic, integration, and managed collaboration
 
 `COOP-2` extends `COOP-1` work coordination with semantic awareness and integration assurance. It is also the first contract that may enable managed, directly inter-agent collaboration under Section 5's explicit authorization and budget. It MAY require a database, broker, registry, subscription system, or another service-backed binding, but neither a storage technology nor consultation alone supplies `COOP-2` semantics.

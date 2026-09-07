@@ -24,6 +24,7 @@ from .awp_coop2 import Rendezvous
 
 
 PROFILE = "codex-local-queue-watcher-v1"
+QUEUE_TIMEOUT_SECONDS = 30
 
 
 def atomic_json(path: Path, value: dict[str, Any]) -> None:
@@ -89,15 +90,15 @@ class CodexQueueWatcher:
                     import fcntl
                     fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
-    def pending_events(self, state: dict[str, Any]) -> list[dict[str, Any]]:
+    def pending_events(self, events: list[dict[str, Any]], state: dict[str, Any]) -> list[dict[str, Any]]:
         notified = set(state.get("notified_events", []))
         answered = {
             event["payload"].get("interaction_id")
-            for event in self.rendezvous._events()
+            for event in events
             if event["kind"] == "coop2.interaction.responded"
         }
         result = []
-        for event in self.rendezvous._events():
+        for event in events:
             payload = event["payload"]
             is_delivery = (
                 event["kind"] == "coop2.interaction.requested"
@@ -132,22 +133,36 @@ class CodexQueueWatcher:
             check=True,
             capture_output=True,
             text=True,
+            timeout=QUEUE_TIMEOUT_SECONDS,
         )
 
     def step(self) -> dict[str, Any]:
         with self._claim_lock():
             state = self._state()
+            events = self.rendezvous._events()
             initializing = not state.get("initialized", False)
             queued: list[str] = []
-            for event in self.pending_events(state):
-                self.queue(event)
+            failed: list[str] = []
+            for event in self.pending_events(events, state):
+                try:
+                    self.queue(event)
+                except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError, OSError) as error:
+                    failed.append(event["event_id"])
+                    state["delivery_state"] = "unavailable"
+                    state["last_error"] = str(error)
+                    state["last_failed_event"] = event["event_id"]
+                    atomic_json(self.state_path, state)
+                    break
                 queued.append(event["event_id"])
                 state["notified_events"] = [*state.get("notified_events", []), event["event_id"]]
+                state["delivery_state"] = "available"
+                state.pop("last_error", None)
+                state.pop("last_failed_event", None)
                 atomic_json(self.state_path, state)
             if initializing:
                 historical_responses = [
                     event["event_id"]
-                    for event in self.rendezvous._events()
+                    for event in events
                     if event["kind"] == "coop2.interaction.responded"
                     and event["payload"].get("recipient") == self.actor
                 ]
@@ -156,7 +171,7 @@ class CodexQueueWatcher:
                 ]))
                 state["initialized"] = True
                 atomic_json(self.state_path, state)
-            return {"profile": PROFILE, "queued_events": queued, "state_path": str(self.state_path)}
+            return {"profile": PROFILE, "queued_events": queued, "failed_events": failed, "state_path": str(self.state_path)}
 
 
 def parser() -> argparse.ArgumentParser:
@@ -183,7 +198,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(json.dumps(result, sort_keys=True), flush=True)
         if args.once:
             return 0
-        time.sleep(max(args.interval_seconds, 0.1))
+        delay = max(args.interval_seconds, 0.1)
+        if result.get("failed_events"):
+            delay = min(max(delay * 2, 1.0), 60.0)
+        time.sleep(delay)
 
 
 if __name__ == "__main__":

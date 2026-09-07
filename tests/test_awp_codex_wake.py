@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
@@ -75,6 +76,20 @@ class CodexQueueWatcherTests(unittest.TestCase):
             results = list(executor.map(lambda watcher: watcher.step(), watchers))
         self.assertEqual(sum(len(result["queued_events"]) for result in results), 1)
         self.assertEqual(calls, ["evt:request"])
+
+    def test_queue_failure_is_recorded_and_event_remains_retryable(self) -> None:
+        watcher = CodexQueueWatcher(
+            FakeRendezvous([event("evt:request", "coop2.interaction.requested", "actor:codex")]),
+            "actor:codex", "thread:test", "ws://test", self.state
+        )
+        with patch.object(watcher, "queue", side_effect=subprocess.TimeoutExpired("codex", 30)):
+            result = watcher.step()
+        self.assertEqual(result["queued_events"], [])
+        self.assertEqual(result["failed_events"], ["evt:request"])
+        state = watcher._state()
+        self.assertEqual(state["delivery_state"], "unavailable")
+        self.assertEqual(state["last_failed_event"], "evt:request")
+        self.assertNotIn("evt:request", state.get("notified_events", []))
 
 
 if __name__ == "__main__":
