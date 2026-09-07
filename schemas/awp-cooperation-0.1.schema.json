@@ -40,7 +40,20 @@
           "properties": {
             "observed_at": {"type": "string", "format": "date-time"},
             "operational_reach": {"enum": ["shared", "worktree-local", "configured-unverified", "degraded", "snapshot-only", "unavailable"]},
-            "frontier": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true}
+            "frontier": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+            "participant_watchers": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["actor", "watcher_liveness"],
+                "properties": {
+                  "actor": {"$ref": "#/$defs/id"},
+                  "watcher_liveness": {"enum": ["active", "none", "unverified"]},
+                  "profile": {"type": "string", "minLength": 1}
+                },
+                "additionalProperties": true
+              }
+            }
           },
           "additionalProperties": true
         },
