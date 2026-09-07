@@ -249,9 +249,11 @@ def bounded_json(view: dict[str, Any], max_output_bytes: int) -> tuple[str, bool
                 "required_output_bytes": required,
                 "max_output_bytes": max_output_bytes,
                 "omitted": ["entry"],
-                "reason": "required re-entry context was not silently truncated",
+                "reason": "entry context was omitted; coordination status was retained",
             },
         }
+        if "coordination" in view:
+            refusal["coordination"] = view["coordination"]
         return json.dumps(refusal, indent=2, sort_keys=True, ensure_ascii=False) + "\n", False
     return rendered, bool(view["selection"].get("complete"))
 
@@ -307,8 +309,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             discovery = json.loads((project / ".awp.json").read_text(encoding="utf-8"))
             capsule = (project / discovery["current_workstate"]).resolve()
         view = build_reentry_view(capsule, brief_only=args.brief_only)
-        if args.actor and not args.brief_only:
-            view["coordination"] = coordination_entry_view(project, args.actor)
+        if not args.brief_only:
+            view["coordination"] = (
+                coordination_entry_view(project, args.actor)
+                if args.actor
+                else {
+                    "state": "skipped",
+                    "diagnostic": "AWP-COORD-ACTOR-REQUIRED",
+                    "reason": "entry recovery requires the host-bound actor identity",
+                }
+            )
         rendered, complete = bounded_json(view, args.max_output_bytes)
         print(rendered, end="")
         return 0 if complete or args.brief_only else 2

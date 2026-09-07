@@ -127,6 +127,30 @@ class ReentryTests(unittest.TestCase):
         self.assertFalse(payload["selection"]["complete"])
         self.assertEqual(payload["selection"]["omitted"], ["entry"])
 
+    def test_budget_failure_retains_coordination_status(self) -> None:
+        view = self.module.build_reentry_view(ROOT / "awp.awp.md")
+        view["coordination"] = {
+            "state": "available",
+            "inbox": [{"interaction_id": "interaction:critical"}],
+        }
+        rendered, complete = self.module.bounded_json(view, 1000)
+        self.assertFalse(complete)
+        payload = json.loads(rendered)
+        self.assertEqual(payload["selection"]["state"], "budget_exceeded")
+        self.assertEqual(payload["coordination"]["inbox"][0]["interaction_id"], "interaction:critical")
+
+    def test_missing_actor_is_explicitly_disclosed(self) -> None:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "tools" / "awp_reentry.py"), "--project", str(ROOT), "--max-output-bytes", "70000"],
+            cwd=ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["coordination"]["state"], "skipped")
+        self.assertEqual(payload["coordination"]["diagnostic"], "AWP-COORD-ACTOR-REQUIRED")
+
     def test_reported_output_size_matches_serialized_bytes(self) -> None:
         view = self.module.build_reentry_view(ROOT / "awp.awp.md")
         rendered, complete = self.module.bounded_json(view, 100_000)
