@@ -6,13 +6,13 @@ These instructions apply to the AWP repository. User requests remain the control
 
 This repository defines the Agent Workshare Protocol (AWP), a portable format for preserving semantic project state across human and AI-agent sessions and for coordinating work above source control.
 
-The stable family is **AWP 0.6.0**. AWP 0.8.0 is an unreleased working draft under `spec/drafts/0.8.0/`. Coordination remains normative but experimental. The repository contains specifications, schemas, validators, conformance fixtures, generated bundles, a synthetic experiment harness, and portable workstate examples. It does not claim to contain a production reader/writer, complete semantic-scope analyzer, live coordination service, or independent interoperability implementation.
+AWP 0.6.0 is a **legacy precursor and historical reference**. AWP 0.8.0 is the active unreleased working draft under `spec/drafts/0.8.0/`. Coordination remains normative but experimental. The repository contains specifications, schemas, validators, conformance fixtures, generated bundles, a synthetic experiment harness, and portable workstate examples. It does not claim to contain a production reader/writer, complete semantic-scope analyzer, live coordination service, or independent interoperability implementation.
 
 ## Re-entry workflow
 
 Before making project changes:
 
-1. The current repository-local normative development reference is the complete [AWP 0.8.0 working-draft bundle](dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md). It is unreleased and supersedes no stable AWP 0.6.0 semantics. Before work, run `python tools/awp_spec_entry.py --verify`; its digest must match that bundle. The generated Agent Entry Core is bounded orientation, not a second specification.
+1. The current repository-local normative development reference is the complete [AWP 0.8.0 working-draft bundle](dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md). It is unreleased and does not rewrite the legacy AWP 0.6.0 artifacts. Before work, run `python tools/awp_spec_entry.py --verify`; its digest must match that bundle. The generated Agent Entry Core is bounded orientation, not a second specification.
 2. For routine bounded re-entry, run `python tools/awp_spec_entry.py --route <task-class>` and read every listed module and schema before work. Read the complete 0.8.0 working-draft bundle whenever the tool reports a full-source trigger, a request spans routed modules, or normative semantics are ambiguous. If the profile is absent, stale, or unverifiable, build it with `python tools/awp_spec_entry.py --build`, then verify it; if that cannot succeed, read the complete bundle before continuing.
 3. Read `.awp.json` at the repository root. It identifies the current workstate and stable governing specification.
 4. Read the current workstate named by `current_workstate` (currently `awp.awp.md`). For bounded model-facing orientation, run `python tools/awp_reentry.py --project .`; it validates the full capsule but presents only the generated briefing, active Resume/Handoff/checkpoint, ordered `read_first` records, and compact required-artifact descriptors. A `complete` selection may be used for re-entry. `brief_only`, `incomplete`, or `budget_exceeded` output is orientation only and MUST NOT be treated as sufficient for guarded work.
@@ -37,8 +37,8 @@ The workstate capsule is intended to make project re-entry fast. Preserve its ge
 
 ## Canonical sources
 
-- `AWP_SPECIFICATION_0.6.0.md` is the immutable stable-family overview.
-- `spec/0.6.0/` contains the stable module specifications.
+- `AWP_SPECIFICATION_0.6.0.md` is the immutable legacy-family overview.
+- `spec/0.6.0/` contains the legacy module specifications.
 - `spec/drafts/0.8.0/` contains the active working draft; normative development occurs there.
 - `schemas/` contains normative JSON Schemas.
 - `dist/0.6.0/AWP-0.6.0.bundle.md` is generated; do not edit it directly.

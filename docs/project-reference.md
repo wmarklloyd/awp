@@ -6,7 +6,7 @@ This document collects release, validation, repository, research, and governance
 
 | Track | Version | Status | Entry point |
 |---|---:|---|---|
-| Stable specification | 0.6.0 | Exploratory release | [Family overview](../AWP_SPECIFICATION_0.6.0.md) |
+| Legacy precursor | 0.6.0 | Historical reference | [Family overview](../AWP_SPECIFICATION_0.6.0.md) |
 | Active development | 0.8.0 | Working draft; not a release | [Draft overview](../spec/drafts/0.8.0/index.md) |
 | Coordination | 0.3.0 stable-family module / 0.4.0 draft | Normative but experimental | [Released module](../spec/0.6.0/coordination.md) |
 
