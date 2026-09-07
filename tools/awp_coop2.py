@@ -65,7 +65,7 @@ class Rendezvous:
 
     def status(self) -> dict:
         reach, evidence = self._reach()
-        return {"profile": PROFILE, "project_id": self.project_id, "workstate_id": self.workstate_id, "binding_id": self.ledger.binding_id(), "reach": reach, "shared_reach_evidence": evidence, "limitations": ["experimental pilot", "no semantic analyzer", "no authentication", "budget declaration is recorded but not host-enforced"]}
+        return {"profile": PROFILE, "project_id": self.project_id, "workstate_id": self.workstate_id, "binding_id": self.ledger.binding_id(), "reach": reach, "shared_reach_evidence": evidence, "delivery_mode": "polling", "limitations": ["experimental pilot", "polling does not wake or deliver work to an active session", "no semantic analyzer", "no authentication", "budget declaration is recorded but not host-enforced"]}
 
     def join(self, actor: str, capabilities: list[str]) -> dict:
         for event in reversed(self._events()):
