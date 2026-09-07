@@ -3192,9 +3192,21 @@ Initial authorization MUST name the participating actors (or a bounded participa
 
 A managed-collaboration binding MUST separately declare its **delivery mode**: `host-dispatch`, `subscription`, `polling`, or `unavailable`. `host-dispatch` means the host delivers a published request to the named active session or records a stable delivery failure. `subscription` means the receiving host has durably subscribed and the binding provides bounded retry or an explicit expiry outcome. `polling` means a request is only available when the receiving participant next reads the binding; it MAY support durable asynchronous exchange, but MUST NOT be represented as unattended or self-starting collaboration. A request publication receipt confirms durable acceptance, not recipient attention, unless a delivery receipt from `host-dispatch` or `subscription` is also returned. A project that expects one agent to begin collaboration after another agent requests it without a human prompt MUST select `host-dispatch` or `subscription` and disclose retry, expiry, and unavailable-recipient behavior.
 
+Publication, delivery, and answer are three independent facts and MUST NOT be inferred from one another. A managed binding MUST represent them with separately inspectable receipts:
+
+1. `published` means the authoritative project binding durably accepted the interaction request;
+2. `delivered` means the named recipient observed the request and either accepted responsibility with a response deadline or declined it immediately; and
+3. `answered` means the binding durably accepted a terminal interaction outcome.
+
+A delivery receipt MUST identify the interaction, observing actor, observation time, observed binding frontier, disposition (`accepted` or `declined`), and, for `accepted`, the response deadline. Reading an assigned open interaction through a conforming host MUST atomically publish or return the existing delivery receipt. Repeated observation MUST return the same effective receipt and MUST NOT create another round.
+
+If publication has no delivery receipt within the declared delivery window, the interaction is `undelivered`; the sender MUST report that it is waiting and MUST NOT infer refusal. If an accepted delivery has no terminal answer by its response deadline, the interaction is `delivered_unanswered` and MUST resolve to `timed_out` under the effective loop policy. If the binding is unavailable, the participant MUST disclose `AWP-COORD-LEDGER-UNAVAILABLE`, enter snapshot-only or unavailable mode, and make no active COOP claim. A participant ending while responsible for an accepted open interaction MUST publish `declined`, publish a terminal response, or leave a recoverable pending state that identifies the interaction and deadline.
+
+AWP specifies the project rendezvous identity, interaction and receipt semantics, failure states, and required diagnostics. The host specifies when a session receives a turn, any optional wake or notification mechanism, actor-to-principal binding, enforcement of budgets and authority, and whether the session may act on a received request. A host adapter SHOULD expose two logical operations—deliver an interaction to a named session and return the resulting delivery receipt—but MAY implement them through MCP, a plug-in, a native API, or another host facility. These are host bindings, not additional project transports. With `polling`, worst-case delivery latency is unbounded and MUST be disclosed.
+
 #### 5.1.1 `local-coop2-rendezvous-v1` experimental pilot
 
-`local-coop2-rendezvous-v1` is an experimental project-local binding profile. It uses one shared transactional event ledger to publish participant entry, discover available peers, and publish or retrieve a bounded interaction request and response by durable interaction identifier. A participant uses the project and binding identity to find the ledger; it does not need an exchanged consultation-document path for a later request or reply. Its reported reach is `configured-unverified` until at least two distinct participant entries name the same project, workstate, and store identity; it reports `shared` only with those retained entry receipts as handshake evidence. Its delivery mode is `polling`, so it is a durable mailbox and MUST NOT be presented as unattended collaboration. The profile records participant and budget declarations, repeat-safe entry and request publication, and receipts, but does not authenticate actors, enforce host budgets, provide semantic selector analysis, or claim complete COOP-2 conformance. A binding selecting this profile MUST disclose those limitations.
+`local-coop2-rendezvous-v1` is an experimental project-local binding profile. It uses one shared transactional event ledger to publish participant entry, discover available peers, and publish or retrieve a bounded interaction request, delivery receipt, and response by durable interaction identifier. A participant uses the project and binding identity to find the ledger; it does not need an exchanged consultation-document path for a later request or reply. Its reported reach is `configured-unverified` until at least two distinct participant entries name the same project, workstate, and store identity; it reports `shared` only with those retained entry receipts as handshake evidence. Its delivery mode is `polling`, so it is a durable mailbox and MUST NOT be presented as unattended collaboration. The profile records participant and budget declarations, repeat-safe entry and request publication, and receipts, but does not authenticate actors, enforce host budgets, provide semantic selector analysis, wake a session, or claim complete COOP-2 conformance. A binding selecting this profile MUST disclose those limitations.
 
 ## 6. COOP-2 — semantic, integration, and managed collaboration
 
@@ -5389,79 +5401,103 @@ If the optional consultation subprotocol is enabled, the agent may separately in
     {
       "id": "AWP-COOP-035",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 174,
-      "statement": "`local-coop2-rendezvous-v1` is an experimental project-local binding profile. It uses one shared transactional event ledger to publish participant entry, discover available peers, and publish or retrieve a bounded interaction request and response by durable interaction identifier. A participant uses the project and binding identity to find the ledger; it does not need an exchanged consultation-document path for a later request or reply. Its reported reach is `configured-unverified` until at least two distinct participant entries name the same project, workstate, and store identity; it reports `shared` only with those retained entry receipts as handshake evidence. Its delivery mode is `polling`, so it is a durable mailbox and MUST NOT be presented as unattended collaboration. The profile records participant and budget declarations, repeat-safe entry and request publication, and receipts, but does not authenticate actors, enforce host budgets, provide semantic selector analysis, or claim complete COOP-2 conformance. A binding selecting this profile MUST disclose those limitations."
+      "line": 172,
+      "statement": "Publication, delivery, and answer are three independent facts and MUST NOT be inferred from one another. A managed binding MUST represent them with separately inspectable receipts:"
     },
     {
       "id": "AWP-COOP-036",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 178,
-      "statement": "`COOP-2` extends `COOP-1` work coordination with semantic awareness and integration assurance. It is also the first contract that may enable managed, directly inter-agent collaboration under Section 5's explicit authorization and budget. It MAY require a database, broker, registry, subscription system, or another service-backed binding, but neither a storage technology nor consultation alone supplies `COOP-2` semantics."
+      "statement": "A delivery receipt MUST identify the interaction, observing actor, observation time, observed binding frontier, disposition (`accepted` or `declined`), and, for `accepted`, the response deadline. Reading an assigned open interaction through a conforming host MUST atomically publish or return the existing delivery receipt. Repeated observation MUST return the same effective receipt and MUST NOT create another round."
     },
     {
       "id": "AWP-COOP-037",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 180,
-      "statement": "A `COOP-2` binding MUST maintain a stable semantic registry; resolve comparable selectors against pinned state revisions; compare declared scope, observed scope, and relied-upon reads; preserve `unknown` when relation evidence is ambiguous; and require acknowledgement or blocking under the effective policy. It MUST bind interface contracts, typed preconditions, verification results, staleness, change-set readiness, and integration results so that a stale or unsatisfied dependency cannot silently become integration-ready."
+      "statement": "If publication has no delivery receipt within the declared delivery window, the interaction is `undelivered`; the sender MUST report that it is waiting and MUST NOT infer refusal. If an accepted delivery has no terminal answer by its response deadline, the interaction is `delivered_unanswered` and MUST resolve to `timed_out` under the effective loop policy. If the binding is unavailable, the participant MUST disclose `AWP-COORD-LEDGER-UNAVAILABLE`, enter snapshot-only or unavailable mode, and make no active COOP claim. A participant ending while responsible for an accepted open interaction MUST publish `declined`, publish a terminal response, or leave a recoverable pending state that identifies the interaction and deadline."
     },
     {
       "id": "AWP-COOP-038",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 182,
-      "statement": "A `COOP-2` claim MUST declare its semantic-analysis coverage, selector and scope model, integration policy, tested participant count, and the failure behavior for unavailable or ambiguous semantic evidence. It MUST NOT infer protected external mutation, authentication, fencing, cross-host availability, or scalability from this claim."
+      "statement": "AWP specifies the project rendezvous identity, interaction and receipt semantics, failure states, and required diagnostics. The host specifies when a session receives a turn, any optional wake or notification mechanism, actor-to-principal binding, enforcement of budgets and authority, and whether the session may act on a received request. A host adapter SHOULD expose two logical operations\u2014deliver an interaction to a named session and return the resulting delivery receipt\u2014but MAY implement them through MCP, a plug-in, a native API, or another host facility. These are host bindings, not additional project transports. With `polling`, worst-case delivery latency is unbounded and MUST be disclosed."
     },
     {
       "id": "AWP-COOP-039",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 184,
-      "statement": "A registry, selector analyzer, verification evaluator, or integration-readiness evaluator alone MUST NOT claim `COOP-2`; the contract applies to the composed participant, binding, semantic registry, analyzer, readiness evaluator, checkpoint, and recovery behavior."
+      "line": 186,
+      "statement": "`local-coop2-rendezvous-v1` is an experimental project-local binding profile. It uses one shared transactional event ledger to publish participant entry, discover available peers, and publish or retrieve a bounded interaction request, delivery receipt, and response by durable interaction identifier. A participant uses the project and binding identity to find the ledger; it does not need an exchanged consultation-document path for a later request or reply. Its reported reach is `configured-unverified` until at least two distinct participant entries name the same project, workstate, and store identity; it reports `shared` only with those retained entry receipts as handshake evidence. Its delivery mode is `polling`, so it is a durable mailbox and MUST NOT be presented as unattended collaboration. The profile records participant and budget declarations, repeat-safe entry and request publication, and receipts, but does not authenticate actors, enforce host budgets, provide semantic selector analysis, wake a session, or claim complete COOP-2 conformance. A binding selecting this profile MUST disclose those limitations."
     },
     {
       "id": "AWP-COOP-040",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 188,
-      "statement": "`COOP-3` extends `COOP-2` with authenticated protected mutation and a declared scalable operating envelope. It MAY require a database, broker, sharded registry, protected mutation gateway, or another service-backed binding."
+      "line": 190,
+      "statement": "`COOP-2` extends `COOP-1` work coordination with semantic awareness and integration assurance. It is also the first contract that may enable managed, directly inter-agent collaboration under Section 5's explicit authorization and budget. It MAY require a database, broker, registry, subscription system, or another service-backed binding, but neither a storage technology nor consultation alone supplies `COOP-2` semantics."
     },
     {
       "id": "AWP-COOP-041",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 190,
-      "statement": "For guarded mutation, a `COOP-3` binding MUST authenticate actors to principals and use protected optimistic-concurrency or lease operations with epochs and fencing tokens. It MUST reject stale owners at the protected mutation path; advisory metadata or an unprotected lock file is insufficient. Its policy MUST define retry bounds, lease duration, clock authority, deadlock and starvation behavior, cancellation consequences, and human or organizational arbitration."
+      "line": 192,
+      "statement": "A `COOP-2` binding MUST maintain a stable semantic registry; resolve comparable selectors against pinned state revisions; compare declared scope, observed scope, and relied-upon reads; preserve `unknown` when relation evidence is ambiguous; and require acknowledgement or blocking under the effective policy. It MUST bind interface contracts, typed preconditions, verification results, staleness, change-set readiness, and integration results so that a stale or unsatisfied dependency cannot silently become integration-ready."
     },
     {
       "id": "AWP-COOP-042",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 192,
-      "statement": "A `COOP-3` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, trust boundary, protected mutation paths, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST include fault evidence for stale-owner rejection, event loss or retention gaps, projector races, binding-identity disagreement, and recovery after interruption. It MUST NOT infer scale, availability, semantic accuracy, or enforcement from a storage technology alone."
+      "line": 194,
+      "statement": "A `COOP-2` claim MUST declare its semantic-analysis coverage, selector and scope model, integration policy, tested participant count, and the failure behavior for unavailable or ambiguous semantic evidence. It MUST NOT infer protected external mutation, authentication, fencing, cross-host availability, or scalability from this claim."
     },
     {
       "id": "AWP-COOP-043",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 196,
-      "statement": "`coop3-a2a-v1` is a named optional COOP-3 binding profile for participants that communicate across runtimes, hosts, or organizational boundaries through the Agent2Agent (A2A) protocol. A2A is the profile's communications and execution control plane; it is not the authoritative coordination state or a substitute for protected mutation enforcement. An A2A task accepted, updated, completed, failed, cancelled, or resumed state MUST NOT by itself be interpreted as an AWP intent decision, lease grant, fenced mutation, checkpoint, integration result, or authority grant."
+      "statement": "A registry, selector analyzer, verification evaluator, or integration-readiness evaluator alone MUST NOT claim `COOP-2`; the contract applies to the composed participant, binding, semantic registry, analyzer, readiness evaluator, checkpoint, and recovery behavior."
     },
     {
       "id": "AWP-COOP-044",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 198,
-      "statement": "A binding claiming `transport.profile: coop3-a2a-v1` MUST declare the supported A2A protocol version and interfaces, the authenticated mapping from A2A peer identity to AWP actor and accountable principal, its task-to-AWP-operation correlation and idempotency rule, its authoritative coordination-store identity, and its protected mutation gateway. It MUST carry an immutable AWP operation identifier and the relevant workstate and binding identity in every coordination request. The binding MUST durably record the resulting AWP event or return a stable rejection before it acknowledges the operation as accepted to a participant."
+      "line": 200,
+      "statement": "`COOP-3` extends `COOP-2` with authenticated protected mutation and a declared scalable operating envelope. It MAY require a database, broker, sharded registry, protected mutation gateway, or another service-backed binding."
     },
     {
       "id": "AWP-COOP-045",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 200,
-      "statement": "The profile MAY use A2A tasks, messages, artifacts, or data parts to carry typed AWP coordination requests and receipts. At minimum it MUST support carrying a request and response for participant entry or renewal, guarded intent announcement, guarded decision or conflict result, checkpoint or handoff publication, and terminal completion or withdrawal. A retry, reconnect, duplicate delivery, or a task routed to another A2A endpoint MUST resolve through the same AWP operation identifier; it MUST return the prior receipt or a stable conflict or rejection, and MUST NOT create a second lease, intent, fencing generation, or protected mutation."
+      "line": 202,
+      "statement": "For guarded mutation, a `COOP-3` binding MUST authenticate actors to principals and use protected optimistic-concurrency or lease operations with epochs and fencing tokens. It MUST reject stale owners at the protected mutation path; advisory metadata or an unprotected lock file is insufficient. Its policy MUST define retry bounds, lease duration, clock authority, deadlock and starvation behavior, cancellation consequences, and human or organizational arbitration."
     },
     {
       "id": "AWP-COOP-046",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 202,
-      "statement": "The authoritative COOP-3 store and protected mutation gateway MUST enforce the actor/principal authorization, expected binding epoch and frontier or revision, protected scope, and current fencing token independently of A2A task state. The gateway MUST reject a stale, unauthenticated, or mismatched request even when A2A reports successful delivery. A binding MUST disclose A2A reachability, authentication failure, transport retry, and store or gateway availability separately; it MUST fail closed for protected mutation when any required enforcement check is unavailable."
+      "line": 204,
+      "statement": "A `COOP-3` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, trust boundary, protected mutation paths, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST include fault evidence for stale-owner rejection, event loss or retention gaps, projector races, binding-identity disagreement, and recovery after interruption. It MUST NOT infer scale, availability, semantic accuracy, or enforcement from a storage technology alone."
     },
     {
       "id": "AWP-COOP-047",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 223,
+      "line": 208,
+      "statement": "`coop3-a2a-v1` is a named optional COOP-3 binding profile for participants that communicate across runtimes, hosts, or organizational boundaries through the Agent2Agent (A2A) protocol. A2A is the profile's communications and execution control plane; it is not the authoritative coordination state or a substitute for protected mutation enforcement. An A2A task accepted, updated, completed, failed, cancelled, or resumed state MUST NOT by itself be interpreted as an AWP intent decision, lease grant, fenced mutation, checkpoint, integration result, or authority grant."
+    },
+    {
+      "id": "AWP-COOP-048",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 210,
+      "statement": "A binding claiming `transport.profile: coop3-a2a-v1` MUST declare the supported A2A protocol version and interfaces, the authenticated mapping from A2A peer identity to AWP actor and accountable principal, its task-to-AWP-operation correlation and idempotency rule, its authoritative coordination-store identity, and its protected mutation gateway. It MUST carry an immutable AWP operation identifier and the relevant workstate and binding identity in every coordination request. The binding MUST durably record the resulting AWP event or return a stable rejection before it acknowledges the operation as accepted to a participant."
+    },
+    {
+      "id": "AWP-COOP-049",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 212,
+      "statement": "The profile MAY use A2A tasks, messages, artifacts, or data parts to carry typed AWP coordination requests and receipts. At minimum it MUST support carrying a request and response for participant entry or renewal, guarded intent announcement, guarded decision or conflict result, checkpoint or handoff publication, and terminal completion or withdrawal. A retry, reconnect, duplicate delivery, or a task routed to another A2A endpoint MUST resolve through the same AWP operation identifier; it MUST return the prior receipt or a stable conflict or rejection, and MUST NOT create a second lease, intent, fencing generation, or protected mutation."
+    },
+    {
+      "id": "AWP-COOP-050",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 214,
+      "statement": "The authoritative COOP-3 store and protected mutation gateway MUST enforce the actor/principal authorization, expected binding epoch and frontier or revision, protected scope, and current fencing token independently of A2A task state. The gateway MUST reject a stale, unauthenticated, or mismatched request even when A2A reports successful delivery. A binding MUST disclose A2A reachability, authentication failure, transport retry, and store or gateway availability separately; it MUST fail closed for protected mutation when any required enforcement check is unavailable."
+    },
+    {
+      "id": "AWP-COOP-051",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 235,
       "statement": "The checkpoint step SHOULD use the selected canonical workstate projector. A verified `no_change` receipt is sufficient when no semantic state changed; an incomplete or stale projection is not."
     }
   ]
@@ -5847,6 +5883,7 @@ If the optional consultation subprotocol is enabled, the agent may separately in
     {"$ref": "#/$defs/binding"},
     {"$ref": "#/$defs/policy"},
     {"$ref": "#/$defs/interaction"},
+    {"$ref": "#/$defs/deliveryReceipt"},
     {"$ref": "#/$defs/participantLease"}
   ],
   "$defs": {
@@ -6079,12 +6116,13 @@ If the optional consultation subprotocol is enabled, the agent may separately in
     },
     "interactionTransport": {
       "type": "object",
-      "required": ["profile", "publication", "retrieval", "idempotency"],
+      "required": ["profile", "publication", "retrieval", "idempotency", "delivery_mode"],
       "properties": {
         "profile": {"$ref": "#/$defs/id"},
         "publication": {"type": "string", "minLength": 1},
         "retrieval": {"type": "string", "minLength": 1},
-        "idempotency": {"type": "string", "minLength": 1}
+        "idempotency": {"type": "string", "minLength": 1},
+        "delivery_mode": {"enum": ["host-dispatch", "subscription", "polling", "unavailable"]}
       },
       "additionalProperties": true
     },
@@ -6215,6 +6253,25 @@ If the optional consultation subprotocol is enabled, the agent may separately in
           }
         }
       ],
+      "additionalProperties": true
+    },
+    "deliveryReceipt": {
+      "type": "object",
+      "required": ["type", "module", "interaction_id", "observing_actor", "observed_at", "binding_frontier", "disposition"],
+      "properties": {
+        "type": {"const": "cooperation_delivery_receipt"},
+        "module": {"const": "urn:awp:cooperation"},
+        "interaction_id": {"$ref": "#/$defs/id"},
+        "observing_actor": {"$ref": "#/$defs/id"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "binding_frontier": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "disposition": {"enum": ["accepted", "declined"]},
+        "response_deadline": {"type": "string", "format": "date-time"}
+      },
+      "allOf": [{
+        "if": {"properties": {"disposition": {"const": "accepted"}}, "required": ["disposition"]},
+        "then": {"required": ["response_deadline"]}
+      }],
       "additionalProperties": true
     },
     "handoffReceipt": {"type": "object", "required": ["path", "digest", "verified_at"], "properties": {"path": {"type": "string", "minLength": 1}, "digest": {"$ref": "#/$defs/digest"}, "verified_at": {"type": "string", "format": "date-time"}}, "additionalProperties": false},

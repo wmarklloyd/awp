@@ -6,6 +6,7 @@
     {"$ref": "#/$defs/binding"},
     {"$ref": "#/$defs/policy"},
     {"$ref": "#/$defs/interaction"},
+    {"$ref": "#/$defs/deliveryReceipt"},
     {"$ref": "#/$defs/participantLease"}
   ],
   "$defs": {
@@ -238,12 +239,13 @@
     },
     "interactionTransport": {
       "type": "object",
-      "required": ["profile", "publication", "retrieval", "idempotency"],
+      "required": ["profile", "publication", "retrieval", "idempotency", "delivery_mode"],
       "properties": {
         "profile": {"$ref": "#/$defs/id"},
         "publication": {"type": "string", "minLength": 1},
         "retrieval": {"type": "string", "minLength": 1},
-        "idempotency": {"type": "string", "minLength": 1}
+        "idempotency": {"type": "string", "minLength": 1},
+        "delivery_mode": {"enum": ["host-dispatch", "subscription", "polling", "unavailable"]}
       },
       "additionalProperties": true
     },
@@ -374,6 +376,25 @@
           }
         }
       ],
+      "additionalProperties": true
+    },
+    "deliveryReceipt": {
+      "type": "object",
+      "required": ["type", "module", "interaction_id", "observing_actor", "observed_at", "binding_frontier", "disposition"],
+      "properties": {
+        "type": {"const": "cooperation_delivery_receipt"},
+        "module": {"const": "urn:awp:cooperation"},
+        "interaction_id": {"$ref": "#/$defs/id"},
+        "observing_actor": {"$ref": "#/$defs/id"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "binding_frontier": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+        "disposition": {"enum": ["accepted", "declined"]},
+        "response_deadline": {"type": "string", "format": "date-time"}
+      },
+      "allOf": [{
+        "if": {"properties": {"disposition": {"const": "accepted"}}, "required": ["disposition"]},
+        "then": {"required": ["response_deadline"]}
+      }],
       "additionalProperties": true
     },
     "handoffReceipt": {"type": "object", "required": ["path", "digest", "verified_at"], "properties": {"path": {"type": "string", "minLength": 1}, "digest": {"$ref": "#/$defs/digest"}, "verified_at": {"type": "string", "format": "date-time"}}, "additionalProperties": false},
