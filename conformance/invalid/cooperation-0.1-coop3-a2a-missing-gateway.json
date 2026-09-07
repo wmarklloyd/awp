@@ -1,0 +1,31 @@
+{
+  "type": "cooperation_binding",
+  "module": "urn:awp:cooperation",
+  "contract": "COOP-3",
+  "claim_state": "conformant",
+  "capabilities": ["deterministic-coordination-projector", "coordination-awareness", "guarded-scope-announce-check", "participant-leases", "checkpoint-handoff", "semantic-awareness", "integration-assurance", "protected-mutation-enforcement", "scalable-binding", "a2a-control-plane"],
+  "operational_mode": "ledger-bound",
+  "identity": {"workstate_id": "workstate:example", "project_id": "git-root:0123456789abcdef", "store_id": "binding:coop3-example", "scope_model": "awp-semantic-scope-v1", "binding_epoch": 4},
+  "observation": {"observed_at": "2026-09-05T22:30:00Z", "operational_reach": "shared", "frontier": ["evt:coop3-example"]},
+  "atomicity_mechanism": "consensus-log-and-fenced-gateway",
+  "storage_assumptions": ["A quorum and the protected mutation gateway are reachable."],
+  "transport": {
+    "profile": "coop3-a2a-v1",
+    "role": "communications-control-plane",
+    "a2a_protocol_version": "1.0",
+    "supported_interfaces": ["JSONRPC", "HTTP+JSON"],
+    "actor_principal_mapping": "mTLS subject to principal registry v1",
+    "idempotency": "immutable AWP operation ID with durable receipt replay",
+    "authoritative_store": "store:coop3-consensus-log"
+  },
+  "subprotocols": {"work": {"enabled": true, "claim_state": "conformant"}, "consultation": {"enabled": false}},
+  "limitations": ["The tested envelope does not establish behavior above 32 concurrent participants."],
+  "tested_envelope": {
+    "max_concurrent_participants": 32,
+    "scope_distribution": "24 disjoint scopes and 8 hot-scope writers",
+    "latency_measurements": {"p95_announce_ms": 120, "p95_fenced_write_ms": 180},
+    "failure_behavior": {"partition": "fail-closed", "duplicate_delivery": "deduplicated"},
+    "retention_policy": "30-day durable event retention with explicit gap diagnostics",
+    "protected_mutation_paths": ["repository-write-gateway"]
+  }
+}

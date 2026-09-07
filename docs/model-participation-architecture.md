@@ -46,9 +46,9 @@ All handles below are returned by the adapter, scoped to a project and session, 
 
 | Operation | Model supplies | Adapter returns | Durable effect |
 |---|---|---|---|
-| `read` | Goal or task, relevant scope, optional prior context handle | Bounded briefing, context handle, active interactions, missing context, mode and reach | None on the workstate; host may establish advisory presence separately |
-| `announce` | Context handle, intended change, scope/access, relied-upon facts | Intent handle, publication receipt, interactions, next permitted coordination step | Intent and scope records; related diagnostics |
-| `interact` | Intent handle, interaction handle, proposed disposition, rationale/evidence | Recorded proposal, pending approvals, accepted disposition or unresolved state | Proposal, acknowledgement, negotiation or arbitration records as applicable |
+| `read` | Goal or task, relevant scope, optional prior context handle | Bounded briefing, context handle, active overlaps, missing context, mode and reach | None on the workstate; host may establish advisory presence separately |
+| `announce` | Context handle, intended change, scope/access, relied-upon facts | Intent handle, publication receipt, overlaps, next permitted coordination step | Intent and scope records; related diagnostics |
+| `resolve` | Intent handle, overlap handle, proposed disposition, rationale/evidence | Recorded work-resolution proposal, pending approvals, accepted disposition or unresolved state | Proposal, acknowledgement, negotiation or arbitration records as applicable |
 | `publish` | Intent handle, actual scope, result summary, evidence references, unfinished work | Result handle, verification classification, freshness/readiness outcome, receipt | Change/result records and evidence associations; relevant lifecycle events |
 | `checkpoint` | Intent/result handles, next action, unresolved work, `continue` or `exit` | Checkpoint receipt, capsule frontier/digest, handoff completeness | Semantic checkpoint and capsule projection; terminal intent/presence release on successful exit |
 
@@ -92,8 +92,8 @@ Illustrative response:
   "frontier": ["evt:81"],
   "coverage": {"scope_complete": true, "semantic_analysis": "unavailable"},
   "authority_ceiling": ["read_only", "local_write"],
-  "interactions": [{"handle": "interaction:9", "summary": "Another active intent writes this file"}],
-  "next": {"operation": "interact", "reason": "Record an ordering proposal before continuing under project policy"}
+  "overlaps": [{"handle": "overlap:9", "summary": "Another active intent writes this file"}],
+  "next": {"operation": "resolve", "reason": "Record an ordering proposal before continuing under project policy"}
 }
 ```
 
@@ -113,7 +113,7 @@ The response identifies whether overlap coverage is physical-only, includes repo
 
 1. Read project context before work. Use its goal, constraints, authority ceiling, and next action.
 2. Announce intended changes and everything you currently expect to touch. Wait for publication confirmation.
-3. Follow the returned coordination outcome. Record interaction proposals when needed; do not treat another participant's silence as agreement.
+3. Follow the returned coordination outcome. Record overlap-resolution proposals when needed; do not treat another participant's silence as agreement.
 4. Refresh context when scope changes, dependencies change, a warning arrives, or before integration and handoff. Announce additional scope before writing it.
 5. Publish what actually changed and attach available evidence. Identify untested conclusions and unfinished work.
 6. Checkpoint at meaningful milestones and before exit. Treat exit as incomplete until the checkpoint receipt confirms the handoff.
@@ -132,7 +132,7 @@ A publication receipt distinguishes successful storage from successful semantic 
 | Failure | Required proposed behavior |
 |---|---|
 | Response lost after commit | Retry the same request identity and retrieve the original receipt |
-| Concurrent incompatible update | Preserve both events; return interaction and fresh context |
+| Concurrent incompatible update | Preserve both events; return overlap-resolution state and fresh context |
 | Missing or incomplete history | Report missing coverage and prevent a false current-state claim |
 | Unknown required semantics | Mark the affected action unverifiable; allow unaffected display/export |
 | Artifact or evaluator unavailable | Preserve reported evidence; return unknown/error under policy |
@@ -172,7 +172,7 @@ Keep the COOP-1 designation honest. A participant using the five operations is a
 
 The proposed next draft should give each requirement an owner (participant, adapter, projector, binding, publisher, evaluator), triggering operation, capability prerequisite, and expected failure outcome. A role manifest identifies who satisfies each required behavior. A composed COOP-1 claim requires evidence for the complete applicable set, including delegation boundaries.
 
-The base participation profile supports read, intent/scope publication, interactions, result evidence, and checkpoint handoff. The experimental [COOP-1 Cooperation Contract](../spec/drafts/0.8.0/cooperation-contracts.md) is the default composed profile: it includes portable collaboration, deterministic projection, bounded symbiotic interactions, known-incompatible guarded-scope blocking, checkpoint freshness, and recovery. COOP-2 adds semantic awareness, integration assurance, and authenticated protected enforcement.
+The base participation profile supports read, intent/scope publication, interactions, result evidence, and checkpoint handoff. The experimental [COOP-1 Cooperation Contract](../spec/drafts/0.8.0/cooperation-contracts.md) is the default work profile: it includes deterministic projection, known-incompatible guarded-scope blocking, checkpoint freshness, and recovery without requiring consultation. The optional consultation subprotocol adds bounded symbiotic interactions. COOP-2 adds semantic awareness and integration assurance; COOP-3 adds authenticated protected enforcement.
 
 ## 9. Scalability without increasing model burden
 

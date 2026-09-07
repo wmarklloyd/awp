@@ -38,9 +38,11 @@ AWP does not replace an agent runtime, source control, artifact storage, or an a
 | [AWP Coordination](coordination.md) | `urn:awp:coordination` | `0.5.0` | experimental | Core, Synchronization |
 | [AWP Security](security.md) | `urn:awp:security` | `0.5.0` | optional | Core; Artifact when artifact controls are used |
 | [AWP Adapter Framework](adapters.md) | not a payload module | `0.5.0` | informative | binding-specific |
-| [AWP Cooperation Contracts](cooperation-contracts.md) | `urn:awp:cooperation` | `0.1.0` | experimental | Core, Capsule, Handoff; Coordination for COOP-1 and COOP-2 |
+| [AWP Cooperation Contracts](cooperation-contracts.md) | `urn:awp:cooperation` | `0.1.0` | experimental | Core, Capsule, Handoff; Coordination for COOP-1, COOP-2, and COOP-3 |
 
 The machine-readable [module registry](modules.json) is normative for the module IDs, versions, document paths, stability labels, and direct dependencies in this draft.
+
+The normative experimental [Silo Profile](silos.md), `silo-v1`, is owned by Synchronization. It composes forks and Capsule publication to preserve hierarchical alternative project states, with pinned bases, local ownership, and explicit adoption into canonical state or an ancestor silo. It is usable without a COOP contract; creating a silo does not enable agent collaboration or spending. Its profile document and [structural schema](../../../schemas/awp-silo-0.1.schema.json) are part of this working draft.
 
 ## 3. Module declarations
 
@@ -180,7 +182,19 @@ The migration is intentionally incompatible: a 0.8 self-contained capsule identi
 
 An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: self` to capsule metadata, update Capsule to `0.5.0`, and remove any redundant companion pointer from the portable package. Historical events remain unchanged.
 
-## 10. Release contents
+## 10. Agent entry profiles
+
+A specification family MAY distribute a generated **Agent Entry Core** beside a complete specification bundle. Its purpose is to give a model or other bounded-context participant the minimum cross-cutting rules needed to orient safely before it retrieves task-specific modules. It is a derived presentation artifact, not an additional source of normative semantics.
+
+An Agent Entry Core MUST identify its exact source bundle, source bundle SHA-256 digest, family version, generator identity, and the source documents and schemas that its task-routing guidance can name. A reader MUST verify the recorded digest against the available source bundle before relying on the profile. A profile whose bundle is unavailable or whose digest does not match is unavailable, not merely advisory; the reader MUST retrieve and use the complete governing specification or decline the continuation.
+
+The Entry Core MUST include the family invariants needed before any continuation, a statement that it cannot override the source specification, and mandatory expansion triggers. Those triggers MUST include an unknown or required module, a missing or unverifiable profile, an ambiguity or conflict, a requested semantic change spanning more than one routed module, and release, migration, or cross-module integration work. A receiver MAY apply stricter triggers under its own policy.
+
+Task-routing guidance in an Entry Core is non-normative performance guidance. It MUST name the source modules and schemas that a task class normally requires, including direct dependencies, but it MUST NOT claim that the listed material is sufficient in every circumstance or weaken a reader's obligation to obtain relevant normative state. When the profile and its governing source appear to disagree, the source governs and the reader MUST expand its reading rather than choose the profile.
+
+An implementation that claims Agent Entry Core support MUST generate or verify the profile as part of the same reproducible build that produces its source bundle. It MUST expose whether profile verification succeeded and which additional source documents it selected. A gateway MAY enforce selective access, but an instruction to a model alone is not evidence that the model did not read additional material.
+
+## 11. Release contents
 
 - [Core schema](../../../schemas/awp-core-0.8.schema.json)
 - [Capsule metadata schema](../../../schemas/awp-capsule-0.5.schema.json)
@@ -188,11 +202,12 @@ An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: se
 - [Security guardrail schema](../../../schemas/awp-security-0.5.schema.json)
 - [Module registry](modules.json)
 - [Open issue register](open-issues.md)
+- Generated Agent Entry Core beside the complete bundle, when the release provides one
 - Validation and conformance assets in the repository root
 
 The documents listed in Section 2, their normative schemas, and the module registry constitute the AWP 0.8.0 working draft. No file under this directory is a released specification until a release process copies immutable contents into `spec/<version>/` and creates a corresponding tag.
 
-## 11. References
+## 12. References
 
 ### 11.1 Normative references
 

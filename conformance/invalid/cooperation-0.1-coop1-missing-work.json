@@ -1,0 +1,14 @@
+{
+  "type": "cooperation_binding",
+  "module": "urn:awp:cooperation",
+  "contract": "COOP-1",
+  "claim_state": "conformant",
+  "capabilities": ["deterministic-coordination-projector", "coordination-awareness", "guarded-scope-announce-check", "participant-leases", "checkpoint-handoff"],
+  "operational_mode": "ledger-bound",
+  "identity": {"workstate_id": "workstate:example", "project_id": "git-root:0123456789abcdef", "store_id": "binding:missing-work", "scope_model": "awp-repository-path-v1", "binding_epoch": 1},
+  "observation": {"observed_at": "2026-09-05T22:30:00Z", "operational_reach": "shared", "frontier": ["evt:missing-work"]},
+  "atomicity_mechanism": "atomic-compare-and-publish",
+  "storage_assumptions": ["All work participants use the same atomic binding."],
+  "subprotocols": {"work": {"enabled": false}, "consultation": {"enabled": false}},
+  "limitations": []
+}

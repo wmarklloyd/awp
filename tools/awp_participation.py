@@ -88,7 +88,7 @@ class ParticipationAdapter:
                 "code": "AWP-COORD-OVERLAP",
                 "severity": "policy" if item["policy_action"] == "block" else "warning",
                 "message": f"Open overlap requires review: {item['id']}",
-                "recovery": "Use interact to record an order, disposition, or arbitration request.",
+                "recovery": "Use resolve to record an order, disposition, or arbitration request.",
             }
             for item in overlaps
         ]
@@ -101,7 +101,7 @@ class ParticipationAdapter:
             "frontier": refresh["frontier"],
             "coverage": self._coverage(),
             "diagnostics": diagnostics,
-            "interactions": [
+            "overlaps": [
                 {"handle": item["id"], "summary": f"Open {item['policy_action']} overlap"}
                 for item in overlaps
             ],
@@ -181,13 +181,13 @@ class ParticipationAdapter:
                         "code": "AWP-COORD-OVERLAP",
                         "severity": "policy" if blocked else "warning",
                         "message": "The announced intent overlaps an active coordination scope.",
-                        "recovery": "Use interact to record an order, disposition, or arbitration request.",
+                        "recovery": "Use resolve to record an order, disposition, or arbitration request.",
                     }
                     for _ in overlaps
                 ],
                 "intent": result["intent"]["id"],
                 "receipt": f"receipt:{request_id}",
-                "interactions": [
+                "overlaps": [
                     {"handle": overlap["id"], "summary": "Overlapping active intent"}
                     for overlap in overlaps
                 ],
@@ -206,7 +206,7 @@ class ParticipationAdapter:
                 },
             }
             response["next"] = {
-                "operation": "interact" if overlaps else "publish",
+                "operation": "resolve" if overlaps else "publish",
                 "reason": "Resolve the reported overlap before guarded work." if overlaps else "Report actual changes and evidence when work is complete.",
             }
             return response
@@ -297,13 +297,13 @@ class ParticipationAdapter:
         except (ParticipationError, CoordinationError) as error:
             return self._rejected(request_id, str(error))
 
-    def interact(self, request: dict[str, Any]) -> dict[str, Any]:
+    def resolve(self, request: dict[str, Any]) -> dict[str, Any]:
         request_id = self._request_id(request)
         try:
-            self._validate(request, "interact")
+            self._validate(request, "resolve")
             result = self.ledger.interact_overlap(
                 workstate_id=self.workstate_id,
-                overlap_id=request["interaction"],
+                overlap_id=request["overlap"],
                 actor=self.actor,
                 disposition=request["disposition"],
                 rationale=request["rationale"],
@@ -336,7 +336,7 @@ class ParticipationAdapter:
                 "frontier": result["frontier"],
                 "coverage": self._coverage(),
                 "diagnostics": diagnostics,
-                "interaction": request["interaction"],
+                "overlap": request["overlap"],
                 "receipt": receipt_id,
                 "publication_receipt": {
                     "receipt_id": receipt_id,

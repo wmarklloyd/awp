@@ -1,0 +1,83 @@
+{
+  "id": "adoption:search-goal",
+  "type": "silo_adoption",
+  "module": "urn:awp:sync",
+  "profile": "silo-v1",
+  "revision": 1,
+  "status": "approved",
+  "created_by": "actor:researcher",
+  "created_at": "2026-09-07T17:30:00Z",
+  "source": {
+    "workstate_id": "workstate:search-experiment",
+    "frontier": [
+      "evt:search-goal"
+    ],
+    "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
+    "capsule_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "target": {
+    "workstate_id": "workstate:canonical",
+    "frontier": [
+      "evt:canonical-1"
+    ],
+    "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
+    "capsule_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "selected_records": [
+    {
+      "workstate_id": "workstate:search-experiment",
+      "record_id": "goal:search",
+      "revision": 1
+    }
+  ],
+  "proposed_records": [
+    {
+      "id": "goal:search-proposal",
+      "type": "goal",
+      "revision": 1,
+      "statement": "Evaluate search as a proposed feature.",
+      "status": "proposed"
+    }
+  ],
+  "mapping": [
+    {
+      "source": {
+        "workstate_id": "workstate:search-experiment",
+        "record_id": "goal:search",
+        "revision": 1
+      },
+      "destination": {
+        "workstate_id": "workstate:canonical",
+        "record_id": "goal:search-proposal",
+        "revision": 1
+      },
+      "operation": "create"
+    }
+  ],
+  "closure": {
+    "state": "incomplete",
+    "evidence": [
+      "evidence:search-closure"
+    ]
+  },
+  "divergence": [],
+  "scopes": [
+    "scope:canonical-goals"
+  ],
+  "decision_owner": "actor:project-owner",
+  "policy_ref": {
+    "workstate_id": "workstate:canonical",
+    "record_id": "decision:adoption-policy",
+    "revision": 1
+  },
+  "publisher": "actor:publisher",
+  "idempotency_key": "operation:adopt-search-goal",
+  "bypassed_ancestors": [],
+  "approval": {
+    "proposal_revision": 1,
+    "approved_by": "actor:project-owner",
+    "evidence": [
+      "evidence:approval"
+    ]
+  }
+}

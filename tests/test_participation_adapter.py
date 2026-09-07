@@ -115,14 +115,14 @@ class ParticipationAdapterTests(unittest.TestCase):
         )
         second_announcement = second.announce(self.announce_request("request:contract-second"))
         responses.append(
-            second.interact(
+            second.resolve(
                 {
-                    "operation": "interact",
-                    "request_id": "request:contract-interact",
+                    "operation": "resolve",
+                    "request_id": "request:contract-resolve",
                     "project": "project:test",
                     "context": "ctx:test",
                     "intent": second_announcement["intent"],
-                    "interaction": second_announcement["interactions"][0]["handle"],
+                    "overlap": second_announcement["overlaps"][0]["handle"],
                     "disposition": "ordered",
                     "rationale": "Contract validation disposition",
                 }
@@ -163,8 +163,8 @@ class ParticipationAdapterTests(unittest.TestCase):
         result = second.announce(self.announce_request("request:second"))
         self.assertEqual(result["publication"], "confirmed")
         self.assertEqual(result["coordination"], "warning")
-        self.assertEqual(result["next"]["operation"], "interact")
-        self.assertTrue(result["interactions"])
+        self.assertEqual(result["next"]["operation"], "resolve")
+        self.assertTrue(result["overlaps"])
 
     def test_publish_records_a_proposed_change_set_and_receipt(self) -> None:
         announcement = self.adapter.announce(self.announce_request())
@@ -222,7 +222,7 @@ class ParticipationAdapterTests(unittest.TestCase):
         self.assertEqual(result["publication"], "rejected")
         self.assertIn("unknown intent", result["diagnostics"][0]["message"])
 
-    def test_interact_can_order_an_overlap_and_retry_is_idempotent(self) -> None:
+    def test_resolve_can_order_an_overlap_and_retry_is_idempotent(self) -> None:
         self.adapter.announce(self.announce_request("request:first"))
         second = ParticipationAdapter(
             self.adapter.ledger,
@@ -232,27 +232,27 @@ class ParticipationAdapterTests(unittest.TestCase):
             base_revision="git:base",
         )
         announcement = second.announce(self.announce_request("request:second"))
-        interaction_id = announcement["interactions"][0]["handle"]
+        overlap_id = announcement["overlaps"][0]["handle"]
         request = {
-            "operation": "interact",
-            "request_id": "request:interaction",
+            "operation": "resolve",
+            "request_id": "request:resolve",
             "project": "project:test",
             "context": "ctx:test",
             "intent": announcement["intent"],
-            "interaction": interaction_id,
+            "overlap": overlap_id,
             "disposition": "ordered",
             "rationale": "The second writer proceeds after the first scope is complete.",
         }
-        result = second.interact(request)
+        result = second.resolve(request)
         self.assertEqual(result["publication"], "confirmed")
         self.assertEqual(result["coordination"], "clear")
         self.assertEqual(result["next"]["operation"], "read")
         self.assertEqual(second.ledger.refresh("workstate:test")["open_overlaps"], [])
-        retry = second.interact(request)
+        retry = second.resolve(request)
         self.assertEqual(result["publication_receipt"], retry["publication_receipt"])
         self.assertEqual(len(second.ledger.export_events("workstate:test")), 6)
 
-    def test_interact_requires_an_overlap_participant(self) -> None:
+    def test_resolve_requires_an_overlap_participant(self) -> None:
         self.adapter.announce(self.announce_request("request:first"))
         second = ParticipationAdapter(
             self.adapter.ledger,
@@ -269,14 +269,14 @@ class ParticipationAdapterTests(unittest.TestCase):
             actor="actor:outsider",
             base_revision="git:base",
         )
-        result = outsider.interact(
+        result = outsider.resolve(
             {
-                "operation": "interact",
-                "request_id": "request:outsider-interaction",
+                "operation": "resolve",
+                "request_id": "request:outsider-resolve",
                 "project": "project:test",
                 "context": "ctx:test",
                 "intent": announcement["intent"],
-                "interaction": announcement["interactions"][0]["handle"],
+                "overlap": announcement["overlaps"][0]["handle"],
                 "disposition": "ordered",
                 "rationale": "Unauthorized disposition.",
             }

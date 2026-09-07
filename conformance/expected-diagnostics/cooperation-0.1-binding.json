@@ -3,7 +3,11 @@
   "definition": "binding",
   "cases": [
     {"document": "conformance/valid/cooperation-0.1-binding.json", "valid": true, "expected_keywords": []},
+    {"document": "conformance/valid/cooperation-0.1-coop1-work-binding.json", "valid": true, "expected_keywords": []},
     {"document": "conformance/valid/cooperation-0.1-coop2-binding.json", "valid": true, "expected_keywords": []},
-    {"document": "conformance/invalid/cooperation-0.1-coop2-missing-envelope.json", "valid": false, "expected_keywords": ["tested_envelope"]}
+    {"document": "conformance/valid/cooperation-0.1-coop3-binding.json", "valid": true, "expected_keywords": []},
+    {"document": "conformance/invalid/cooperation-0.1-coop1-missing-work.json", "valid": false, "expected_keywords": ["True was expected"]},
+    {"document": "conformance/invalid/cooperation-0.1-coop3-missing-envelope.json", "valid": false, "expected_keywords": ["tested_envelope"]},
+    {"document": "conformance/invalid/cooperation-0.1-coop3-a2a-missing-gateway.json", "valid": false, "expected_keywords": ["protected_mutation_gateway"]}
   ]
 }

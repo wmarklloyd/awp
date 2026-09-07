@@ -52,6 +52,9 @@
       "document": "synchronization.md",
       "dependencies": [
         { "id": "urn:awp:core", "version": "0.8.x" }
+      ],
+      "conditional_dependencies": [
+        { "when_capability": "silo-v1", "id": "urn:awp:capsule", "version": "0.5.x" }
       ]
     },
     {

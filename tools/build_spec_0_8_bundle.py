@@ -14,6 +14,7 @@ MODULES = (
     "handoff.md",
     "artifact.md",
     "synchronization.md",
+    "silos.md",
     "coordination.md",
     "security.md",
     "adapters.md",
@@ -21,6 +22,7 @@ MODULES = (
 )
 
 ASSETS = (
+    ("Silo profile schema — `schemas/awp-silo-0.1.schema.json`", "schemas/awp-silo-0.1.schema.json"),
     ("Module registry — `spec/drafts/0.8.0/modules.json`", "spec/drafts/0.8.0/modules.json"),
     (
         "Requirement inventory — `spec/drafts/0.8.0/requirements.json`",

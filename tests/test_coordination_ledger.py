@@ -57,6 +57,14 @@ class CoordinationLedgerTests(unittest.TestCase):
         )
         self.assertEqual(context["cooperation_binding"]["contract"], "COOP-1")
         self.assertEqual(context["cooperation_binding"]["claim_state"], "partial")
+        self.assertEqual(
+            context["cooperation_binding"]["subprotocols"]["work"],
+            {"enabled": True, "claim_state": "partial"},
+        )
+        self.assertEqual(
+            context["cooperation_binding"]["subprotocols"]["consultation"],
+            {"enabled": False},
+        )
         self.assertNotIn("conformance_level", context["cooperation_binding"])
         self.assertIn(
             "coordination-awareness", context["cooperation_binding"]["capabilities"]

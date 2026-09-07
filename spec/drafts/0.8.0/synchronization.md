@@ -74,6 +74,12 @@ Copying or repackaging without divergent identity is not a fork.
 
 Concurrent replicas of the same workstate retain one workstate ID. They exchange frontiers and missing events rather than creating new identities.
 
+### 5.1 Governed silos
+
+The normative [Silo Profile](silos.md), `silo-v1`, composes this fork mechanism with pinned Capsule bases, explicit local overrides, ownership, independent lifecycle, and receipted adoption into an ancestor workstate. It defines Synchronization-owned `silo` and `silo_adoption` records and their events; it does not introduce another divergence primitive. Its structural schema is `../../../schemas/awp-silo-0.1.schema.json`.
+
+A fork MAY record an exact parent Capsule digest in addition to its parent frontier. The Silo Profile requires that pin. A workstate whose continuation depends on `silo-v1` MUST declare that capability and mark Synchronization and its profile dependency Capsule required. A reader that lacks required silo processing MUST block dependent continuation even when it supports ordinary forks. Adopting selected results across workstate identities follows the profile's dependency-closure and publication rules, not a mechanical union of foreign events into the local graph.
+
 ## 6. Merge and conflict
 
 Mechanical merge unions events by ID after integrity validation. It preserves all concurrent tips. It MUST NOT silently apply last-write-wins to:

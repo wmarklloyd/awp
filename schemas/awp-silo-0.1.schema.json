@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:awp:schema:silo:0.1.0",
+  "title": "AWP silo-v1 profile records",
+  "description": "Structural records owned by Synchronization 0.5 in the AWP 0.8 draft. Does not validate ancestry, authority, dependency closure, or publication.",
+  "oneOf": [{"$ref": "#/$defs/silo"}, {"$ref": "#/$defs/adoption"}],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "pattern": "^\\S+$"},
+    "text": {"type": "string", "minLength": 1},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "pin": {
+      "type": "object",
+      "required": ["workstate_id", "frontier", "specification", "capsule_digest"],
+      "properties": {
+        "workstate_id": {"$ref": "#/$defs/id"},
+        "frontier": {"allOf": [{"$ref": "#/$defs/ids"}], "minItems": 1},
+        "specification": {"$ref": "#/$defs/id"},
+        "capsule_digest": {"$ref": "#/$defs/digest"},
+        "generated_digest": {"$ref": "#/$defs/digest"},
+        "checkpoint": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": true
+    },
+    "recordPin": {
+      "type": "object",
+      "required": ["workstate_id", "record_id", "revision"],
+      "properties": {
+        "workstate_id": {"$ref": "#/$defs/id"},
+        "record_id": {"$ref": "#/$defs/id"},
+        "revision": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": true
+    },
+    "pins": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/recordPin"}},
+    "common": {
+      "type": "object",
+      "required": ["id", "type", "module", "profile", "revision", "status", "created_by", "created_at"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "module": {"const": "urn:awp:sync"},
+        "profile": {"const": "silo-v1"},
+        "revision": {"type": "integer", "minimum": 1},
+        "created_by": {"$ref": "#/$defs/id"},
+        "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": ["decision_owner", "policy_ref", "permitted_targets"],
+      "properties": {
+        "decision_owner": {"$ref": "#/$defs/id"},
+        "policy_ref": {"$ref": "#/$defs/recordPin"},
+        "permitted_targets": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": true
+    },
+    "bindingIdentity": {
+      "type": "object",
+      "required": ["workstate_id", "project_id", "store_id", "scope_model", "binding_epoch"],
+      "properties": {
+        "workstate_id": {"$ref": "#/$defs/id"},
+        "project_id": {"$ref": "#/$defs/id"},
+        "store_id": {"$ref": "#/$defs/id"},
+        "scope_model": {"$ref": "#/$defs/id"},
+        "binding_epoch": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": true
+    },
+    "workLocation": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {"enum": ["none", "isolated", "shared"]},
+        "location": {"$ref": "#/$defs/text"},
+        "isolation_evidence": {"allOf": [{"$ref": "#/$defs/ids"}], "minItems": 1},
+        "common_binding": {"$ref": "#/$defs/bindingIdentity"},
+        "scope_mapping": {"$ref": "#/$defs/text"},
+        "atomicity_mechanism": {"$ref": "#/$defs/text"},
+        "coverage_evidence": {"allOf": [{"$ref": "#/$defs/ids"}], "minItems": 1}
+      },
+      "allOf": [
+        {"if": {"properties": {"mode": {"const": "isolated"}}, "required": ["mode"]}, "then": {"required": ["location", "isolation_evidence"]}},
+        {"if": {"properties": {"mode": {"const": "shared"}}, "required": ["mode"]}, "then": {"required": ["location", "common_binding", "scope_mapping", "atomicity_mechanism", "coverage_evidence"]}}
+      ],
+      "additionalProperties": true
+    },
+    "override": {
+      "type": "object",
+      "required": ["inherited", "operation", "reason"],
+      "properties": {
+        "inherited": {"$ref": "#/$defs/recordPin"},
+        "operation": {"enum": ["replace", "tombstone"]},
+        "replacement": {"$ref": "#/$defs/recordPin"},
+        "reason": {"$ref": "#/$defs/text"}
+      },
+      "allOf": [
+        {"if": {"properties": {"operation": {"const": "replace"}}, "required": ["operation"]}, "then": {"required": ["replacement"]}},
+        {"if": {"properties": {"operation": {"const": "tombstone"}}, "required": ["operation"]}, "then": {"not": {"required": ["replacement"]}}}
+      ],
+      "additionalProperties": true
+    },
+    "silo": {
+      "allOf": [{"$ref": "#/$defs/common"}],
+      "type": "object",
+      "required": ["workstate_id", "canonical_workstate_id", "parent_kind", "origin", "base", "fork_event", "purpose", "owner", "adoption_policy", "work_location", "inherited_records", "overrides"],
+      "properties": {
+        "type": {"const": "silo"},
+        "status": {"enum": ["active", "paused", "closed"]},
+        "workstate_id": {"$ref": "#/$defs/id"},
+        "canonical_workstate_id": {"$ref": "#/$defs/id"},
+        "parent_kind": {"enum": ["canonical", "silo"]},
+        "origin": {"$ref": "#/$defs/pin"},
+        "base": {"$ref": "#/$defs/pin"},
+        "fork_event": {"$ref": "#/$defs/id"},
+        "purpose": {"$ref": "#/$defs/text"},
+        "owner": {"$ref": "#/$defs/id"},
+        "adoption_policy": {"$ref": "#/$defs/policy"},
+        "work_location": {"$ref": "#/$defs/workLocation"},
+        "coordination_binding": {"$ref": "#/$defs/bindingIdentity"},
+        "inherited_records": {"$ref": "#/$defs/pins"},
+        "overrides": {"type": "array", "items": {"$ref": "#/$defs/override"}},
+        "closure_reason": {"$ref": "#/$defs/text"},
+        "checkpoint": {"$ref": "#/$defs/id"}
+      },
+      "if": {"properties": {"status": {"const": "closed"}}, "required": ["status"]},
+      "then": {"required": ["closure_reason", "checkpoint"]},
+      "additionalProperties": true
+    },
+    "mapping": {
+      "type": "object",
+      "required": ["source", "destination", "operation"],
+      "properties": {
+        "source": {"$ref": "#/$defs/recordPin"},
+        "destination": {"$ref": "#/$defs/recordPin"},
+        "operation": {"enum": ["create", "revise"]},
+        "expected_revision": {"type": "integer", "minimum": 1},
+        "transformation_evidence": {"$ref": "#/$defs/ids"}
+      },
+      "if": {"properties": {"operation": {"const": "revise"}}, "required": ["operation"]},
+      "then": {"required": ["expected_revision"]},
+      "additionalProperties": true
+    },
+    "divergence": {
+      "type": "object",
+      "required": ["inherited", "current", "basis", "result", "disposition"],
+      "properties": {
+        "inherited": {"$ref": "#/$defs/recordPin"},
+        "current": {"oneOf": [{"$ref": "#/$defs/recordPin"}, {"type": "null"}]},
+        "basis": {"$ref": "#/$defs/text"},
+        "result": {"enum": ["unchanged", "changed", "missing", "contested", "unknown"]},
+        "disposition": {"$ref": "#/$defs/text"},
+        "evidence": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": true
+    },
+    "adoption": {
+      "allOf": [
+        {"$ref": "#/$defs/common"},
+        {"if": {"properties": {"status": {"enum": ["approved", "pending", "adopted"]}}, "required": ["status"]}, "then": {"required": ["approval"], "properties": {"closure": {"properties": {"state": {"enum": ["complete", "extended", "rederived"]}}}}}},
+        {"if": {"properties": {"status": {"const": "adopted"}}, "required": ["status"]}, "then": {"required": ["publication_ref"]}},
+        {"if": {"properties": {"status": {"enum": ["stale", "rejected", "cancelled", "failed"]}}, "required": ["status"]}, "then": {"required": ["disposition"]}}
+      ],
+      "type": "object",
+      "required": ["source", "target", "selected_records", "proposed_records", "mapping", "closure", "divergence", "scopes", "decision_owner", "policy_ref", "publisher", "idempotency_key", "bypassed_ancestors"],
+      "properties": {
+        "type": {"const": "silo_adoption"},
+        "status": {"enum": ["proposed", "approved", "pending", "adopted", "stale", "rejected", "cancelled", "failed"]},
+        "source": {"$ref": "#/$defs/pin"},
+        "target": {"$ref": "#/$defs/pin"},
+        "selected_records": {"allOf": [{"$ref": "#/$defs/pins"}], "minItems": 1},
+        "proposed_records": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["id", "type", "revision"]}},
+        "mapping": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/mapping"}},
+        "closure": {
+          "type": "object", "required": ["state", "evidence"],
+          "properties": {"state": {"enum": ["complete", "extended", "rederived", "incomplete", "unknown"]}, "evidence": {"$ref": "#/$defs/ids"}},
+          "additionalProperties": true
+        },
+        "divergence": {"type": "array", "items": {"$ref": "#/$defs/divergence"}},
+        "scopes": {"allOf": [{"$ref": "#/$defs/ids"}], "minItems": 1},
+        "decision_owner": {"$ref": "#/$defs/id"},
+        "policy_ref": {"$ref": "#/$defs/recordPin"},
+        "publisher": {"$ref": "#/$defs/id"},
+        "idempotency_key": {"$ref": "#/$defs/id"},
+        "bypassed_ancestors": {"$ref": "#/$defs/ids"},
+        "approval": {
+          "type": "object", "required": ["proposal_revision", "approved_by", "evidence"],
+          "properties": {"proposal_revision": {"type": "integer", "minimum": 1}, "approved_by": {"$ref": "#/$defs/id"}, "evidence": {"allOf": [{"$ref": "#/$defs/ids"}], "minItems": 1}},
+          "additionalProperties": true
+        },
+        "publication_ref": {"$ref": "#/$defs/id"},
+        "disposition": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

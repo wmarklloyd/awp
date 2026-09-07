@@ -33,7 +33,7 @@ These questions are intentionally unresolved. A module must not imply that an op
 ## Coordination questions
 
 14. Which Python, TypeScript, and later language selector profiles best preserve semantic identity across rename, move, extraction, and replacement?
-15. What formally verified COOP-2 coordinator algorithm and enforcing adapter should become the first interoperability profile?
+15. What semantic-integration profile should establish COOP-2 interoperability, and what formally verified COOP-3 coordinator algorithm and enforcing adapter should follow it?
 16. Which semantic effects can tools infer reliably, how should confidence be calibrated, and which effects must remain actor assertions?
 17. Which verification procedures provide adequate evidence for particular contract and invariant classes?
 18. Which Git, worktree, CI, and forge mappings should become standard adapter profiles?
@@ -57,3 +57,9 @@ These questions are intentionally unresolved. A module must not imply that an op
 
 28. Which agent runtimes will recognize the conventional `.awp.md` filename directly, and which will require an agent-specific instruction shim or launcher integration?
 29. What context-selection benchmark demonstrates that Resume Profile loading reduces tokens and startup time without omitting safety-critical state?
+
+## Silo implementation and evidence questions
+
+30. Which first `silo-v1` binding will demonstrate pinned derivation, explicit base updates, dependency-complete adoption, scoped approval, and crash recovery across separate workstates? The normative profile is in [silos.md](silos.md); the current schema fixtures establish structure only.
+31. What common physical-resource binding can atomically coordinate several semantic workstates, including aliases and shared external resources, without merging their independent event histories?
+32. Which dependency walkers and provenance mappings can safely preserve required references across the first supported module set? Unknown required dependency semantics must block adoption; automatic reconciliation, multiple inheritance, and cross-project adoption remain deferred.

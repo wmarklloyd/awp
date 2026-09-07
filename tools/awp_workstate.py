@@ -126,30 +126,27 @@ def _apply_records(snapshot: dict[str, Any], request: dict[str, Any]) -> list[st
         if not isinstance(record, dict) or not isinstance(record.get("id"), str) or not isinstance(record.get("type"), str):
             raise CoordinationError("each record update requires id and type")
         identifier = record["id"]
-        found = None
+        found: list[tuple[list[Any], int, dict[str, Any]]] = []
         for bucket in record_sets.values():
             if isinstance(bucket, list):
                 for index, existing in enumerate(bucket):
                     if isinstance(existing, dict) and existing.get("id") == identifier:
-                        found = (bucket, index, existing)
-                        break
-            if found:
-                break
+                        found.append((bucket, index, existing))
         if found:
-            bucket, index, existing = found
-            old_revision = existing.get("revision")
-            new_revision = record.get("revision")
-            if old_revision is not None and (not isinstance(new_revision, int) or new_revision <= old_revision):
-                raise CoordinationError(f"record {identifier} requires a higher revision")
-            if record.get("type") == "artifact":
-                old_digest = existing.get("modules", {}).get("urn:awp:artifact", {}).get("integrity", {}).get("digest")
-                new_digest = record.get("modules", {}).get("urn:awp:artifact", {}).get("integrity", {}).get("digest")
-                if old_digest and new_digest and old_digest != new_digest:
-                    if not isinstance(new_revision, int) or not record.get("supersedes"):
-                        raise CoordinationError(
-                            f"artifact {identifier} changed bytes; create a new ID or a revision with supersedes"
-                        )
-            bucket[index] = record
+            for bucket, index, existing in found:
+                old_revision = existing.get("revision")
+                new_revision = record.get("revision")
+                if old_revision is not None and (not isinstance(new_revision, int) or new_revision <= old_revision):
+                    raise CoordinationError(f"record {identifier} requires a higher revision")
+                if record.get("type") == "artifact":
+                    old_digest = existing.get("modules", {}).get("urn:awp:artifact", {}).get("integrity", {}).get("digest")
+                    new_digest = record.get("modules", {}).get("urn:awp:artifact", {}).get("integrity", {}).get("digest")
+                    if old_digest and new_digest and old_digest != new_digest:
+                        if not isinstance(new_revision, int) or not record.get("supersedes"):
+                            raise CoordinationError(
+                                f"artifact {identifier} changed bytes; create a new ID or a revision with supersedes"
+                            )
+                bucket[index] = record
         else:
             bucket_name = RECORD_BUCKETS.get(record["type"])
             if not bucket_name:

@@ -52,15 +52,32 @@ No single mapping is normative in 0.8.0. Branches and pull requests are forge co
 
 The informative `local-ledger-awareness-v1` profile provides the default Coordination 0.4 awareness path for agents sharing one Git common directory. It uses a transactional local database as a service-free durable Core event transport, publishes scope and intent records before work, projects active intents and overlaps, maintains durable watcher cursors, and exports the unified event stream as JSON Lines. Repository-relative file and directory containment is its only automatic physical overlap rule; it does not infer semantic overlap. When policy prevents writes under the Git common directory, an adapter MAY use an ignored worktree-local runtime directory, but it MUST report `AWP-COORD-LEDGER-WORKTREE-LOCAL` and disclose that agents in other worktrees require an explicitly shared ledger path.
 
-The profile enables useful ledger-backed coordination without presence heartbeats. It does not authenticate actors, grant authority, enforce exclusions, fence mutations, provide cross-host availability, or by itself establish complete COOP-1 conformance. If the shared ledger cannot be discovered, opened, atomically updated, or refreshed, the adapter reports `AWP-COORD-LEDGER-UNAVAILABLE` and explicitly falls back to COOP-0 behavior instead of silently continuing as actively coordinated.
+The profile enables useful ledger-backed coordination without presence heartbeats. It does not authenticate actors, grant authority, enforce exclusions, fence mutations, provide cross-host availability, or by itself establish complete COOP-1 conformance. If the shared ledger cannot be discovered, opened, atomically updated, or refreshed, the adapter reports `AWP-COORD-LEDGER-UNAVAILABLE` and explicitly falls back to uncontracted portable behavior instead of silently continuing as actively coordinated.
 
-An agent-runtime binding using this profile invokes `begin` before material writes, `refresh` before integration or handoff, and `complete` or `withdraw` when the intent terminates. Presence monitoring is a COOP-1 component; authenticated protected enforcement belongs to COOP-2.
+An agent-runtime binding using this profile invokes `begin` before material writes, `refresh` before integration or handoff, and `complete` or `withdraw` when the intent terminates. Presence monitoring is a COOP-1 component; authenticated protected enforcement belongs to COOP-3.
 
 ## 4. A2A binding shape
 
 A2A tasks may carry a workstate ID, checkpoint, requested continuation, and Capsule or wire representation as artifacts or data parts. A binding should map task lifecycle to AWP events without assuming the A2A message history is complete workstate history.
 
 Material goals, constraints, decisions, claims, evidence, and outcomes should be promoted into typed AWP records. Authentication of an A2A peer does not automatically authorize external side effects.
+
+### 4.1 `coop3-a2a-v1` binding shape
+
+The named `coop3-a2a-v1` profile uses A2A as a communications and execution control plane for a COOP-3 protected binding. It does not make A2A a mandatory AWP transport, and it does not make an A2A server, task queue, or Agent Card the authoritative coordination store.
+
+| AWP protected operation | A2A role | Required authoritative result |
+|---|---|---|
+| participant entry or renewal | task/request delivery | authenticated actor-to-principal binding and durable lease receipt |
+| guarded intent announcement | task/request delivery | atomic admission, conflict, or block receipt |
+| guarded decision or resolution | task update or result | durable decision record with binding epoch and frontier |
+| protected mutation | task/request delivery | gateway acceptance only after expected-state and fencing validation |
+| checkpoint or handoff | artifact/data delivery | canonical projector receipt with artifact digest and included frontier |
+| terminal completion or withdrawal | task/request delivery | idempotent terminal intent receipt |
+
+Every A2A request in this profile carries an immutable AWP operation ID, workstate ID, stable binding identity, actor ID, and the operation's expected state. The adapter records the A2A task ID and endpoint only as correlation metadata. It persists or obtains the AWP binding result before returning success. Duplicate A2A delivery, a resumed task, or a request received by a replacement endpoint must return the same receipt or a stable rejection; it must not duplicate a lease, intent, or fencing generation.
+
+The binding declares its supported A2A interfaces and protocol version, transport authentication mechanism, actor/principal mapping, store identity, and protected mutation gateway. A2A authentication is evidence for that mapping, not blanket AWP authority. The protected store and gateway independently validate authorization, expected epoch/frontier or revision, scope, and fencing token. The adapter reports A2A reachability separately from store and gateway reachability, and fails closed for protected mutation when any required check is unavailable.
 
 ## 5. MCP binding shape
 

@@ -4,7 +4,7 @@ The projector consumes Coordination event envelopes and returns a deterministic
 materialized view.  It is deliberately independent of the SQLite ledger: a
 file, broker, database, or host binding can supply the same event sequence.
 This is a deterministic Coordination projector foundation, not a complete
-COOP-1 binding, authority source, semantic analyzer, or COOP-2 enforcer.
+COOP-1 binding, authority source, semantic analyzer, or COOP-3 enforcer.
 """
 
 from __future__ import annotations

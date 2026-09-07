@@ -1,7 +1,7 @@
 """Experimental local AWP presence registry and monitor.
 
 This is a reference implementation for the AWP 0.7 coordination-awareness
-profile.  It provides advisory presence, not COOP-2 protected lease enforcement or
+profile.  It provides advisory presence, not COOP-3 protected lease enforcement or
 authorization.  SQLite transactions make entry, expiry, and watcher cursors
 atomic for processes that share one local Git common directory.
 """

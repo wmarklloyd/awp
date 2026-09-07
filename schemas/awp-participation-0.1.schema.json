@@ -6,7 +6,7 @@
   "oneOf": [
     { "$ref": "#/$defs/readRequest" },
     { "$ref": "#/$defs/announceRequest" },
-    { "$ref": "#/$defs/interactRequest" },
+    { "$ref": "#/$defs/resolveRequest" },
     { "$ref": "#/$defs/publishRequest" },
     { "$ref": "#/$defs/checkpointRequest" },
     { "$ref": "#/$defs/operationResponse" },
@@ -84,16 +84,16 @@
         }
       ]
     },
-    "interactRequest": {
+    "resolveRequest": {
       "allOf": [
         { "$ref": "#/$defs/requestCommon" },
         {
           "type": "object",
-          "required": ["operation", "context", "intent", "interaction", "disposition", "rationale"],
+          "required": ["operation", "context", "intent", "overlap", "disposition", "rationale"],
           "properties": {
-            "operation": { "const": "interact" },
+            "operation": { "const": "resolve" },
             "intent": { "$ref": "#/$defs/identifier" },
-            "interaction": { "$ref": "#/$defs/identifier" },
+            "overlap": { "$ref": "#/$defs/identifier" },
             "disposition": { "enum": ["acknowledged", "proposed", "ordered", "escalated", "unresolved"] },
             "rationale": { "type": "string", "minLength": 1 },
             "evidence": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true }
@@ -181,7 +181,7 @@
       "type": "object",
       "required": ["operation", "reason"],
       "properties": {
-        "operation": { "enum": ["read", "announce", "interact", "publish", "checkpoint"] },
+        "operation": { "enum": ["read", "announce", "resolve", "publish", "checkpoint"] },
         "reason": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": true
@@ -226,7 +226,7 @@
         "next": { "$ref": "#/$defs/nextStep" },
         "context": { "$ref": "#/$defs/identifier" },
         "intent": { "$ref": "#/$defs/identifier" },
-        "interaction": { "$ref": "#/$defs/identifier" },
+        "overlap": { "$ref": "#/$defs/identifier" },
         "result": { "$ref": "#/$defs/identifier" },
         "receipt": { "$ref": "#/$defs/identifier" },
         "checkpoint": { "$ref": "#/$defs/identifier" }

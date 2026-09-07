@@ -75,13 +75,13 @@ received
 
 The adapter publishes an intent and its revision-pinned scopes together when starting work. It checks the context handle, actor/session, project binding, base revision, and complete intended scope before publication. It evaluates known physical and declared semantic interactions after the candidate records exist.
 
-An overlap warning does not erase the confirmed intent. Under advisory policy the response is `confirmed` plus `warning`, with an `interact` next step. Under a blocking policy the event may be recorded as `pending` or `confirmed` according to binding semantics, but the response is `blocked` and the model must not perform the guarded mutation.
+An overlap warning does not erase the confirmed intent. Under advisory policy the response is `confirmed` plus `warning`, with a `resolve` next step. Under a blocking policy the event may be recorded as `pending` or `confirmed` according to binding semantics, but the response is `blocked` and the model must not perform the guarded mutation.
 
 An existing intent can be expanded through `announce`. The adapter creates a new scope revision or associated scope event, refreshes overlap, and returns the complete current declared scope. It must never silently infer newly touched paths from a prior announcement.
 
-## `interact`
+## `resolve`
 
-`interact` records the model's response to an active overlap or coordination question:
+`resolve` records the model's response to an active work overlap or coordination question. It is not an optional consultation interaction:
 
 ```text
 received → validating → context_resolved → refreshing → candidate_prepared → publishing
@@ -166,7 +166,7 @@ Steps are idempotent and recoverable. If step 3 fails, the result remains durabl
 |---|---|---|
 | `read` | None; may consume Core, Capsule, Synchronization, and Coordination projections | Context handle identifies frontier and coverage |
 | `announce` | `intent`, `scope`, and corresponding creation/update events | Binding confirms event IDs and projector returns projection |
-| `interact` | Applicable `overlap`, acknowledgement, `negotiation`, or `arbitration` records | Proposal publication confirmed; acceptance remains a separate result |
+| `resolve` | Applicable `overlap`, acknowledgement, `negotiation`, or `arbitration` records | Proposal publication confirmed; acceptance remains a separate result |
 | `publish` | `change_set`, `verification_result`, `precondition_result`, or evidence associations as applicable | Result event confirmed and bindings report freshness/verification outcome |
 | `checkpoint` | Core checkpoint/handoff projection, synchronization delta when used, terminal intent, and presence release observation on exit | Capsule publisher confirms expected frontier/digest; exit adds terminal intent and release receipt |
 
@@ -180,7 +180,7 @@ Implement the state machines in this order:
 2. `announce`, including idempotent publication and advisory overlap responses;
 3. `checkpoint` with `continue`, including capsule frontier checks;
 4. `publish`, including actual-scope comparison and evidence classification;
-5. `interact`, including pending user decisions;
+5. `resolve`, including pending user decisions;
 6. `checkpoint` with `exit`, including crash recovery and presence release.
 
 At every stage, keep the model request schema stable and expand only the adapter response fields required to explain the new state. The first executable adapter should implement local file or SQLite binding semantics and declare its reach. Cross-host leases, authenticated authority, and enforcement are later binding profiles.

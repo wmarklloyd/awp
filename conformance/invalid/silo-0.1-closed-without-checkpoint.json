@@ -1,0 +1,54 @@
+{
+  "id": "silo:search-experiment",
+  "type": "silo",
+  "module": "urn:awp:sync",
+  "profile": "silo-v1",
+  "revision": 1,
+  "status": "closed",
+  "created_by": "actor:researcher",
+  "created_at": "2026-09-07T17:00:00Z",
+  "workstate_id": "workstate:search-experiment",
+  "canonical_workstate_id": "workstate:canonical",
+  "parent_kind": "canonical",
+  "origin": {
+    "workstate_id": "workstate:canonical",
+    "frontier": [
+      "evt:canonical-1"
+    ],
+    "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
+    "capsule_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "base": {
+    "workstate_id": "workstate:canonical",
+    "frontier": [
+      "evt:canonical-1"
+    ],
+    "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
+    "capsule_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "fork_event": "evt:silo-genesis",
+  "purpose": "Explore an unaccepted search feature and share its goals and plans.",
+  "owner": "actor:researcher",
+  "adoption_policy": {
+    "decision_owner": "actor:project-owner",
+    "policy_ref": {
+      "workstate_id": "workstate:canonical",
+      "record_id": "decision:adoption-policy",
+      "revision": 1
+    },
+    "permitted_targets": [
+      "workstate:canonical"
+    ]
+  },
+  "work_location": {
+    "mode": "none"
+  },
+  "inherited_records": [
+    {
+      "workstate_id": "workstate:canonical",
+      "record_id": "decision:adoption-policy",
+      "revision": 1
+    }
+  ],
+  "overrides": []
+}

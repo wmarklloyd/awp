@@ -1,0 +1,40 @@
+{
+  "schema": "schemas/awp-silo-0.1.schema.json",
+  "cases": [
+    {
+      "document": "conformance/valid/silo-0.1-planning.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/valid/silo-0.1-adoption.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/silo-0.1-missing-base-digest.json",
+      "valid": false,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/silo-0.1-shared-without-binding.json",
+      "valid": false,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/silo-0.1-closed-without-checkpoint.json",
+      "valid": false,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/silo-0.1-approved-incomplete.json",
+      "valid": false,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/silo-0.1-adopted-without-receipt.json",
+      "valid": false,
+      "expected_keywords": []
+    }
+  ]
+}

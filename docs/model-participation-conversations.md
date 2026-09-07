@@ -60,9 +60,9 @@ The second writer announces a scope already being written by another intent.
   "coordination":"warning", "intent":"intent:3", "receipt":"receipt:3",
   "frontier":["evt:3"], "authority_ceiling":["read_only","local_write"],
   "coverage":{"scope_complete":true,"history":"complete","semantic_analysis":"reported_only"},
-  "interactions":[{"handle":"interaction:3","summary":"intent:1 also writes data/battery.csv"}],
+  "overlaps":[{"handle":"overlap:3","summary":"intent:1 also writes data/battery.csv"}],
   "diagnostics":[{"code":"AWP-COORD-OVERLAP","severity":"warning","message":"A writer overlap requires an ordering or disposition."}],
-  "next":{"operation":"interact","reason":"Propose an order or request arbitration before changing the shared file."}
+  "next":{"operation":"resolve","reason":"Propose an order or request arbitration before changing the shared file."}
 }
 ```
 
@@ -83,7 +83,7 @@ The model discovers that it must also edit a parser.
   "frontier":["evt:4"], "authority_ceiling":["read_only","local_write"],
   "coverage":{"scope_complete":true,"history":"complete","semantic_analysis":"reported_only"},
   "diagnostics":[{"code":"AWP-COORD-SCOPE-EXPANDED","severity":"warning","message":"The declared scope changed and overlap was reevaluated."}],
-  "next":{"operation":"interact","reason":"Resolve the newly reported parser overlap before writing."}
+  "next":{"operation":"resolve","reason":"Resolve the newly reported parser overlap before writing."}
 }
 ```
 
@@ -160,7 +160,7 @@ The host committed the announce request but the model did not receive its respon
 {"operation":"announce","request_id":"request:8","context":"ctx:6","project":"project:watches","summary":"Update watch battery comparisons","scope":[{"path":"data/battery.csv","access":"write"}]}
 
 // adapter → model
-{"request_id":"request:8","project":"project:watches","publication":"confirmed","coordination":"warning","intent":"intent:8","receipt":"receipt:8","frontier":["evt:8"],"coverage":{"scope_complete":true,"history":"complete","semantic_analysis":"reported_only"},"authority_ceiling":["read_only","local_write"],"diagnostics":[],"next":{"operation":"interact","reason":"A writer interaction is still pending."}}
+{"request_id":"request:8","project":"project:watches","publication":"confirmed","coordination":"warning","intent":"intent:8","receipt":"receipt:8","frontier":["evt:8"],"coverage":{"scope_complete":true,"history":"complete","semantic_analysis":"reported_only"},"authority_ceiling":["read_only","local_write"],"diagnostics":[],"next":{"operation":"resolve","reason":"A writer overlap is still pending."}}
 ```
 
 The adapter returns the original receipt and creates no duplicate intent. If the model changed the summary while keeping `request:8`, the adapter would return `rejected` with an idempotency integrity error.
@@ -185,13 +185,13 @@ Two changes have a semantic contract conflict that the agents cannot resolve.
 
 ```json
 // model → adapter
-{"operation":"interact","request_id":"request:10","context":"ctx:9","project":"project:watches","intent":"intent:8","interaction":"interaction:10","disposition":"escalated","rationale":"Both changes alter the battery normalization contract; a user must choose the compatible behavior.","evidence":["artifact:contract-diff"]}
+{"operation":"resolve","request_id":"request:10","context":"ctx:9","project":"project:watches","intent":"intent:8","overlap":"overlap:10","disposition":"escalated","rationale":"Both changes alter the battery normalization contract; a user must choose the compatible behavior.","evidence":["artifact:contract-diff"]}
 
 // adapter → model
-{"request_id":"request:10","project":"project:watches","publication":"confirmed","coordination":"needs_input","interaction":"interaction:10","frontier":["evt:10"],"coverage":{"scope_complete":true,"history":"complete","semantic_analysis":"reported_only"},"authority_ceiling":["read_only","local_write"],"diagnostics":[{"code":"AWP-COORD-ARBITRATION-PENDING","severity":"policy","message":"A user decision is required for interaction:10."}],"next":{"operation":"read","reason":"Wait for the named user decision; do not write the guarded scope while arbitration is pending."}}
+{"request_id":"request:10","project":"project:watches","publication":"confirmed","coordination":"needs_input","overlap":"overlap:10","frontier":["evt:10"],"coverage":{"scope_complete":true,"history":"complete","semantic_analysis":"reported_only"},"authority_ceiling":["read_only","local_write"],"diagnostics":[{"code":"AWP-COORD-ARBITRATION-PENDING","severity":"policy","message":"A user decision is required for overlap:10."}],"next":{"operation":"read","reason":"Wait for the named user decision; do not write the guarded scope while arbitration is pending."}}
 ```
 
-The interaction publication is confirmed, but the decision is not. The model may continue explicitly permitted independent work only when the response names that scope; it cannot treat escalation as acceptance.
+The overlap-resolution publication is confirmed, but the decision is not. The model may continue explicitly permitted independent work only when the response names that scope; it cannot treat escalation as acceptance.
 
 ## Review use
 

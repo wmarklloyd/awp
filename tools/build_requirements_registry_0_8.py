@@ -17,6 +17,7 @@ SOURCES = {
     "HANDOFF": "handoff.md",
     "ARTIFACT": "artifact.md",
     "SYNC": "synchronization.md",
+    "SILO": "silos.md",
     "COORD": "coordination.md",
     "SECURITY": "security.md",
     "COOP": "cooperation-contracts.md",

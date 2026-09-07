@@ -50,9 +50,11 @@ AWP does not replace an agent runtime, source control, artifact storage, or an a
 | [AWP Coordination](coordination.md) | `urn:awp:coordination` | `0.5.0` | experimental | Core, Synchronization |
 | [AWP Security](security.md) | `urn:awp:security` | `0.5.0` | optional | Core; Artifact when artifact controls are used |
 | [AWP Adapter Framework](adapters.md) | not a payload module | `0.5.0` | informative | binding-specific |
-| [AWP Cooperation Contracts](cooperation-contracts.md) | `urn:awp:cooperation` | `0.1.0` | experimental | Core, Capsule, Handoff; Coordination for COOP-1 and COOP-2 |
+| [AWP Cooperation Contracts](cooperation-contracts.md) | `urn:awp:cooperation` | `0.1.0` | experimental | Core, Capsule, Handoff; Coordination for COOP-1, COOP-2, and COOP-3 |
 
 The machine-readable [module registry](modules.json) is normative for the module IDs, versions, document paths, stability labels, and direct dependencies in this draft.
+
+The normative experimental [Silo Profile](silos.md), `silo-v1`, is owned by Synchronization. It composes forks and Capsule publication to preserve hierarchical alternative project states, with pinned bases, local ownership, and explicit adoption into canonical state or an ancestor silo. It is usable without a COOP contract; creating a silo does not enable agent collaboration or spending. Its profile document and [structural schema](../../../schemas/awp-silo-0.1.schema.json) are part of this working draft.
 
 ## 3. Module declarations
 
@@ -192,7 +194,19 @@ The migration is intentionally incompatible: a 0.8 self-contained capsule identi
 
 An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: self` to capsule metadata, update Capsule to `0.5.0`, and remove any redundant companion pointer from the portable package. Historical events remain unchanged.
 
-## 10. Release contents
+## 10. Agent entry profiles
+
+A specification family MAY distribute a generated **Agent Entry Core** beside a complete specification bundle. Its purpose is to give a model or other bounded-context participant the minimum cross-cutting rules needed to orient safely before it retrieves task-specific modules. It is a derived presentation artifact, not an additional source of normative semantics.
+
+An Agent Entry Core MUST identify its exact source bundle, source bundle SHA-256 digest, family version, generator identity, and the source documents and schemas that its task-routing guidance can name. A reader MUST verify the recorded digest against the available source bundle before relying on the profile. A profile whose bundle is unavailable or whose digest does not match is unavailable, not merely advisory; the reader MUST retrieve and use the complete governing specification or decline the continuation.
+
+The Entry Core MUST include the family invariants needed before any continuation, a statement that it cannot override the source specification, and mandatory expansion triggers. Those triggers MUST include an unknown or required module, a missing or unverifiable profile, an ambiguity or conflict, a requested semantic change spanning more than one routed module, and release, migration, or cross-module integration work. A receiver MAY apply stricter triggers under its own policy.
+
+Task-routing guidance in an Entry Core is non-normative performance guidance. It MUST name the source modules and schemas that a task class normally requires, including direct dependencies, but it MUST NOT claim that the listed material is sufficient in every circumstance or weaken a reader's obligation to obtain relevant normative state. When the profile and its governing source appear to disagree, the source governs and the reader MUST expand its reading rather than choose the profile.
+
+An implementation that claims Agent Entry Core support MUST generate or verify the profile as part of the same reproducible build that produces its source bundle. It MUST expose whether profile verification succeeded and which additional source documents it selected. A gateway MAY enforce selective access, but an instruction to a model alone is not evidence that the model did not read additional material.
+
+## 11. Release contents
 
 - [Core schema](../../../schemas/awp-core-0.8.schema.json)
 - [Capsule metadata schema](../../../schemas/awp-capsule-0.5.schema.json)
@@ -200,11 +214,12 @@ An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: se
 - [Security guardrail schema](../../../schemas/awp-security-0.5.schema.json)
 - [Module registry](modules.json)
 - [Open issue register](open-issues.md)
+- Generated Agent Entry Core beside the complete bundle, when the release provides one
 - Validation and conformance assets in the repository root
 
 The documents listed in Section 2, their normative schemas, and the module registry constitute the AWP 0.8.0 working draft. No file under this directory is a released specification until a release process copies immutable contents into `spec/<version>/` and creates a corresponding tag.
 
-## 11. References
+## 12. References
 
 ### 11.1 Normative references
 
@@ -1179,6 +1194,12 @@ Copying or repackaging without divergent identity is not a fork.
 
 Concurrent replicas of the same workstate retain one workstate ID. They exchange frontiers and missing events rather than creating new identities.
 
+### 5.1 Governed silos
+
+The normative [Silo Profile](silos.md), `silo-v1`, composes this fork mechanism with pinned Capsule bases, explicit local overrides, ownership, independent lifecycle, and receipted adoption into an ancestor workstate. It defines Synchronization-owned `silo` and `silo_adoption` records and their events; it does not introduce another divergence primitive. Its structural schema is `../../../schemas/awp-silo-0.1.schema.json`.
+
+A fork MAY record an exact parent Capsule digest in addition to its parent frontier. The Silo Profile requires that pin. A workstate whose continuation depends on `silo-v1` MUST declare that capability and mark Synchronization and its profile dependency Capsule required. A reader that lacks required silo processing MUST block dependent continuation even when it supports ordinary forks. Adopting selected results across workstate identities follows the profile's dependency-closure and publication rules, not a mechanical union of foreign events into the local graph.
+
 ## 6. Merge and conflict
 
 Mechanical merge unions events by ID after integrity validation. It preserves all concurrent tips. It MUST NOT silently apply last-write-wins to:
@@ -1232,6 +1253,183 @@ A Synchronization writer emits valid base and result frontiers, includes require
 
 ---
 
+# AWP Silo Profile 0.1.0
+
+**Profile:** `silo-v1`
+
+**Owning module:** AWP Synchronization `urn:awp:sync`, `0.5.x`
+
+**Dependencies:** Core `0.8.x`, Synchronization `0.5.x`, Capsule `0.5.x`; other modules when used
+
+**Status:** Normative, experimental profile in the unreleased AWP 0.8.0 working draft
+
+**Schema:** `../../../schemas/awp-silo-0.1.schema.json`
+
+The capitalized requirement words have the BCP 14 meanings defined by the family specification.
+
+## 1. Purpose and composition
+
+A **silo** is a persistent, shareable alternative project workstate derived from a pinned parent state. It preserves an exploration's purpose, goals, constraints, plans, evidence, participants, and local decisions without making them accepted canonical project state. Several actors may work in one silo, and a silo may have child silos.
+
+This profile composes the existing Synchronization fork, Core records and authority declarations, Capsule publication, and, when selected, Cooperation Contracts. A silo is a governed fork, not a new kind of replica or an automatic source-control branch. The project's **canonical workstate** is the root designated by current project policy; it needs no synthetic parent or silo record. A destination silo may itself accept results without making them canonical for the project.
+
+An implementation using this profile MUST declare Synchronization with capability `silo-v1` and compatible Core and Capsule declarations. Synchronization and Capsule MUST be required when continuation depends on silo isolation, ancestry, or adoption. A receiver that does not support `silo-v1` MUST NOT claim a complete interpretation or perform dependent continuation, even if it supports ordinary Synchronization forks. Unknown optional profile data follows the family's preservation rules.
+
+A silo requires no named COOP contract, service, Git installation, Node.js runtime, or network transport. Creating, entering, sharing, updating, or adopting a silo MUST NOT implicitly enable consultation, delegation, agent communication, or additional spending. Those actions remain subject to the currently authorized policy and Cooperation Contracts §5 where applicable.
+
+## 2. Identity, discovery, and ancestry
+
+Every silo MUST have its own `workstate_id`, one current `silo` record, and a separate writable Capsule representation. Copies or replicas of that silo retain its identity. Its record MUST identify the canonical workstate, exactly one immediate parent, an immutable origin pin, purpose, owner, and current base pin. A new silo's origin and base MUST be equal. A parent may be canonical or another silo in the same canonical project.
+
+A **state pin** identifies `workstate_id`, `frontier`, exact governing `specification`, and `capsule_digest` over the complete source Capsule bytes; it MAY also identify a checkpoint and generated-region digest. A generated-region digest MUST NOT substitute for a complete Capsule digest. The source Capsule and the state represented by its frontier MUST be validated before derivation or adoption; a digest alone proves neither a valid projection nor acceptance by the project. A snapshot-only source MUST disclose its omitted-history boundary and source digest under Synchronization and MUST NOT claim full replay evidence.
+
+The parent relation MUST be acyclic, with exactly one parent for each silo. The origin pin and parent identity MUST remain immutable. A receiver MUST validate ancestry to the designated canonical root before claiming a complete hierarchy; a missing ancestor is `unavailable`, not proof of an independent root. Multiple inheritance and automatic parent selection are outside `silo-v1`. Implementations MAY impose and disclose depth or retrieval limits; exceeding one blocks the affected operation with a diagnostic rather than silently truncating ancestry.
+
+The child fork genesis MUST identify its parent pin as external provenance. Parent events retain their original workstate IDs and MUST NOT be relabeled as child events or inserted as unresolved local event parents. A child starts its own event graph and retains or references the pinned parent state under Synchronization's history-completeness rules. Cross-workstate references MUST qualify the source workstate, record ID, and revision; matching local ID strings do not establish identity across forks.
+
+Entry MUST explicitly select and display the current workstate identity, its silo purpose, canonical identity, base, lifecycle, and effective authority limits before dependent mutation. A locator or optional silo catalog is discovery data, not authority. Creating a silo MUST NOT require updating the canonical Capsule or switching the project's default discovery pointer. Registering it in a canonical catalog is a separate authorized canonical change. A host MUST NOT silently substitute a parent or canonical Capsule when the selected silo is unavailable.
+
+## 3. Pinned base and local changes
+
+The effective silo state consists of the validated pinned base plus explicit child additions, replacements, and tombstones. The silo record's `inherited_records` MUST enumerate the exact qualified revision pins selected from the base. It MUST include every record and module dependency necessary for the declared continuation; omission of unrelated material is permitted with an accurate completeness declaration. Retained pins MAY reference immutable packaged or retrievable source material rather than duplicate every byte.
+
+An `overrides` entry MUST identify the inherited pin, operation (`replace` or `tombstone`), reason, and, for replacement, a qualified child record pin. At most one uncontested effective override may apply to an inherited pin. Additions are ordinary child-owned records. Replacements create child-owned records and retain origin provenance; they MUST NOT revise the parent record or erase a competing child revision. Tombstones affect only the child's effective view and preserve history. Omission from the view MUST NOT be interpreted as deletion in any parent or adoption target.
+
+Parent changes MUST NOT automatically change a child's effective state. A base update is an explicit `silo.base_updated` event that pins the expected silo revision, prior base, new base from the same parent identity, and an approved reconciliation of inherited records and local overrides. The event MUST preserve the origin pin and old history, record the responsible actor, rationale, decision reference, dependency changes, and per-override disposition. A changed or missing inherited dependency MUST block the affected continuation until its disposition is recorded. A successor from a different parent requires a new fork identity with provenance to the prior silo.
+
+A reader MUST distinguish historical project decisions inherited at the pinned base from current operational authority. Current host guardrails, authority expiry, revocation, and access restrictions apply immediately to operations; an old base MUST NOT preserve revoked permission or permit evasion of a mandatory guardrail. A silo MAY explore an alternative project constraint only within current operational authority and with the alternative explicitly scoped to that silo.
+
+## 4. Ownership and canonical governance
+
+Project governance distinguishes three responsibilities, which MAY belong to the same principal:
+
+| Responsibility | Scope |
+|---|---|
+| Project owner | Establish canonical policy, appoint or replace approvers, and delegate bounded authority |
+| Silo owner | Manage purpose, local decisions, membership, and lifecycle within granted scope |
+| Publisher | Serialize approved changes to a destination Capsule and return publication evidence |
+
+The destination MUST identify its decision owner and accepted policy for adoption. A project MAY appoint component stewards or use a threshold approval policy. Every relied-upon delegation MUST identify grantor, grantee, permitted actions, resources or scope, conditions, expiry or explicit absence of expiry, delegation permission, and revocation basis. Receivers MUST evaluate the delegation chain under current local policy before relying on it. Ownership transfer or policy revision MUST be an explicit accepted decision preserving prior provenance.
+
+A child owner MUST NOT derive authority over a parent or canonical workstate from ancestry, ownership, a role label, or a local approval. A proposal to adopt authority or governance changes MUST undergo the destination's existing policy; it MUST NOT authorize its own acceptance. A role labeled `super-admin` has no special protocol privilege beyond its explicitly accepted grants. Authority conflict or an unavailable authorized decision owner blocks the affected adoption, not unrelated exploration.
+
+Serialization and approval are distinct. A publisher MUST use Capsule §3.2 and Synchronization §9.1 for expected-state checks and recovery. Publication ownership MUST NOT grant authority over the content. COOP-1 may record responsibilities and human decisions and provide cooperating-writer exclusion; it does not authenticate all actors or prevent a bypassing writer. Claims of enforced cross-principal role separation or protected canonical mutation require COOP-3 and the named enforcing path. Below that boundary, the deployment MUST disclose unenforced roles; independently checked authority evidence remains useful without implying protected enforcement.
+
+## 5. Work locations and coordination
+
+Semantic isolation does not imply physical isolation. A silo's `work_location.mode` is `none`, `isolated`, or `shared`. `none` permits planning and Capsule work but claims no isolated implementation location. Any shared writable resource, including a silo Capsule, remains subject to applicable host and coordination policy.
+
+A silo performing guarded work on a work product MUST either use a verified isolated location or use one common atomic collision-control binding that covers every cooperating writer to the shared resource. Worktree names and path spelling alone are not isolation evidence; resource aliases, linked files, generated outputs, and shared services MUST be considered under the declared scope model. An isolated worktree does not isolate a shared database or deployment target.
+
+For `shared` mode, the deployment MUST record the complete common binding identity, resource/scope mapping, atomicity mechanism, and observation of coverage. All participating silos and canonical actors MUST publish and check physical intents in that same binding before a guarded write. Intents MUST retain their originating semantic workstate as qualified provenance while using the common binding's workstate and event graph for admission. Silo-local semantic stores remain separate. Participants MUST NOT union unrelated store histories to manufacture a combined permission, and a local silo lease MUST NOT be treated as a reservation in the common binding.
+
+If no such common binding is available, shared guarded mutation MUST be blocked or explicitly conducted outside an active COOP guarantee under host policy. Cross-binding informational notices, asynchronous mirroring, and separate successful announce operations are insufficient for atomic exclusion. A binding lacking the resource mapping or coverage evidence MUST NOT claim this shared-location capability.
+
+Every selected Cooperation Contract applies to the binding and operations for which it is declared. COOP-1 keeps material decisions human-mediated; COOP-2 adds semantic/integration assurance and optional authorized managed collaboration; COOP-3 adds protected enforcement. Structural silo validation and human-approved adoption do not alone establish COOP-2. Automated semantic compatibility or Coordination readiness claims require the applicable COOP-2 mechanisms and evidence.
+
+## 6. Lifecycle and independent descendants
+
+Silo lifecycle is independent of adoption history:
+
+| From | Event | To | Condition |
+|---|---|---|---|
+| — | `silo.created` | `active` | Valid fork, base, owner, purpose, and representation |
+| `active` | `silo.paused` | `paused` | Owner disposition, checkpoint, and unresolved work recorded |
+| `paused` | `silo.resumed` | `active` | Owner disposition and required freshness checks |
+| `active`, `paused` | `silo.closed` | `closed` | Authorized closure reason and final checkpoint |
+
+`closed` is terminal; further exploration creates a successor silo. Closure reasons MAY include completed, abandoned, rejected, or superseded. A paused or closed silo MUST NOT start new implementation work; lifecycle administration, receipt recovery, read-only review, and adoption of previously pinned results MAY continue when separately authorized. Pause or closure MUST NOT silently complete intents, release leases, discard uncommitted artifacts, delete files, or claim a successful handoff; each binding's exit rules still apply.
+
+Closing a parent MUST NOT close its children or invalidate their origin pins. Descendants retain their historical base. An unavailable parent representation or decision owner MUST be disclosed separately from lifecycle. A new destination or owner can be approved without rewriting ancestry. Silo deletion, redaction, retention, and artifact removal follow the existing family rules and are not implied by closure.
+
+Partial or repeated adoption MUST NOT automatically pause or close a silo. A closed silo MAY remain a valid source of historical results if their pins, dependencies, and current destination approval can be verified.
+
+## 7. Adoption
+
+**Adoption** is the explicit acceptance of selected results from a silo into canonical state or an ancestor silo. It may publish a proposal as a proposal; it does not inherently accept the proposal's substance. `silo-v1` permits adoption into an ancestor in the same canonical project; arbitrary cross-project adoption and sibling adoption are outside this profile. A source and destination MUST differ.
+
+An adoption record MUST identify source and destination state pins, exact selected record revisions, proposed destination records, qualified source-to-destination mapping, dependency closure evidence, base-divergence observations, intended scopes, destination decision owner and policy reference, publisher, and an idempotency key. It MUST identify bypassed ancestors when the target is not the immediate parent. Bypassing an ancestor requires destination authorization and all applicable approval obligations, but does not require an intermediate adoption, invalidate historical ancestor bases, or authorize writing to those ancestors. Notices MAY be published when authorized.
+
+### 7.1 Dependency closure and identity mapping
+
+Before approval and again before publication, the processor MUST establish that the selected result is causally closed over all references required to interpret or use it at the pinned destination frontier. Each dependency MUST resolve to (a) an included input, (b) an exact existing destination record or artifact, or (c) an explicit qualified source reference retained with its required availability and interpretation rules. Historical source ancestry may remain externally pinned; closure does not require copying the whole source event graph.
+
+Missing dependencies MUST cause the processor to extend the selection, explicitly re-derive the affected result and its references with evidence, or reject it. A closure or reference rewrite that changes the proposed result MUST invalidate prior approval and require approval of the revised proposal. Unknown required modules, contested references, unsupported dependency semantics, or insufficient evidence MUST block adoption; a processor MUST NOT claim closure by inspecting only recognized fields.
+
+New destination records MUST have destination-owned identities and explicit origin pins. Revising an existing destination record MUST use its expected revision and retain the source mapping. Bare ID equality MUST NOT select a destination record. Source events and revisions MUST remain immutable; adoption emits new destination events whose local parents belong to the destination graph, with source pins as external provenance. A dependency cycle MUST either be preserved as a valid combined unit under the owning modules or block adoption; it MUST NOT be broken by silently dropping an edge.
+
+### 7.2 Divergence and evidence
+
+The processor MUST compare the selected results' inherited dependencies and all applicable destination constraints and policies with current destination state. Its `divergence` observations MUST identify each relied-upon pin, the current matching destination pin or its absence, comparison basis, result (`unchanged`, `changed`, `missing`, `contested`, or `unknown`), and disposition. Unrelated parent changes do not by themselves invalidate the selected result. Changed material assumptions require explicit reconciliation and destination-owner disposition; missing or unverifiable required dependencies remain blocking.
+
+Adoption MUST preserve the distinction between proposals, accepted decisions, reports, and verified claims. Acceptance in a source silo MUST NOT imply destination acceptance. Verification evidence MUST retain its original subject, scope, artifact revisions, and environment; if those no longer support the destination claim, the claim MUST be revalidated or explicitly represented as unverified or stale. A clean Git merge or passing source test suite MUST NOT be sufficient evidence of destination semantic compatibility.
+
+### 7.3 Approval, publication, and recovery
+
+Approval MUST bind the exact adoption proposal revision, source pin, destination pin, resulting record mapping, declared scopes, and conditions. The publisher MUST re-evaluate current authority, conditions, applicable COOP decisions, and destination freshness immediately before publication. Any changed expected destination state MUST return `stale_base`; the writer MUST reconcile and obtain approval for a successor proposal rather than apply last-write-wins.
+
+The adopted semantic records and the adoption fact MUST become visible together in one recoverable destination publication using Capsule §3.2. This atomic boundary concerns the destination workstate only. File merges, deployments, and other external changes MUST have separately authorized operations and receipts; a binding MUST NOT claim a transaction spanning them without a mechanism that actually provides it. An adoption depending on external results MUST verify and pin those results before claiming completion.
+
+The publication journal and returned receipt MUST bind the idempotency key, approved proposal revision, prior and resulting whole-Capsule digests, generated-region digests, destination frontier, checkpoint, and publication status. The resulting complete-Capsule digest MUST be stored in the external receipt or journal, not required inside the bytes it hashes. The Capsule's adoption fact identifies the operation and approved proposal; a processor confirms publication using the matching receipt or recovery evidence.
+
+A retry of the same idempotency key and exact request MUST return the original result or recover its pending state. Reuse with a different request MUST be rejected. If a crash leaves publication uncertain, the binding MUST report `pending` and compare the journal's expected and proposed state before classifying it as adopted, not published, or diverged. It MUST NOT repeat uncertain external side effects or issue a success receipt based only on a planned filename. Source or ancestor receipt mirroring is optional and MUST NOT make a confirmed destination adoption appear uncommitted when only that mirroring failed.
+
+### 7.4 Adoption lifecycle
+
+| From | Event | To | Condition |
+|---|---|---|---|
+| — | `silo_adoption.proposed` | `proposed` | Complete proposal and expected destination pin |
+| `proposed` | `silo_adoption.approved` | `approved` | Closure, divergence dispositions, and current scoped approval |
+| `approved` | `silo_adoption.started` | `pending` | Durable journal and fresh preconditions |
+| `pending` | `silo_adoption.adopted` | `adopted` | Destination publication confirmed by receipt or recovery |
+| `proposed`, `approved` | `silo_adoption.staled` | `stale` | Relevant proposal basis changed |
+| `proposed` | `silo_adoption.rejected` | `rejected` | Destination decision and reason |
+| `proposed`, `approved` | `silo_adoption.cancelled` | `cancelled` | Authorized cancellation |
+| `pending` | `silo_adoption.failed` | `failed` | Recovery confirms no adoption; failure evidence retained |
+
+`adopted`, `stale`, `rejected`, `cancelled`, and `failed` are terminal. A changed or retried failed proposal uses a successor record and new key; recovery of the same pending operation retains its key. An uncertain or diverged pending publication MUST remain unresolved until recovery establishes the outcome. Adoption lifecycle observations may live in binding-owned durable state; the confirmed adoption fact belongs in the destination graph. A source observation of that fact retains the destination pin and MUST NOT masquerade as a destination event.
+
+## 8. Record and event representation
+
+The structural schema defines `silo` and `silo_adoption` records, both owned by `urn:awp:sync` with `profile: silo-v1`. Records MUST include `id`, `type`, `module`, `profile`, positive integer `revision`, `status`, `created_by`, and `created_at`. The silo record lives in `snapshot.modules["urn:awp:sync"].silos`; adoption records, when projected in a workstate, live in that module state's `silo_adoptions`. Project governance MAY be recorded as accepted Core decisions and authority declarations referenced by `adoption_policy`; no parallel authority-grant record is introduced.
+
+Profile events MUST use the Core envelope and owning module `urn:awp:sync`. In addition to the lifecycle events above, the profile defines `silo.updated` for purpose, ownership, policy, and override changes and `silo.base_updated` for explicit base reconciliation. An update MUST pin the prior revision, assign the next integer revision, and carry a complete replacement plus required decision or reconciliation evidence. It MUST NOT change immutable identity or origin fields or use `silo.updated` to bypass a lifecycle or base-update condition. Creation uses revision 1. Concurrent non-commuting updates remain contested and MUST block dependent adoption until a recorded Synchronization resolution identifies both outcomes and the selected successor. Transport order and timestamps do not resolve that conflict.
+
+Schema validity checks structural shape only. Cross-record identity, ancestry, dependency closure, authority, location coverage, lifecycle, and publication recovery require profile processing and independent evidence.
+
+### 8.1 Informative examples
+
+The [planning silo fixture](../../../conformance/valid/silo-0.1-planning.json) shows an unaccepted search-feature exploration with its own workstate, owner, pinned canonical base, and no implementation worktree. The [adoption fixture](../../../conformance/valid/silo-0.1-adoption.json) selects one goal and maps it to a new canonical **proposed** goal. Accepting that publication does not approve implementation of the feature. The digest values and evidence identifiers in these standalone structural fixtures are synthetic and do not claim retrievable source history.
+
+For example, `canonical → search exploration → ranking experiment` is a permitted ancestry chain. The ranking experiment can submit a dependency-complete result directly to canonical, identifying search exploration as a bypassed ancestor. Search exploration remains pinned to its historical base and may continue independently. The destination owner decides whether to accept the result; a successful adoption need not close either silo.
+
+## 9. Diagnostics and conformance evidence
+
+Profile processors MUST emit stable diagnostics with code, severity, operation or record subjects, explanation, and recovery. The following codes have severity `error` and block the affected operation:
+
+| Code | Condition |
+|---|---|
+| `AWP-SILO-PROFILE-UNSUPPORTED` | Required silo processing is unsupported |
+| `AWP-SILO-ANCESTRY-INVALID` | Cyclic, ambiguous, mismatched, or unsupported ancestry |
+| `AWP-SILO-BASE-UNAVAILABLE` | Required pinned source cannot be retrieved or validated |
+| `AWP-SILO-REVISION-CONFLICT` | Immutable field changed or prior revision contested |
+| `AWP-SILO-TRANSITION-INVALID` | Lifecycle or base-update precondition fails |
+| `AWP-SILO-SHARED-SCOPE-UNGUARDED` | Shared guarded mutation lacks common atomic coverage |
+| `AWP-SILO-DEPENDENCY-INCOMPLETE` | Required adoption dependency unresolved |
+| `AWP-SILO-DIVERGENCE-UNRESOLVED` | Material difference lacks valid disposition |
+| `AWP-SILO-AUTHORITY-INSUFFICIENT` | Current destination policy does not permit adoption |
+| `AWP-SILO-STALE-BASE` | Destination changed since the approved proposal |
+| `AWP-SILO-IDEMPOTENCY-CONFLICT` | One key reused for different requests |
+| `AWP-SILO-PUBLICATION-UNCONFIRMED` | Publication or recovery remains uncertain |
+
+A profile claim MUST state supported roles (`silo-reader`, `silo-writer`, `silo-adopter`), representation and dependency coverage, any active COOP contract, authority enforcement, and the tested operating envelope. Writer claims require reader behavior; adopter claims additionally require closure, destination approval, atomic publication, and recovery. A structural schema validator alone MUST NOT claim these roles.
+
+Before an operational claim, fixtures MUST demonstrate: reproducible pinned derivation; parent changes leaving children unchanged; explicit base reconciliation; local override and tombstone isolation; duplicate IDs across forks; missing and cyclic ancestry; partial adoption with missing dependencies; external historical dependency retention; changed constraints and stale evidence; proposal approval invalidation; repeated partial adoption without closure; closed parent with active child; direct ancestor adoption; unauthorized self-approval; shared-location collisions including aliases; independent locations with shared external resources; concurrent destination publishers; retry and crash recovery; unknown required semantics; and preservation of disabled collaboration and declared budgets.
+
+The initial repository assets provide specification and structural examples only. They do not implement a silo runtime, dependency-closure evaluator, shared-resource binding, or adoption publisher and do not establish an operational conformance claim. Multiple inheritance, automatic cascading reconciliation, destructive silo deletion, and arbitrary cross-project adoption are deferred.
+
+---
+
 # AWP Coordination 0.5.0
 
 **Module ID:** `urn:awp:coordination`  
@@ -1273,7 +1471,7 @@ Coordination does not replace Git, A2A, MCP, a task scheduler, a distributed con
 
 ## 3. Capability profiles and Cooperation Contract integration
 
-The module declaration advertises the Coordination capabilities actually implemented and, when Cooperation is active, the selected Cooperation Contract. Coordination capabilities describe component behavior; `COOP-0`, `COOP-1`, and `COOP-2` are the only cumulative project-level cooperation and coordination conformance claims in AWP 0.8.
+The module declaration advertises the Coordination capabilities actually implemented and, when Cooperation is active, the selected Cooperation Contract. Coordination capabilities describe component behavior; `COOP-1`, `COOP-2`, and `COOP-3` are the only cumulative project-level work-coordination conformance claims in AWP 0.8. Portable collaboration has no named Cooperation Contract, and optional consultation is configured independently of work coordination.
 
 ```json
 {
@@ -1300,15 +1498,27 @@ The Cooperation Contract maps those capabilities into one cumulative ladder:
 
 | Contract | Coordination behavior incorporated by the contract |
 |---|---|
-| `COOP-0` | Coordination is optional; recognized records are preserved and exposed without an active-coordination guarantee |
-| `COOP-1` | Coordination awareness, deterministic projection, atomic guarded-scope decisions, bounded participant leases, checkpoint freshness, and recovery |
-| `COOP-2` | All COOP-1 behavior plus semantic awareness, integration assurance, authenticated protected mutation, epochs, fencing, and a declared scalable operating envelope |
+| No Cooperation Contract | Portable records and asynchronous consultation may be exchanged, with no active-coordination guarantee |
+| `COOP-1` | Coordination awareness, deterministic projection, atomic guarded-scope decisions, bounded participant leases, checkpoint freshness, recovery, and user-mediated escalation for material work decisions |
+| `COOP-2` | All COOP-1 work behavior plus semantic awareness, integration assurance, and optionally enabled managed inter-agent collaboration under a decision-owner authorization and declared budget |
+| `COOP-3` | All COOP-2 work behavior plus authenticated protected mutation, epochs, fencing, and a declared scalable operating envelope |
+
+The following table attributes the Coordination mechanisms to their minimum contract. A mechanism may be implemented below that level, but it MUST NOT be used to support a higher contract claim until its listed composition is present.
+
+| Mechanism sections | Minimum contract | Boundary |
+|---|---|---|
+| §§4, 6 physical selectors/access modes, 7, 9 physical overlap, 17 structural projection | `COOP-1` | Durable physical-scope collision reduction, record-validity checks, actual-scope reconciliation, guarded decisions, and checkpoint/recovery |
+| §5; §6 semantic targets and relied-upon reads; §§8, 10–16; §17 dependency-staleness propagation | `COOP-2` | Semantic evidence and selector resolution, dependency predicate evaluation and propagation, negotiation, readiness, and integration assurance |
+| §19 and protected portions of §20 | `COOP-3` | Authenticated principals, live protected mutation, epochs, and fencing |
+| §§1–3, 18, 21–27 | baseline or informative as marked | Definitions, diagnostics, mappings, fixtures, maturity, and open issues do not independently establish a contract claim |
 
 A processor MUST NOT advertise a Cooperation Contract whose required composed behaviors it does not implement. A reader MAY support a weaker contract, but it MUST reject safe continuation when unsupported required semantics affect the requested action. A component such as a projector, registry, or enforcing gateway advertises capabilities and evidence rather than claiming a complete contract by itself.
 
+Under `COOP-1`, a processor MAY surface a material conflict, ambiguity, or bounded question to the decision owner, but it MUST NOT autonomously start a work-affecting agent-to-agent consultation or negotiation loop. `COOP-2` and `COOP-3` may do so only through an enabled managed-collaboration policy that declares authorization, participants, purpose, scope, decision owner, and all budget limits. The availability of a messaging transport, A2A task, model, or tool does not enable collaboration by itself.
+
 Cooperation Contract, operational mode, and ledger reach remain separate declarations because the latter two describe current availability rather than another conformance ladder. Operational mode is `ledger_bound`, `snapshot_only`, `degraded`, or `unavailable`. Ledger reach is `shared`, `worktree_local`, or `cross_host`. Ledger unavailability changes what work may safely proceed and MUST be disclosed; it does not silently convert one contract into another.
 
-`unknown_overlap_policy` is `allow`, `warn`, `negotiate`, or `block`. `lease_enforcement` is `none`, `advisory`, or `enforced`. A COOP-1 guarded decision binds conforming participants but does not fence an external mutation path. Protected external effect requires the authenticated epochs and fencing guarantees of COOP-2 or an explicitly identified enforcing adapter.
+`unknown_overlap_policy` is `allow`, `warn`, `negotiate`, or `block`. `lease_enforcement` is `none`, `advisory`, or `enforced`. A COOP-1 guarded decision binds conforming participants but does not fence an external mutation path. Protected external effect requires the authenticated epochs and fencing guarantees of COOP-3 or an explicitly identified enforcing adapter.
 
 The module defines three cumulative capability bundles used by the Cooperation Contracts:
 
@@ -1324,7 +1534,7 @@ An implementation MAY adopt `coordination-awareness` before implementing the com
 
 An AWP-aware writer that discovers a writable shared event ledger and supports the `coordination-awareness` bundle MUST enable ledger-backed advisory coordination by default unless project or receiver policy explicitly disables it. Before materially changing shared state, the writer MUST refresh the available ledger frontier, publish its intent and revision-pinned declared scopes, evaluate known overlaps under the effective policy, and make resulting warnings or guarded outcomes visible. Before integration or handoff, it MUST refresh again and publish the terminal intent, change-set, checkpoint, or synchronization delta required to explain its result.
 
-This default is a protocol behavior, not a required runtime service. A local append-only file, immutable event package, transactional database, source-control binding, or remote event transport MAY supply the ledger when it preserves Core event identity, ancestry, atomic publication, and conflict-preserving replay. SQLite and the local adapter are optional implementation aids. Presence monitoring MAY reduce discovery latency but is not a prerequisite. Authenticated protected leases, epochs, and fencing are COOP-2 capabilities and remain separately configured from COOP-1 participant liveness leases.
+This default is a protocol behavior, not a required runtime service. A local append-only file, immutable event package, transactional database, source-control binding, or remote event transport MAY supply the ledger when it preserves Core event identity, ancestry, atomic publication, and conflict-preserving replay. SQLite and the local adapter are optional implementation aids. Presence monitoring MAY reduce discovery latency but is not a prerequisite. Authenticated protected leases, epochs, and fencing are COOP-3 capabilities and remain separately configured from COOP-1 participant liveness leases.
 
 If no safe writable ledger is discoverable, the writer SHOULD attempt to establish a project-scoped ledger through an authorized writable binding, provided it can publish the binding location, workstate identity, retention, and access expectations to the intended participants. If it cannot establish or discover such a binding, it MUST disclose operational mode `snapshot_only` or `unavailable` with diagnostic `AWP-COORD-LEDGER-UNAVAILABLE` before material mutation. A private temporary file, process memory, unshared worktree, or unconfirmed model output is not a shared ledger. A worktree-local ledger MAY be used when its limited reach is disclosed. The writer MUST NOT silently describe metadata preservation, a stale snapshot, or an unvalidated event sink as active coordination. Receiver policy determines whether work may continue. A tool MUST NOT advertise COOP-1 merely because it implements this default; its contract claim remains limited to the complete composed behavior it can demonstrate.
 
@@ -1406,7 +1616,7 @@ State-space revisions use adapter-qualified immutable identifiers. A Git object 
 
 The passage of time never changes projected state. An identified actor or service MUST emit a valid timeout, expiration, or deadline-observation event under a declared clock authority. Until that event is present, a deadline may be overdue but the prior projected lifecycle state remains unchanged; processors SHOULD surface the overdue condition.
 
-Without COOP-2 protected enforcement, authority may be `asserted`, `verified`, or `unverifiable`. Verification identifies the evaluator, receiver policy, evidence, time, scope, and relevant revocation state. COOP-2 is required for live cross-principal enforcement, not for every authority check. No AWP authority record implies an external side effect by itself.
+Without COOP-3 protected enforcement, authority may be `asserted`, `verified`, or `unverifiable`. Verification identifies the evaluator, receiver policy, evidence, time, scope, and relevant revocation state. COOP-3 is required for live cross-principal enforcement, not for every authority check. No AWP authority record implies an external side effect by itself.
 
 ### 4.3 Canonical event example
 
@@ -1490,6 +1700,8 @@ Selector comparison across pinned state-space revisions is a COOP-2 semantic-awa
 Language-specific selector syntax and drift algorithms belong to registered adapter profiles. The initial reference implementation SHOULD provide Python AST and TypeScript compiler-symbol profiles, but their identifiers and outputs remain usable by agents implemented in any language.
 
 ## 6. Scopes and access claims
+
+**Minimum contract:** `COOP-1` for physical or otherwise explicitly comparable selectors and access modes. `COOP-2` is required for semantic targets and relied-upon reads whose relationship is established semantically.
 
 A scope is a first-class record selecting a physical or semantic region. Intents, claims, change sets, and contracts reference it by ID and revision. An inline selector MAY be used as an unshared query value, but an inline selector is not a scope record and cannot be revised or used as a dependency target.
 
@@ -1589,6 +1801,8 @@ The first two scopes may overlap at their shared wall even though they are diffe
 
 ## 7. Work intent
 
+**Minimum contract:** `COOP-1`. A participant's self-declared actual-versus-declared physical-scope reconciliation is a checkpoint obligation at this level; analyzer-produced observed scope and readiness gating are `COOP-2`.
+
 An actor SHOULD publish an intent before materially changing shared state.
 
 ```json
@@ -1638,6 +1852,8 @@ If observed work expands beyond the declared scope, the writer MUST either updat
 
 ## 8. Observed scope
 
+**Minimum contract:** `COOP-2`.
+
 An observed scope is tool-produced evidence about actual work. It does not overwrite the author's declaration.
 
 ```json
@@ -1669,6 +1885,8 @@ An observed scope is tool-produced evidence about actual work. It does not overw
 Observed-scope lifecycle statuses are `final` and `superseded`; outcome is `complete`, `partial`, or `error`. The analyzer, base, result, method, and evidence digest MUST be recorded. `declared_not_observed` is informational unless policy says otherwise. `undeclared` MUST be evaluated for new overlaps and may stale earlier acknowledgements. An omitted effect or scope means unknown; an explicitly present empty array asserts that none were observed or declared under the stated method.
 
 ## 9. Overlap and conflict
+
+**Minimum contract:** `COOP-1` for physical-scope `none`, `informational`, `compatible`, `ordered`, and `blocking` outcomes. `COOP-2` is required when semantic ambiguity produces `unknown` or policy requires semantic negotiation.
 
 Overlap classifications are:
 
@@ -1720,6 +1938,8 @@ Overlap lifecycle:
 A conflict is an overlap whose policy action requires resolution. A conflict records competing claims, responsible owner, allowed resolution strategies, evidence, accepted risk, and final disposition. Resolution strategies include scope partition, contract first, ordered integration, compatibility adapter, feature isolation, rebase and re-derive, combined implementation, authorized risk acceptance, and withdrawal.
 
 ## 10. Negotiation and commitments
+
+**Minimum contract:** `COOP-2`.
 
 A negotiation makes coordination dialogue finite, typed, and auditable.
 
@@ -1802,6 +2022,8 @@ Agents MUST apply a decision only to the named subjects, revisions, scopes, and 
 
 ## 11. Interface contracts
 
+**Minimum contract:** `COOP-2`.
+
 A contract identifies owners, producers, consumers, prior and proposed revisions, observable interface/schema/behavior, states, errors, invariants, compatibility class, migration strategy, tests, decision policy, and participant adoption.
 
 Contract decision policy is a machine-readable object:
@@ -1841,6 +2063,8 @@ A revised accepted contract triggers staleness evaluation for every dependent in
 Terminal contract states are `verified`, `superseded`, `rejected`, and `withdrawn`. `accepted` and `implemented` are nonterminal. A change to verified contract content creates a successor revision or successor contract rather than reopening the verified record.
 
 ## 12. Typed preconditions
+
+**Minimum contract:** `COOP-2` for predicate evaluation and readiness consequences. `COOP-1` validates only the structural binding of a typed precondition to its named subject, revision, evaluator, and evidence.
 
 A precondition is either `mechanical` or `asserted`.
 
@@ -1929,6 +2153,8 @@ Result lifecycle status is `final` or `superseded`; outcome is `pass`, `fail`, `
 
 ## 13. Change sets
 
+**Minimum contract:** `COOP-2`.
+
 A change set is an integration candidate rather than merely a patch.
 
 ```json
@@ -1995,6 +2221,8 @@ Terminal change-set states are `integrated`, `failed`, `withdrawn`, and `superse
 
 ## 14. Verification
 
+**Minimum contract:** `COOP-2` for verification evaluation and readiness consequences. `COOP-1` validates only the structural binding of a verification record to its named subject, base, evaluator, and evidence.
+
 A verification result MUST bind the claim being checked to exact inputs.
 
 ```json
@@ -2032,6 +2260,8 @@ Verification becomes stale when its subject revision, tested state-space revisio
 
 ## 15. Dependency graph and staleness
 
+**Minimum contract:** `COOP-2` for dependency-staleness propagation and readiness consequences. `COOP-1` retains record-validity staleness checks defined by the Cooperation Contract.
+
 Dependency edge kinds are `requires`, `implements`, `verifies`, `derived_from`, `relies_on`, `orders_before`, `conflicts_with`, `supersedes`, and `integrates`.
 
 For each event that changes a record revision or status, a deterministic Coordination projector MUST:
@@ -2049,6 +2279,8 @@ Staleness is cleared only by a successful type-specific `*.revalidated`, `*.reba
 Cycles in `requires` or `orders_before` are diagnostic `AWP-COORD-DEPENDENCY-CYCLE`. A cycle blocks automatic readiness or integration ordering until an integration plan explicitly groups the cycle into one combined unit or an authorized resolution changes the graph.
 
 ## 16. Integration plan and result
+
+**Minimum contract:** `COOP-2`.
 
 An integration plan identifies owner, target state space and base revision, exact change-set revisions, dependency-derived order, shared contracts, required precondition evaluations, verification plan, rollback, authority requirements, and `atomicity`. A repository and commit are one possible adapter representation of the target state space.
 
@@ -2084,6 +2316,8 @@ Terminal integration states are `completed`, `failed`, `cancelled`, and `superse
 
 ## 17. Deterministic projection
 
+**Minimum contract:** `COOP-1` for structural event validation and deterministic projection. Dependency-staleness propagation after valid semantic change is `COOP-2`.
+
 Coordination state is derived from valid Core events at a declared frontier.
 
 A deterministic Coordination projector MUST:
@@ -2095,7 +2329,7 @@ A deterministic Coordination projector MUST:
 5. allow only module-defined commutative operations, currently acknowledgement-set union and evidence-reference-set union;
 6. preserve invalid or unknown events in history while excluding their claimed state change from the valid projection;
 7. order diagnostic emission using Kahn's topological algorithm with the lexicographically smallest event ID selected from the ready set;
-8. propagate staleness after applying each valid semantic change;
+8. when `COOP-2` dependency semantics are active, propagate dependency staleness after applying each valid semantic change;
 9. compute module state at the same frontier as the containing Core snapshot.
 
 Acknowledgements commute only when keyed by `(subject revision, actor, acknowledgement kind, association ID)`. Two differing acknowledgements with the same identity conflict; they do not use last-write-wins.
@@ -2156,7 +2390,7 @@ Errors invalidate the affected transition. Warnings preserve state but MUST be v
 
 ## 18.1 Agent presence and monitoring
 
-Presence monitoring makes active participation observable before agents mutate a shared project. It is an advisory coordination capability incorporated by COOP-1 and COOP-2. Presence does not grant authority, reserve a scope, establish exclusivity, or imply that the announced actor is trusted. An authenticated fenced lease remains a COOP-2 operation distinct from a COOP-1 participant liveness lease.
+Presence monitoring makes active participation observable before agents mutate a shared project. It is an advisory coordination capability incorporated by COOP-1 and COOP-2. Presence does not grant authority, reserve a scope, establish exclusivity, or imply that the announced actor is trusted. An authenticated fenced lease remains a COOP-3 operation distinct from a COOP-1 participant liveness lease.
 
 A presence record identifies one runtime session:
 
@@ -2219,7 +2453,7 @@ Multiple agents MUST NOT independently overwrite one canonical Capsule from the 
 
 The informative profile `local-sqlite-presence-v1` supports agents sharing one local Git common directory. It uses SQLite transactions for atomic entry, expiry, release, and watcher-cursor advancement. Its registry clock is the host running the transaction. The profile uses a 90-second session duration, recommends renewal at most every 30 seconds, and treats exact pinned-scope equality plus an explicit wildcard as its only automatic overlap evidence.
 
-This profile is advisory. It does not authenticate principals, fence writes, provide cross-host availability, infer semantic overlap, or satisfy COOP-2. A deployment that changes its timing, clock, matching, or retention behavior declares a distinct profile or explicit profile parameters.
+This profile is advisory. It does not authenticate principals, fence writes, provide cross-host availability, infer semantic overlap, or satisfy COOP-2 or COOP-3. A deployment that changes its timing, clock, matching, or retention behavior declares a distinct profile or explicit profile parameters.
 
 ## 18.2 Scaling requirements
 
@@ -2239,7 +2473,7 @@ Sharding MUST NOT change the semantic result of overlap evaluation. Cross-partit
 
 ### 18.2.1 Brokered and sharded presence profile
 
-The candidate profile `brokered-sharded-presence-v1` defines advisory presence for deployments in which agents may run on different hosts and a single local registry is insufficient. This profile remains an advisory presence capability: it does not become a COOP-2 protected lease merely because its transport is distributed.
+The candidate profile `brokered-sharded-presence-v1` defines advisory presence for deployments in which agents may run on different hosts and a single local registry is insufficient. This profile remains an advisory presence capability: it does not become a COOP-3 protected lease merely because its transport is distributed.
 
 The profile has four logical responsibilities, which MAY be implemented by one service or separate replicated services:
 
@@ -2290,7 +2524,9 @@ Load tests MUST include synchronized renewal bursts, hot scopes, wildcard scopes
 
 ## 19. Live coordination and leases
 
-COOP-2 protected mutation enforcement requires a live coordinator or an external protected system, not merely a shared file.
+**Minimum contract:** `COOP-3`.
+
+COOP-3 protected mutation enforcement requires a live coordinator or an external protected system, not merely a shared file.
 
 Protected operations use optimistic concurrency control with:
 
@@ -2310,13 +2546,13 @@ An adapter claiming enforcement MUST reject a protected mutation whose token is 
 
 If coordinator identity, epoch, authentication, protected scope, or fencing validation is unavailable, the lease is `unverifiable` outside the reachable enforcement guarantee. The implementation MUST NOT describe it as exclusive. Local work may continue under policy, but integration MUST refresh state and re-evaluate overlap and preconditions.
 
-A COOP-2 enforcement profile MUST specify retry limits, heartbeat interval, lease duration, expiry clock authority, deadlock detection, starvation policy, cancellation consequences, and human/organizational arbitration. The base module defines no universal timing defaults because safe values depend on task duration, network delay, and the protected system. Named interoperability and test profiles MAY define explicit defaults.
+A COOP-3 enforcement profile MUST specify retry limits, heartbeat interval, lease duration, expiry clock authority, deadlock detection, starvation policy, cancellation consequences, and human/organizational arbitration. The base module defines no universal timing defaults because safe values depend on task duration, network delay, and the protected system. Named interoperability and test profiles MAY define explicit defaults.
 
 ## 20. Security, principals, and governance
 
 Actor identity, principal identity, trust, and authority are separate.
 
-A principal is the human or organization accountable for an actor's participation. A COOP-2 session MUST bind authenticated actors to principals and declare the governing policy. Cross-principal coordination MUST identify:
+A principal is the human or organization accountable for an actor's participation. A COOP-3 session MUST bind authenticated actors to principals and declare the governing policy. Cross-principal coordination MUST identify:
 
 - permitted operations and visible scopes;
 - confidentiality and redaction rules;
@@ -2385,7 +2621,11 @@ Git revisions map to immutable `base.revision` and `result_revision` values. Bra
 
 ### A2A
 
-An A2A Task may carry a AWP intent reference. A2A Artifacts may carry AWP deltas, bundles, change sets, evidence, or integration results. A2A Task state does not replace AWP record state; adapters record the mapping and preserve both identities.
+An A2A Task may carry an AWP intent reference. A2A Artifacts may carry AWP deltas, bundles, change sets, evidence, or integration results. A2A Task state does not replace AWP record state; adapters record the mapping and preserve both identities.
+
+For the named `coop3-a2a-v1` profile, A2A is the distributed communications and execution control plane for typed AWP coordination operations. An A2A request MUST carry the operation identifier, workstate identifier, stable binding identity, acting AWP actor, and the expected revision, frontier, or fencing token applicable to the operation. A response MUST carry either a durable AWP receipt that identifies the accepted event or protected decision, or a stable rejection or conflict diagnostic. A2A delivery, task completion, or peer authentication does not replace the binding's durable persistence, principal mapping, authorization decision, epoch comparison, or fencing check.
+
+An A2A adapter MUST preserve idempotency across retry, reconnect, duplicate delivery, endpoint migration, and task-status polling. It MUST make transport reachability and AWP store or gateway reachability separately observable. If protected enforcement cannot verify the actor/principal, binding epoch, expected state, protected scope, or fencing token, it MUST reject the protected operation even if the A2A task was successfully delivered. A2A is optional outside a binding that explicitly claims `coop3-a2a-v1`.
 
 ### MCP
 
@@ -2432,6 +2672,8 @@ complete intents and release presence and live coordination state
 ## 24. Minimum conformance fixtures
 
 The experimental module is not ready for stable status without fixtures covering at least:
+
+The fixture inventory does not itself establish a Cooperation Contract claim. The following minimum attribution makes the evidence boundary auditable: a `COOP-1` claim needs the applicable scenarios in Cooperation Contracts §4.3, including deterministic replay, record-validity rejection, compatible and incompatible physical scopes, resolution, lease expiry, fresh handoff, and binding identity across filesystem paths. This inventory contributes direct coverage for physical non-overlap and same-file conflict (1–2), structural precondition or verification binding (7–8), contested projection (11–12), recovery and expiry (14–15, 23–25), and presence overlap behavior (21–22). A `COOP-2` claim additionally needs semantic conflict, relied-upon read, material undeclared scope, contract revision, dependency cycle, and integration-readiness coverage (3–6, 9–10, 13). A `COOP-3` claim additionally needs fenced mutation, epoch, authorization, and protected-operation coverage (16–18, 26–32 as applicable). A claimed operating envelope MUST identify any required scenario that has no corresponding executable fixture; the present inventory does not by itself discharge COOP-1 §4.3 scenario 9's different-filesystem-path binding-identity evidence.
 
 1. independent non-overlapping changes;
 2. same-file physical conflict;
@@ -2492,14 +2734,14 @@ The repository's `tools/awp_projector.py` is an informative deterministic Coordi
 2. The initial semantic registry needs language-specific selector profiles for symbols, schemas, and dependency graphs.
 3. Confidence calibration for inferred semantic overlap is unspecified; policy must not confuse a model score with verification.
 4. Composition and conflict rules for multiple organization-specific contract decision policies need implementation experience.
-5. COOP-2 needs a formally modeled coordinator protocol and at least one real enforcing adapter.
+5. COOP-2 needs a semantic integration binding, while COOP-3 additionally needs a formally modeled coordinator protocol and at least one real enforcing adapter.
 6. The candidate brokered/sharded presence profile needs independent implementations and measured interoperability, capacity, notification-loss, failover, privacy, and operating-cost evidence before its parameters can be stabilized.
 7. Privacy-preserving coordination across principals may require selective disclosure or commitments to hidden evidence.
 8. Benchmark tasks must measure false alarms and coordination overhead as well as conflicts caught.
 
 ## 27. Summary
 
-Coordination 0.5.0 supplies the durable records and executable mechanisms used by AWP Cooperation Contracts. COOP-0 provides portable substantive collaboration, COOP-1 adds deterministic small-group coordination and bounded symbiosis without requiring a service, and COOP-2 adds semantic awareness, integration assurance, authenticated enforcement, fencing, and a scalable operating envelope.
+Coordination 0.5.0 supplies the durable records and executable mechanisms used by AWP Cooperation Contracts. Portable collaboration needs no Cooperation Contract, COOP-1 adds deterministic small-group conflict reduction without requiring a service, COOP-2 adds semantic awareness and integration assurance, and COOP-3 adds authenticated enforcement, fencing, and a scalable operating envelope. Consultation is a separately enabled optional Cooperation subprotocol.
 
 The essential invariant is:
 
@@ -2757,15 +2999,32 @@ No single mapping is normative in 0.8.0. Branches and pull requests are forge co
 
 The informative `local-ledger-awareness-v1` profile provides the default Coordination 0.4 awareness path for agents sharing one Git common directory. It uses a transactional local database as a service-free durable Core event transport, publishes scope and intent records before work, projects active intents and overlaps, maintains durable watcher cursors, and exports the unified event stream as JSON Lines. Repository-relative file and directory containment is its only automatic physical overlap rule; it does not infer semantic overlap. When policy prevents writes under the Git common directory, an adapter MAY use an ignored worktree-local runtime directory, but it MUST report `AWP-COORD-LEDGER-WORKTREE-LOCAL` and disclose that agents in other worktrees require an explicitly shared ledger path.
 
-The profile enables useful ledger-backed coordination without presence heartbeats. It does not authenticate actors, grant authority, enforce exclusions, fence mutations, provide cross-host availability, or by itself establish complete COOP-1 conformance. If the shared ledger cannot be discovered, opened, atomically updated, or refreshed, the adapter reports `AWP-COORD-LEDGER-UNAVAILABLE` and explicitly falls back to COOP-0 behavior instead of silently continuing as actively coordinated.
+The profile enables useful ledger-backed coordination without presence heartbeats. It does not authenticate actors, grant authority, enforce exclusions, fence mutations, provide cross-host availability, or by itself establish complete COOP-1 conformance. If the shared ledger cannot be discovered, opened, atomically updated, or refreshed, the adapter reports `AWP-COORD-LEDGER-UNAVAILABLE` and explicitly falls back to uncontracted portable behavior instead of silently continuing as actively coordinated.
 
-An agent-runtime binding using this profile invokes `begin` before material writes, `refresh` before integration or handoff, and `complete` or `withdraw` when the intent terminates. Presence monitoring is a COOP-1 component; authenticated protected enforcement belongs to COOP-2.
+An agent-runtime binding using this profile invokes `begin` before material writes, `refresh` before integration or handoff, and `complete` or `withdraw` when the intent terminates. Presence monitoring is a COOP-1 component; authenticated protected enforcement belongs to COOP-3.
 
 ## 4. A2A binding shape
 
 A2A tasks may carry a workstate ID, checkpoint, requested continuation, and Capsule or wire representation as artifacts or data parts. A binding should map task lifecycle to AWP events without assuming the A2A message history is complete workstate history.
 
 Material goals, constraints, decisions, claims, evidence, and outcomes should be promoted into typed AWP records. Authentication of an A2A peer does not automatically authorize external side effects.
+
+### 4.1 `coop3-a2a-v1` binding shape
+
+The named `coop3-a2a-v1` profile uses A2A as a communications and execution control plane for a COOP-3 protected binding. It does not make A2A a mandatory AWP transport, and it does not make an A2A server, task queue, or Agent Card the authoritative coordination store.
+
+| AWP protected operation | A2A role | Required authoritative result |
+|---|---|---|
+| participant entry or renewal | task/request delivery | authenticated actor-to-principal binding and durable lease receipt |
+| guarded intent announcement | task/request delivery | atomic admission, conflict, or block receipt |
+| guarded decision or resolution | task update or result | durable decision record with binding epoch and frontier |
+| protected mutation | task/request delivery | gateway acceptance only after expected-state and fencing validation |
+| checkpoint or handoff | artifact/data delivery | canonical projector receipt with artifact digest and included frontier |
+| terminal completion or withdrawal | task/request delivery | idempotent terminal intent receipt |
+
+Every A2A request in this profile carries an immutable AWP operation ID, workstate ID, stable binding identity, actor ID, and the operation's expected state. The adapter records the A2A task ID and endpoint only as correlation metadata. It persists or obtains the AWP binding result before returning success. Duplicate A2A delivery, a resumed task, or a request received by a replacement endpoint must return the same receipt or a stable rejection; it must not duplicate a lease, intent, or fencing generation.
+
+The binding declares its supported A2A interfaces and protocol version, transport authentication mechanism, actor/principal mapping, store identity, and protected mutation gateway. A2A authentication is evidence for that mapping, not blanket AWP authority. The protected store and gateway independently validate authorization, expected epoch/frontier or revision, scope, and fencing token. The adapter reports A2A reachability separately from store and gateway reachability, and fails closed for protected mutation when any required check is unavailable.
 
 ## 5. MCP binding shape
 
@@ -2790,67 +3049,71 @@ Private bindings use collision-resistant IDs. An unknown binding may be ignored 
 # AWP Cooperation Contracts 0.1.0
 
 **Status:** Experimental working-draft profile specification
-
 **Module ID:** `urn:awp:cooperation`
-
 **Profile family:** Cooperation Contracts (`COOP`)
-
-**Direct dependencies:** Capsule and Handoff; Coordination for `COOP-1` and `COOP-2`
+**Direct dependencies:** Capsule and Handoff; Coordination for `COOP-1`, `COOP-2`, and `COOP-3`
 
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in BCP 14 when, and only when, they appear in all capitals.
 
 ## 1. Purpose and status
 
-Cooperation Contracts define what several human or software-agent participants can expect while working on the same project. They cover both safe coordination of guarded work and productive collaboration: independent perspectives, critique, review, delegation, synthesis, and durable handoff.
+Cooperation Contracts define what several human or software-agent participants can expect while working on the same project. AWP separates two independent concerns:
 
-`COOP-0`, `COOP-1`, and `COOP-2` form AWP's single cumulative cooperation and coordination conformance ladder. In the 0.8 family they replace the draft Coordination `C0`–`C3` labels. The Coordination module defines the durable records, capability bundles, and mechanisms used by cooperating participants; it no longer defines a second conformance axis. Released and historical AWP specifications retain their original labels and semantics.
+1. **work coordination** reduces incompatible concurrent work output through discovery, leases, intents, guarded scopes, compatibility decisions, checkpoints, and recovery; and
+2. **consultation** exchanges bounded analysis, critique, review, delegation, or synthesis without granting authority or reserving a work scope.
+
+`COOP-1`, `COOP-2`, and `COOP-3` are AWP 0.8's single cumulative **work-coordination** ladder. The Coordination module defines the durable records, capability bundles, and mechanisms used by those contracts; it does not define a competing conformance axis. There is no `COOP-0` contract. Ordinary portable AWP exchange—including capsules, handoffs, and Core `consultation` records—remains useful without selecting any Cooperation Contract and makes no active coordination guarantee.
+
+`COOP-1` is the first named contract because it provides immediately useful conflict reduction for a small group while keeping material inter-agent decisions user-mediated. `COOP-2` adds semantic and integration coordination and permits explicitly authorized, budgeted inter-agent collaboration. `COOP-3` adds protected, scalable coordination. Consultation and managed collaboration are disabled unless the binding explicitly enables them.
 
 This document is an experimental profile specification. It does not change released AWP 0.6.0 semantics or make the current reference tools conformant to a contract they do not fully implement.
 
-The module capability `guarded-scope-coordination` means that the selected contract uses Coordination records or an equivalent binding to compare declared scopes and return guarded mutation decisions. It is required by `COOP-1` and `COOP-2` and activates the Cooperation module's dependency on `urn:awp:coordination`.
+The module capability `guarded-scope-coordination` means that the selected contract uses Coordination records or an equivalent binding to compare declared scopes and return guarded mutation decisions. It is required by every named COOP contract and activates this module's dependency on `urn:awp:coordination`.
 
 ### 1.1 Migration from the earlier draft ladder
 
-The 0.8 contract ladder incorporates the useful behavior of the earlier Coordination levels:
-
 | Earlier draft behavior | AWP 0.8 location |
 |---|---|
-| Portable preservation and display | COOP-0 |
-| Deterministic event validation and projection | Required COOP-1 component |
-| Semantic registry, scope analysis, and integration assurance | COOP-2 |
-| Authenticated protected mutation, epochs, leases, and fencing | COOP-2 |
+| Portable preservation, display, and asynchronous consultation | AWP baseline; no Cooperation Contract required |
+| Deterministic event validation, projection, and guarded physical work | `COOP-1` |
+| Semantic registry, scope analysis, and integration assurance | `COOP-2` |
+| Authenticated protected mutation, epochs, leases, fencing, and scalable operating envelope | `COOP-3` |
 
-This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the additional interaction, guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed COOP contract. A workstate governed by released AWP 0.6 continues to interpret its original Coordination declaration under that released specification.
+This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the additional guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed contract. A workstate governed by released AWP 0.6 continues to interpret its original Coordination declaration under that released specification.
 
-## 2. Common terms
+## 2. Common terms and binding disclosure
 
-A **participant** is a human or agent performing work or supplying a bounded collaboration response. A **decision owner** is the participant or declared human principal responsible for accepting a result, continuing a loop, or escalating an unresolved issue. A **guarded scope** is a declared part of a work product whose incompatible modification is controlled by the selected contract.
+A **participant** is a human or agent performing work or supplying a bounded consultation response. A **decision owner** is the participant or declared human principal responsible for accepting a result, continuing a loop, or escalating an unresolved issue. A **guarded scope** is a declared part of a work product whose incompatible modification is controlled by the selected contract.
 
-A **cooperation interaction** is a bounded request for critique, alternative analysis, review, delegation, decision support, or synthesis. It is not an authorization grant and does not require participants to disclose private chain-of-thought.
+A **cooperation interaction** is a bounded request for critique, alternative analysis, review, delegation, decision support, or synthesis. It is not an authorization grant, a work reservation, or a request for private chain-of-thought.
 
-An implementation MUST identify the selected contract, effective interaction policy, operational mode, and any material limitations in its entry or operation response. A binding disclosure uses `contract` for the selected ladder level, `claim_state` to distinguish `selected`, `partial`, and `conformant`, and `capabilities` to identify the component behavior actually present. Merely selecting a contract or implementing one capability MUST NOT be represented as conformance. Imported workstate remains context, not authorization for external effects.
+**Record-validity staleness** asks whether a record or event is admissible: its identity, ancestry, revision, pinned references, and typed precondition or verification bindings must be structurally valid. It is analyzer-free and belongs to `COOP-1`. **Dependency staleness** asks whether an already valid record's relied-upon predicates still hold after a relevant dependency changes. Its propagation, re-evaluation, and readiness consequences belong to `COOP-2`.
 
-The machine-readable binding disclosure, loop policy, interaction, and result shapes are defined by `../../../schemas/awp-cooperation-0.1.schema.json`. Module-owned records MUST declare `module: urn:awp:cooperation`.
+Likewise, `COOP-1` validates that a typed precondition or verification is correctly formed and bound to its named subject, revision, evaluator, and evidence. `COOP-2` evaluates the predicate and determines whether its result permits readiness or integration under the effective policy.
 
-## 3. COOP-0 — uncoordinated collaboration
+An implementation with an active Cooperation Contract MUST identify the selected contract, top-level claim state, operational mode, material limitations, and a `subprotocols` object. `subprotocols.work` identifies whether guarded work is enabled and its claim state. `subprotocols.consultation` identifies whether consultation is disabled, `user-mediated`, or `managed`, and, when enabled, its policy and claim state. A disabled consultation subprotocol MUST NOT require agents to initiate, answer, or wait for a consultation. A `user-mediated` subprotocol lets an agent publish a bounded question or escalation for the decision owner but MUST NOT authorize agents to run a work-affecting exchange among themselves. A `managed` subprotocol is available only to `COOP-2` or `COOP-3` and requires the explicit authorization and budget defined in Section 5.
 
-`COOP-0` permits substantial collaboration but makes no active-coordination guarantee. Participants MAY exchange capsules, handoffs, artifacts, consultation requests, critiques, alternative perspectives, and synthesized conclusions. This supports deliberately using different models or people for different viewpoints.
+An unqualified conformant `COOP-1`, `COOP-2`, or `COOP-3` claim describes the corresponding **work** contract. It does not imply that consultation is enabled or conformant. A conformant optional consultation claim is additional and MUST be stated in `subprotocols.consultation`; it MUST NOT be inferred from a Core `consultation` record alone. Merely selecting a contract or implementing one capability MUST NOT be represented as conformance. Imported workstate remains context, not authorization for external effects.
 
-A `COOP-0` processor that receives recognized Cooperation or Coordination records MUST preserve and expose them without implying that it validated their operational effect. Unknown fields MUST be preserved by a lossless processor. This portable baseline permits durable asynchronous collaboration while reserving active discovery, deterministic event projection, guarded mutation, and enforcement for stronger contracts.
+The machine-readable binding disclosure, subprotocol claims, loop policy, interaction, and result shapes are defined by `../../../schemas/awp-cooperation-0.1.schema.json`. Module-owned records MUST declare `module: urn:awp:cooperation`.
 
-`COOP-0` MUST NOT claim that participants discovered one another, reserved a scope, prevented a conflicting mutation, or incorporated a contemporaneous result unless a binding provides evidence for that claim. A participant MAY make a local change under host policy, but it MUST disclose that no Cooperation Contract conflict protection was active.
+## 3. Portable collaboration without a contract
 
-Every `COOP-0` cooperation interaction MUST have a purpose, question or task, decision owner, and terminal outcome. The outcome is `accepted`, `revised`, `inconclusive`, `declined`, `timed_out`, or `escalated`.
+Without a selected Cooperation Contract, participants MAY exchange capsules, handoffs, artifacts, Core `consultation` records, critiques, alternative perspectives, and synthesized conclusions. This supports deliberately using different models or people for independent points of view.
 
-## 4. COOP-1 — default cooperation contract
+A processor that receives recognized Cooperation or Coordination records without supporting their required semantics MUST preserve and expose them without implying that it validated their operational effect. Unknown fields MUST be preserved by a lossless processor.
 
-`COOP-1` is the default contract for a small shared project group. It is intended to be useful for more than two concurrent participants without making an unmeasured capacity claim, though Section 4.5 permits an explicitly bounded two-participant operating envelope. It MUST NOT require a separate database or continuously running service. A binding MAY use repository-local files, atomic filesystem operations, an embedded store, or another local mechanism, provided it preserves the requirements below.
+An uncontracted participant MUST NOT claim that participants discovered one another, reserved a scope, prevented a conflicting mutation, or incorporated a contemporaneous result unless a binding provides evidence for that claim. A participant MAY make a local change under host policy, but it MUST disclose that no active Cooperation Contract conflict protection was present.
 
-`COOP-1` extends `COOP-0` and includes all of its requirements, including its terminal-outcome vocabulary.
+Core `consultation` records remain available for asynchronous advice seeking. They require no participant lease or shared ledger. A response MUST identify uncertainty and supporting evidence when available; advice MUST NOT be treated as authorization for an action.
 
-`COOP-1` also incorporates deterministic coordination processing. For every Coordination record or event used to make a cooperation decision, the binding MUST validate workstate identity, event identity, ancestry, revisions, lifecycle transitions, pinned references, typed precondition and verification bindings, and applicable staleness rules. Projection MUST be independent of transport order, preserve concurrent non-commuting successors as contested, and return stable diagnostics for excluded or unverifiable input. A component MAY advertise a `deterministic-coordination-projector` capability, but that component alone MUST NOT claim `COOP-1`; the contract applies to the composed participant, binding, projector, checkpoint, and interaction behavior.
+## 4. COOP-1 — small-group conflict reduction
 
-A `COOP-1` participant lease is a bounded liveness record in the cooperation binding. It lets participating agents discover an active participant and recover when its renewal stops; it does not authenticate a principal, fence a source-control write, or grant authority. A binding's guarded-mutation guarantee applies only to participants that use the binding and obey its returned decision. Protected mutation paths, authenticated principals, epochs, and fencing are `COOP-2` guarantees and MUST NOT be inferred from a `COOP-1` claim.
+`COOP-1` is the default contract for a small shared project group. It reduces collisions in guarded, explicitly comparable work without requiring agents to exchange reasoning beyond the structured coordination information needed to proceed or block. A material conflict, ambiguity, or request for a work-affecting decision is surfaced to the declared decision owner; it does not start an autonomous agent-to-agent loop. It is intended to be useful for more than two concurrent participants without making an unmeasured capacity claim, though Section 4.3 permits an explicitly bounded two-participant operating envelope. It MUST NOT require a separate database or continuously running service. A binding MAY use repository-local files, atomic filesystem operations, an embedded store, or another local mechanism, provided it preserves the requirements below.
+
+For every Coordination record or event used to make a work-coordination decision, the binding MUST perform `COOP-1` record-validity validation of workstate identity, event identity, ancestry, revisions, lifecycle transitions, pinned references, and typed precondition and verification bindings. It MUST exclude or block structurally stale or unverifiable input with a stable diagnostic. Projection MUST be independent of transport order, preserve concurrent non-commuting successors as contested, and return stable diagnostics for excluded or unverifiable input. A component MAY advertise a `deterministic-coordination-projector` capability, but that component alone MUST NOT claim `COOP-1`; the contract applies to the composed participant, binding, projector, checkpoint, and recovery behavior.
+
+A `COOP-1` participant lease is a bounded liveness record with exit coupling in the cooperation binding. It lets participating agents discover an active participant and recover when its renewal stops; release is permitted only after the linked work is terminal and a durable handoff receipt is available. It does not authenticate a principal, fence a source-control write, grant authority, or require its holder to participate in a consultation. A binding's guarded-mutation guarantee applies only to participants that use the binding and obey its returned decision. Protected mutation paths, authenticated principals, epochs, and fencing are `COOP-3` guarantees and MUST NOT be inferred from a `COOP-1` claim.
 
 ### 4.1 Required participant workflow
 
@@ -2859,45 +3122,79 @@ Before guarded work, a `COOP-1` participant MUST:
 1. Read the selected capsule or disclosed current workstate and its current checkpoint;
 2. Refresh the cooperation binding, obtain the stable five-field binding identity defined below, and read a current observation containing reach and frontier; treat any stable-identity mismatch as `blocked`;
 3. Enter or renew a bounded participant lease containing an identifier, project/worktree or equivalent execution location, revision, intended scope when known, and expiry;
-4. Atomically announce its intent, guarded scopes, access modes, and applicable interaction policy before the first guarded mutation; and
+4. Atomically announce its intent, guarded scopes, and access modes before the first guarded mutation; and
 5. Obey the resulting compatibility decision.
 
 The binding MUST make the announce-and-check operation atomic with respect to other `COOP-1` announce operations for the same guarded scopes. Compatible work MAY proceed concurrently. A known incompatible guarded mutation MUST return `blocked`, `waiting`, or an equivalent non-permitted outcome until participants record a partition, order, withdrawal, or escalation. A warning-only result is insufficient for a binding to claim the `COOP-1` guarded-mutation guarantee.
 
+A binding that cannot make announce-and-check atomic with respect to concurrent announcements for the same guarded scopes MUST NOT claim `COOP-1`; it MUST disclose operational mode `snapshot_only`, `degraded`, or `unavailable` as applicable.
+
 Before guarded work, participants MUST compare a stable binding identity containing the workstate identifier, repository-intrinsic project identifier, canonical store identifier, scope-model identifier and version, and binding epoch. The project identifier MUST derive from repository-intrinsic state and MUST NOT derive from a filesystem path or mount location. Any mismatched or unverifiable stable identity field MUST produce `blocked`.
 
-Operational reach and frontier are observations, not stable identity. Each observation MUST identify its observation time, reach, and current frontier. Frontier values MAY differ as the binding advances; a participant MUST refresh, reconcile an ancestor or newer frontier, and block on an unverifiable history gap rather than require byte equality with another participant's earlier frontier. Reach is `shared`, `worktree-local`, `configured-unverified`, `degraded`, `snapshot-only`, or `unavailable`. An explicit store path begins as `configured-unverified`; it becomes `shared` only after at least two declared interaction participants have each recorded a binding entry that names the same stable store identity. A binding MUST retain or return that handshake evidence. A participant MUST NOT merge records from different store identifiers into one interaction; it MUST select one declared binding or return `blocked`. A binding MUST disclose its atomicity mechanism and the storage or filesystem assumptions under which it is valid.
+Operational reach and frontier are observations, not stable identity. Each observation MUST identify its observation time, reach, and current frontier. Frontier values MAY differ as the binding advances; a participant MUST refresh, reconcile an ancestor or newer frontier, and block on an unverifiable history gap rather than require byte equality with another participant's earlier frontier. Reach is `shared`, `worktree-local`, `configured-unverified`, `degraded`, `snapshot-only`, or `unavailable`. An explicit store path begins as `configured-unverified`; it becomes `shared` only after at least two declared work participants have each recorded a binding entry that names the same stable store identity. A binding MUST retain or return that handshake evidence. A participant MUST NOT merge records from different store identifiers into one work decision; it MUST select one declared binding or return `blocked`. A binding MUST disclose its atomicity mechanism and the storage or filesystem assumptions under which it is valid.
 
 A binding MUST normalize a path-like guarded scope to a repository-relative path, normalize separators and dot segments, and reject parent traversal outside the repository. Two path scopes overlap when they are equal or either is an ancestor of the other at a path-segment boundary. For every overlapping pair, the binding MUST apply a declared, versioned access-mode compatibility table. If either operation may mutate and the table does not explicitly permit the pair, the pair is incompatible. A scope kind without a declared comparison function is non-comparable; the binding MUST either conservatively block a guarded mutation or disclose that the scope is outside its guarded guarantee. “Known” means visible in the same atomic decision from all active, non-expired intents within the binding's declared reach and frontier. Case-folding, Unicode normalization, and symbolic-link treatment MUST be declared by the scope model.
 
 `COOP-1` requires only declared physical or otherwise explicitly comparable scope. It MUST disclose that semantic conflicts outside its declared scope model can remain undetected. A clean source-control merge is not proof of compatibility.
 
-### 4.2 Cooperation and symbiosis
+### 4.2 Checkpoint, exit, and recovery
 
-`COOP-1` participants MAY initiate cooperation interactions while performing compatible work. Examples include asking a different model for an independent design, requesting a critique before integration, delegating a bounded investigation, or asking a decision owner to synthesize alternatives.
+At a meaningful checkpoint and before exit, a participant MUST publish its actual scope, outcome, evidence references, unresolved work, and recommended next action through the selected binding. Actual scope is the participant's own assertion about work performed and its declared physical scopes; it is not an `observed_scope` record. An `observed_scope` record is analyzer-produced evidence under `COOP-2`, does not overwrite the participant's declaration, and may impose additional readiness consequences. The canonical capsule projection MUST identify the frontier it includes and its integrity digest. One logical publisher per workstate MUST serialize canonical capsule replacement using an expected capsule-frontier and digest comparison or an equivalent stale-writer exclusion rule. When a binding has a distinct event frontier, it MUST compare that expected event frontier independently; a legacy capsule frontier and a binding event frontier MUST NOT be assumed equal. A checkpoint receipt MUST identify the capsule path, whole-artifact digest, generated-region digest, and included frontier. A fresh-entry operation MUST report the capsule as `current`, `modified`, or `stale`; a binding MUST NOT permit guarded work while the canonical capsule is `modified` unless a host explicitly records an override outside the `COOP-1` claim.
 
-An interaction MUST identify:
+On exit, the participant MUST publish its final semantic handoff before releasing its lease. The binding MUST reject release while an intent linked to the lease remains nonterminal or unless a durable receipt identifies an already published handoff artifact and its integrity digest. Recording a planned output identifier before the artifact exists is not publication confirmation. If the capsule projection, terminal publication, or lease release cannot be confirmed, the participant MUST report a recoverable pending exit rather than claim completion. If a participant crashes, its lease MUST expire without requiring a capsule rewrite; the durable capsule remains the last confirmed semantic handoff.
+
+### 4.3 Minimum work-conformance evidence
+
+A `COOP-1` work claim requires evidence for at least these scenarios:
+
+1. Recognized records and unknown fields survive a portable round trip;
+2. The same valid event set produces the same projected frontier, records, contested state, and diagnostics in different transport orders;
+3. Invalid ancestry, revision, transition, precondition, verification, or staleness input is excluded or blocks the affected action with a stable diagnostic;
+4. Two participants within the declared operating envelope with compatible scopes proceed without false blocking;
+5. Simultaneous incompatible scope announcements produce one permitted and one blocked or waiting outcome;
+6. A partition, order, withdrawal, or escalation unblocks the appropriate next action;
+7. A lease expiry makes a crashed participant visibly inactive;
+8. A new participant reads a checkpoint containing the latest confirmed handoff or an explicit freshness limitation; and
+9. Two participants observing the same repository through different filesystem paths establish the same binding identity or fail closed with `blocked`.
+
+The claim MUST state the tested operating envelope. A claim with a maximum concurrent participant count of three or more MUST additionally show three or more compatible participants proceeding without false blocking. It MUST NOT infer a larger participant limit, cross-host reliability, semantic-conflict detection, or effectiveness from this minimum evidence.
+
+### 4.4 Work responsibility boundary
+
+The work participant declares scope, access, evidence, and actual outcome; obeys blocked decisions; and supplies a concise rationale without private chain-of-thought. The work binding normalizes and compares scopes, owns transactions and leases, returns receipts, and enforces guarded-work lifecycle rules. A host enforces its own authority and side-effect policy; work metadata MUST NOT expand that authority.
+
+## 5. Consultation and managed collaboration subprotocol
+
+`subprotocols.consultation` is disabled unless explicitly enabled. Portable Core consultations may occur with no selected contract under Section 3. A `COOP-1` binding MAY enable only `user-mediated` consultation: agents may publish a bounded question, conflict, or escalation for the decision owner, but MUST NOT autonomously ask another agent to analyze, negotiate, delegate, or decide work whose outcome affects guarded work. Until the decision owner records a disposition, the affected work remains blocked, waiting, or explicitly outside the `COOP-1` guarantee.
+
+`COOP-2` and `COOP-3` MAY enable `managed` collaboration. This is the level at which agents may directly exchange richer context, critique an approach, reconcile semantic conflicts, prepare an integration plan, or delegate bounded analysis. A managed interaction is never implicit: before its first agent-to-agent request, the binding MUST record an authorization reference from the decision owner or authorized principal and a policy naming the permitted participants, purpose, subject or scopes, decision owner, maximum rounds, maximum participant responses, maximum tool calls, maximum context tokens per request, maximum output tokens per response, and maximum total output tokens. A binding MUST stop or return `inconclusive` or `escalated` when any limit is reached. Token values are declared budget ceilings; a binding that cannot measure a value MUST disclose that limit as unenforced and MUST NOT claim enforced managed-collaboration budgeting.
+
+Managed collaboration is not a prerequisite for a `COOP-2` work claim: a project may use COOP-2 semantic and integration mechanisms while leaving it disabled. When it is enabled, however, only the recorded policy—not a model preference, an A2A task, a tool invitation, or another participant's request—authorizes the interaction.
+
+When enabled, a cooperation interaction MUST identify:
 
 - `interaction_id` and the relevant workstate or checkpoint;
 - `purpose`: `review`, `critique`, `alternative`, `delegation`, `decision`, or `synthesis`;
 - a bounded question, task, or artifact subject;
 - participants and a decision owner;
-- the complete effective loop policy, its policy identifier, and its digest;
-- the stable binding identity used for this interaction; and
-- a terminal result using the `COOP-0` outcome vocabulary and any explicit remaining disagreement.
+- the complete effective loop policy, its policy identifier, and its digest; and
+- a terminal result of `accepted`, `revised`, `inconclusive`, `declined`, `timed_out`, or `escalated`, including any explicit remaining disagreement.
 
-An interaction MUST NOT silently authorize a guarded mutation. An accepted recommendation becomes actionable only when the decision owner records the resulting partition, order, intent, or other required project decision.
+A managed interaction MUST additionally identify its authorization reference and the policy budget consumption or an explicit measurement limitation. A `user-mediated` interaction MUST identify the decision owner and MUST NOT treat a responder's advice as a disposition or permission for guarded work.
 
-### 4.3 Bounded feedback loops
+A consultation interaction MUST NOT silently authorize a guarded mutation or reserve a work scope. An accepted recommendation becomes actionable only when the decision owner records the resulting partition, order, intent, or other required project decision. A work lease MUST NOT be interpreted as consent to be interrupted for consultation, and a binding MUST NOT require a work lease as a precondition for initiating or responding to consultation.
 
-The default `COOP-1` loop policy is deliberately conservative:
+The default enabled policy is deliberately conservative:
 
 ```json
 {
-  "policy_id": "coop-1-default-loop-v1",
+  "policy_id": "coop-consult-default-loop-v1",
   "max_rounds": 2,
   "max_participant_responses": 3,
   "max_tool_calls": 8,
+  "max_context_tokens_per_request": 12000,
+  "max_output_tokens_per_response": 2000,
+  "max_total_output_tokens": 6000,
   "progress_requirement": "new_artifact_evidence_decision_or_disagreement",
   "repeat_key_algorithm": "rfc8785-sha256-v1",
   "on_limit": "inconclusive_or_escalated",
@@ -2907,60 +3204,54 @@ The default `COOP-1` loop policy is deliberately conservative:
 
 A round MUST add a new artifact, evidence item, explicit decision, or identified disagreement. The interaction MUST record that contribution as `progress.kind` with a reference to the new item. The `repeat_basis` MUST contain the purpose, canonical subject, context frontier, participant-set digest, and policy digest. `participant_set_digest` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of the lexicographically sorted array of participant identifier strings. `policy_digest` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of the complete effective policy object. `repeat_key` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of `repeat_basis`. A binding MUST reject an interaction whose supplied participant-set or policy digest does not match these calculations. A binding MUST deduplicate a repeated interaction with the same repeat key, or return the prior outcome, unless the repeat basis changed. On reaching a limit, it MUST return `inconclusive` or `escalated`; it MUST NOT start an unbounded optimization loop.
 
-The loop policy is extensible. A project or binding MAY declare additional parameters, higher budgets, stricter cost limits, time limits, evaluator thresholds, model diversity requirements, or domain-specific stopping predicates. Unknown policy parameters MUST be preserved. A participant that does not understand a parameter marked required by the effective policy MUST NOT claim to enforce that policy and MUST request a compatible policy, delegate enforcement to the binding, or decline the interaction.
+Loop budgets are independent of participant-lease duration and work-operation retry policy. A project or binding MAY declare additional parameters, higher budgets, stricter cost limits, time limits, evaluator thresholds, model diversity requirements, or domain-specific stopping predicates. Unknown policy parameters MUST be preserved. A participant that does not understand a parameter marked required by the effective policy MUST NOT claim to enforce that policy and MUST request a compatible policy, delegate enforcement to the binding, or decline the interaction. Only the declared decision owner MAY continue an interaction after the effective budget is exhausted.
 
-Only the declared decision owner MAY continue an interaction after the effective budget is exhausted. A policy MAY assign that authority to a human principal, a project role, or a bounded automated evaluator; it MUST identify the authority and its basis.
+A conformant consultation claim requires a binding-owned interaction record, repeat-key validation and deduplication, enforcement or declared delegation of the loop policy, and evidence that a bounded cross-model critique or synthesis terminates under policy. It is an additional claim, not evidence for a work contract.
 
-### 4.4 Checkpoint, exit, and recovery
+The consultation participant declares purpose, question, subject, evidence, progress, and outcome. The consultation binding computes repeat keys and digests, deduplicates requests, returns receipts, and enforces or delegates loop limits. The decision owner accepts or rejects recommendations, authorizes continuation after an exhausted budget, and resolves escalations. A host enforces its own authority and side-effect policy.
 
-At a meaningful checkpoint and before exit, a participant MUST publish its actual scope, outcome, evidence references, unresolved work, and recommended next action through the selected binding. The canonical capsule projection MUST identify the frontier it includes and its integrity digest. One logical publisher per workstate MUST serialize canonical capsule replacement using an expected capsule-frontier and digest comparison or an equivalent stale-writer exclusion rule. When a binding has a distinct event frontier, it MUST compare that expected event frontier independently; a legacy capsule frontier and a binding event frontier MUST NOT be assumed equal. A checkpoint receipt MUST identify the capsule path, whole-artifact digest, generated-region digest, and included frontier. A fresh-entry operation MUST report the capsule as `current`, `modified`, or `stale`; a binding MUST NOT permit guarded work while the canonical capsule is `modified` unless a host explicitly records an override outside the `COOP-1` claim.
+## 6. COOP-2 — semantic, integration, and managed collaboration
 
-On exit, the participant MUST publish its final semantic handoff before releasing its lease. The binding MUST reject release while an intent linked to the lease remains nonterminal or unless a durable receipt identifies an already published handoff artifact and its integrity digest. Recording a planned output identifier before the artifact exists is not publication confirmation. If the capsule projection, terminal publication, or lease release cannot be confirmed, the participant MUST report a recoverable pending exit rather than claim completion. If a participant crashes, its lease MUST expire without requiring a capsule rewrite; the durable capsule remains the last confirmed semantic handoff.
-
-### 4.5 Minimum conformance evidence
-
-A `COOP-1` claim requires evidence for at least these scenarios:
-
-1. Recognized records and unknown fields survive a portable round trip;
-2. The same valid event set produces the same projected frontier, records, contested state, and diagnostics in different transport orders;
-3. Invalid ancestry, revision, transition, precondition, verification, or staleness input is excluded or blocks the affected action with a stable diagnostic;
-4. Two participants within the declared operating envelope with compatible scopes proceed without false blocking;
-5. Simultaneous incompatible scope announcements produce one permitted and one blocked or waiting outcome;
-6. A partition, order, withdrawal, or escalation unblocks the appropriate next action;
-7. A lease expiry makes a crashed participant visibly inactive;
-8. A bounded cross-model critique or synthesis interaction terminates under its loop policy;
-9. A new participant reads a checkpoint containing the latest confirmed handoff or an explicit freshness limitation; and
-10. Two participants observing the same repository through different filesystem paths establish the same binding identity or fail closed with `blocked`.
-
-The claim MUST state the tested operating envelope. A claim with a maximum concurrent participant count of three or more MUST additionally show three or more compatible participants proceeding without false blocking. It MUST NOT infer a larger participant limit, cross-host reliability, semantic-conflict detection, or effectiveness from this minimum evidence.
-
-### 4.6 Responsibility boundary
-
-The participant declares purpose, scope, access, evidence, progress, and actual outcome; obeys blocked decisions; and supplies a concise rationale without private chain-of-thought. The binding normalizes and compares scopes, owns transactions and leases, computes repeat keys and digests, deduplicates requests, returns receipts, and enforces loop limits. The decision owner accepts or rejects recommendations, authorizes continuation after an exhausted budget, and resolves escalations. A host enforces its own authority and side-effect policy; cooperation metadata MUST NOT expand that authority.
-
-## 5. COOP-2 — aware, enforced, and scalable cooperation
-
-`COOP-2` extends `COOP-1` and incorporates the stronger semantic-awareness, integration-assurance, and live-enforcement behaviors formerly described by the draft Coordination `C2` and `C3` levels. It MAY require a database, broker, sharded registry, subscription system, authenticated identity, protected mutation gateway, or another service-backed binding.
+`COOP-2` extends `COOP-1` work coordination with semantic awareness and integration assurance. It is also the first contract that may enable managed, directly inter-agent collaboration under Section 5's explicit authorization and budget. It MAY require a database, broker, registry, subscription system, or another service-backed binding, but neither a storage technology nor consultation alone supplies `COOP-2` semantics.
 
 A `COOP-2` binding MUST maintain a stable semantic registry; resolve comparable selectors against pinned state revisions; compare declared scope, observed scope, and relied-upon reads; preserve `unknown` when relation evidence is ambiguous; and require acknowledgement or blocking under the effective policy. It MUST bind interface contracts, typed preconditions, verification results, staleness, change-set readiness, and integration results so that a stale or unsatisfied dependency cannot silently become integration-ready.
 
-For guarded mutation, a `COOP-2` binding MUST authenticate actors to principals and use protected optimistic-concurrency or lease operations with epochs and fencing tokens. It MUST reject stale owners at the protected mutation path; advisory metadata or an unprotected lock file is insufficient. Its policy MUST define retry bounds, lease duration, clock authority, deadlock and starvation behavior, cancellation consequences, and human or organizational arbitration.
+A `COOP-2` claim MUST declare its semantic-analysis coverage, selector and scope model, integration policy, tested participant count, and the failure behavior for unavailable or ambiguous semantic evidence. It MUST NOT infer protected external mutation, authentication, fencing, cross-host availability, or scalability from this claim.
 
-A `COOP-2` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, trust boundary, protected mutation paths, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST include fault evidence for stale-owner rejection, event loss or retention gaps, projector races, binding-identity disagreement, and recovery after interruption. It MUST NOT infer scale, availability, semantic accuracy, or enforcement from a storage technology alone.
+A registry, selector analyzer, verification evaluator, or integration-readiness evaluator alone MUST NOT claim `COOP-2`; the contract applies to the composed participant, binding, semantic registry, analyzer, readiness evaluator, checkpoint, and recovery behavior.
 
-The current AWP repository specifies this contract but does not provide a complete `COOP-2` implementation or conformance claim.
+## 7. COOP-3 — protected and scalable coordination
 
-## 6. Agent-facing implementation procedure
+`COOP-3` extends `COOP-2` with authenticated protected mutation and a declared scalable operating envelope. It MAY require a database, broker, sharded registry, protected mutation gateway, or another service-backed binding.
+
+For guarded mutation, a `COOP-3` binding MUST authenticate actors to principals and use protected optimistic-concurrency or lease operations with epochs and fencing tokens. It MUST reject stale owners at the protected mutation path; advisory metadata or an unprotected lock file is insufficient. Its policy MUST define retry bounds, lease duration, clock authority, deadlock and starvation behavior, cancellation consequences, and human or organizational arbitration.
+
+A `COOP-3` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, trust boundary, protected mutation paths, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST include fault evidence for stale-owner rejection, event loss or retention gaps, projector races, binding-identity disagreement, and recovery after interruption. It MUST NOT infer scale, availability, semantic accuracy, or enforcement from a storage technology alone.
+
+### 7.1 `coop3-a2a-v1` distributed binding profile
+
+`coop3-a2a-v1` is a named optional COOP-3 binding profile for participants that communicate across runtimes, hosts, or organizational boundaries through the Agent2Agent (A2A) protocol. A2A is the profile's communications and execution control plane; it is not the authoritative coordination state or a substitute for protected mutation enforcement. An A2A task accepted, updated, completed, failed, cancelled, or resumed state MUST NOT by itself be interpreted as an AWP intent decision, lease grant, fenced mutation, checkpoint, integration result, or authority grant.
+
+A binding claiming `transport.profile: coop3-a2a-v1` MUST declare the supported A2A protocol version and interfaces, the authenticated mapping from A2A peer identity to AWP actor and accountable principal, its task-to-AWP-operation correlation and idempotency rule, its authoritative coordination-store identity, and its protected mutation gateway. It MUST carry an immutable AWP operation identifier and the relevant workstate and binding identity in every coordination request. The binding MUST durably record the resulting AWP event or return a stable rejection before it acknowledges the operation as accepted to a participant.
+
+The profile MAY use A2A tasks, messages, artifacts, or data parts to carry typed AWP coordination requests and receipts. At minimum it MUST support carrying a request and response for participant entry or renewal, guarded intent announcement, guarded decision or conflict result, checkpoint or handoff publication, and terminal completion or withdrawal. A retry, reconnect, duplicate delivery, or a task routed to another A2A endpoint MUST resolve through the same AWP operation identifier; it MUST return the prior receipt or a stable conflict or rejection, and MUST NOT create a second lease, intent, fencing generation, or protected mutation.
+
+The authoritative COOP-3 store and protected mutation gateway MUST enforce the actor/principal authorization, expected binding epoch and frontier or revision, protected scope, and current fencing token independently of A2A task state. The gateway MUST reject a stale, unauthenticated, or mismatched request even when A2A reports successful delivery. A binding MUST disclose A2A reachability, authentication failure, transport retry, and store or gateway availability separately; it MUST fail closed for protected mutation when any required enforcement check is unavailable.
+
+`coop3-a2a-v1` does not require A2A for portable AWP exchange, COOP-1, COOP-2, or another conformant COOP-3 transport. A local file or transactional-ledger binding remains a valid low-administration option where its declared reach and guarantees are sufficient. A2A use alone is not evidence of COOP-3 conformance.
+
+The current AWP repository specifies `COOP-2` and `COOP-3` but does not provide complete implementations or conformance claims for either.
+
+## 8. Agent-facing implementation procedure
 
 An agent implementing `COOP-1` from project instructions can use this bounded procedure:
 
 ```text
-read current capsule and contract policy
+read current capsule and work policy
 enter/renew lease
 announce intent and guarded scope atomically
 if compatible: work
 if incompatible: partition, order, withdraw, or escalate
-optionally run a bounded cooperation interaction
 publish actual outcome and evidence
 checkpoint canonical handoff
 exit only after handoff confirmation; otherwise leave pending state visible
@@ -2968,11 +3259,213 @@ exit only after handoff confirmation; otherwise leave pending state visible
 
 The checkpoint step SHOULD use the selected canonical workstate projector. A verified `no_change` receipt is sufficient when no semantic state changed; an incomplete or stale projection is not.
 
-The agent does not need to construct raw event ancestry, revisions, capsule digests, or storage transactions. The binding or adapter owns those details and returns durable receipts. The agent remains responsible for accurately declaring its scope, respecting blocked outcomes, supplying concise rationale and evidence, and not treating context as authorization.
+If the optional consultation subprotocol is enabled, the agent may separately initiate or answer a bounded interaction under its declared policy. The agent does not need to construct raw event ancestry, revisions, capsule digests, or storage transactions. The binding or adapter owns those details and returns durable receipts. The agent remains responsible for accurately declaring work scope, respecting blocked outcomes, supplying concise rationale and evidence, and not treating context or consultation advice as authorization.
 
 ---
 
 # Bundled machine-readable assets
+
+## Silo profile schema — `schemas/awp-silo-0.1.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:awp:schema:silo:0.1.0",
+  "title": "AWP silo-v1 profile records",
+  "description": "Structural records owned by Synchronization 0.5 in the AWP 0.8 draft. Does not validate ancestry, authority, dependency closure, or publication.",
+  "oneOf": [{"$ref": "#/$defs/silo"}, {"$ref": "#/$defs/adoption"}],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "pattern": "^\\S+$"},
+    "text": {"type": "string", "minLength": 1},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "pin": {
+      "type": "object",
+      "required": ["workstate_id", "frontier", "specification", "capsule_digest"],
+      "properties": {
+        "workstate_id": {"$ref": "#/$defs/id"},
+        "frontier": {"allOf": [{"$ref": "#/$defs/ids"}], "minItems": 1},
+        "specification": {"$ref": "#/$defs/id"},
+        "capsule_digest": {"$ref": "#/$defs/digest"},
+        "generated_digest": {"$ref": "#/$defs/digest"},
+        "checkpoint": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": true
+    },
+    "recordPin": {
+      "type": "object",
+      "required": ["workstate_id", "record_id", "revision"],
+      "properties": {
+        "workstate_id": {"$ref": "#/$defs/id"},
+        "record_id": {"$ref": "#/$defs/id"},
+        "revision": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": true
+    },
+    "pins": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/recordPin"}},
+    "common": {
+      "type": "object",
+      "required": ["id", "type", "module", "profile", "revision", "status", "created_by", "created_at"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "module": {"const": "urn:awp:sync"},
+        "profile": {"const": "silo-v1"},
+        "revision": {"type": "integer", "minimum": 1},
+        "created_by": {"$ref": "#/$defs/id"},
+        "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "required": ["decision_owner", "policy_ref", "permitted_targets"],
+      "properties": {
+        "decision_owner": {"$ref": "#/$defs/id"},
+        "policy_ref": {"$ref": "#/$defs/recordPin"},
+        "permitted_targets": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": true
+    },
+    "bindingIdentity": {
+      "type": "object",
+      "required": ["workstate_id", "project_id", "store_id", "scope_model", "binding_epoch"],
+      "properties": {
+        "workstate_id": {"$ref": "#/$defs/id"},
+        "project_id": {"$ref": "#/$defs/id"},
+        "store_id": {"$ref": "#/$defs/id"},
+        "scope_model": {"$ref": "#/$defs/id"},
+        "binding_epoch": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": true
+    },
+    "workLocation": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {"enum": ["none", "isolated", "shared"]},
+        "location": {"$ref": "#/$defs/text"},
+        "isolation_evidence": {"allOf": [{"$ref": "#/$defs/ids"}], "minItems": 1},
+        "common_binding": {"$ref": "#/$defs/bindingIdentity"},
+        "scope_mapping": {"$ref": "#/$defs/text"},
+        "atomicity_mechanism": {"$ref": "#/$defs/text"},
+        "coverage_evidence": {"allOf": [{"$ref": "#/$defs/ids"}], "minItems": 1}
+      },
+      "allOf": [
+        {"if": {"properties": {"mode": {"const": "isolated"}}, "required": ["mode"]}, "then": {"required": ["location", "isolation_evidence"]}},
+        {"if": {"properties": {"mode": {"const": "shared"}}, "required": ["mode"]}, "then": {"required": ["location", "common_binding", "scope_mapping", "atomicity_mechanism", "coverage_evidence"]}}
+      ],
+      "additionalProperties": true
+    },
+    "override": {
+      "type": "object",
+      "required": ["inherited", "operation", "reason"],
+      "properties": {
+        "inherited": {"$ref": "#/$defs/recordPin"},
+        "operation": {"enum": ["replace", "tombstone"]},
+        "replacement": {"$ref": "#/$defs/recordPin"},
+        "reason": {"$ref": "#/$defs/text"}
+      },
+      "allOf": [
+        {"if": {"properties": {"operation": {"const": "replace"}}, "required": ["operation"]}, "then": {"required": ["replacement"]}},
+        {"if": {"properties": {"operation": {"const": "tombstone"}}, "required": ["operation"]}, "then": {"not": {"required": ["replacement"]}}}
+      ],
+      "additionalProperties": true
+    },
+    "silo": {
+      "allOf": [{"$ref": "#/$defs/common"}],
+      "type": "object",
+      "required": ["workstate_id", "canonical_workstate_id", "parent_kind", "origin", "base", "fork_event", "purpose", "owner", "adoption_policy", "work_location", "inherited_records", "overrides"],
+      "properties": {
+        "type": {"const": "silo"},
+        "status": {"enum": ["active", "paused", "closed"]},
+        "workstate_id": {"$ref": "#/$defs/id"},
+        "canonical_workstate_id": {"$ref": "#/$defs/id"},
+        "parent_kind": {"enum": ["canonical", "silo"]},
+        "origin": {"$ref": "#/$defs/pin"},
+        "base": {"$ref": "#/$defs/pin"},
+        "fork_event": {"$ref": "#/$defs/id"},
+        "purpose": {"$ref": "#/$defs/text"},
+        "owner": {"$ref": "#/$defs/id"},
+        "adoption_policy": {"$ref": "#/$defs/policy"},
+        "work_location": {"$ref": "#/$defs/workLocation"},
+        "coordination_binding": {"$ref": "#/$defs/bindingIdentity"},
+        "inherited_records": {"$ref": "#/$defs/pins"},
+        "overrides": {"type": "array", "items": {"$ref": "#/$defs/override"}},
+        "closure_reason": {"$ref": "#/$defs/text"},
+        "checkpoint": {"$ref": "#/$defs/id"}
+      },
+      "if": {"properties": {"status": {"const": "closed"}}, "required": ["status"]},
+      "then": {"required": ["closure_reason", "checkpoint"]},
+      "additionalProperties": true
+    },
+    "mapping": {
+      "type": "object",
+      "required": ["source", "destination", "operation"],
+      "properties": {
+        "source": {"$ref": "#/$defs/recordPin"},
+        "destination": {"$ref": "#/$defs/recordPin"},
+        "operation": {"enum": ["create", "revise"]},
+        "expected_revision": {"type": "integer", "minimum": 1},
+        "transformation_evidence": {"$ref": "#/$defs/ids"}
+      },
+      "if": {"properties": {"operation": {"const": "revise"}}, "required": ["operation"]},
+      "then": {"required": ["expected_revision"]},
+      "additionalProperties": true
+    },
+    "divergence": {
+      "type": "object",
+      "required": ["inherited", "current", "basis", "result", "disposition"],
+      "properties": {
+        "inherited": {"$ref": "#/$defs/recordPin"},
+        "current": {"oneOf": [{"$ref": "#/$defs/recordPin"}, {"type": "null"}]},
+        "basis": {"$ref": "#/$defs/text"},
+        "result": {"enum": ["unchanged", "changed", "missing", "contested", "unknown"]},
+        "disposition": {"$ref": "#/$defs/text"},
+        "evidence": {"$ref": "#/$defs/ids"}
+      },
+      "additionalProperties": true
+    },
+    "adoption": {
+      "allOf": [
+        {"$ref": "#/$defs/common"},
+        {"if": {"properties": {"status": {"enum": ["approved", "pending", "adopted"]}}, "required": ["status"]}, "then": {"required": ["approval"], "properties": {"closure": {"properties": {"state": {"enum": ["complete", "extended", "rederived"]}}}}}},
+        {"if": {"properties": {"status": {"const": "adopted"}}, "required": ["status"]}, "then": {"required": ["publication_ref"]}},
+        {"if": {"properties": {"status": {"enum": ["stale", "rejected", "cancelled", "failed"]}}, "required": ["status"]}, "then": {"required": ["disposition"]}}
+      ],
+      "type": "object",
+      "required": ["source", "target", "selected_records", "proposed_records", "mapping", "closure", "divergence", "scopes", "decision_owner", "policy_ref", "publisher", "idempotency_key", "bypassed_ancestors"],
+      "properties": {
+        "type": {"const": "silo_adoption"},
+        "status": {"enum": ["proposed", "approved", "pending", "adopted", "stale", "rejected", "cancelled", "failed"]},
+        "source": {"$ref": "#/$defs/pin"},
+        "target": {"$ref": "#/$defs/pin"},
+        "selected_records": {"allOf": [{"$ref": "#/$defs/pins"}], "minItems": 1},
+        "proposed_records": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["id", "type", "revision"]}},
+        "mapping": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/mapping"}},
+        "closure": {
+          "type": "object", "required": ["state", "evidence"],
+          "properties": {"state": {"enum": ["complete", "extended", "rederived", "incomplete", "unknown"]}, "evidence": {"$ref": "#/$defs/ids"}},
+          "additionalProperties": true
+        },
+        "divergence": {"type": "array", "items": {"$ref": "#/$defs/divergence"}},
+        "scopes": {"allOf": [{"$ref": "#/$defs/ids"}], "minItems": 1},
+        "decision_owner": {"$ref": "#/$defs/id"},
+        "policy_ref": {"$ref": "#/$defs/recordPin"},
+        "publisher": {"$ref": "#/$defs/id"},
+        "idempotency_key": {"$ref": "#/$defs/id"},
+        "bypassed_ancestors": {"$ref": "#/$defs/ids"},
+        "approval": {
+          "type": "object", "required": ["proposal_revision", "approved_by", "evidence"],
+          "properties": {"proposal_revision": {"type": "integer", "minimum": 1}, "approved_by": {"$ref": "#/$defs/id"}, "evidence": {"allOf": [{"$ref": "#/$defs/ids"}], "minItems": 1}},
+          "additionalProperties": true
+        },
+        "publication_ref": {"$ref": "#/$defs/id"},
+        "disposition": {"$ref": "#/$defs/text"}
+      },
+      "additionalProperties": true
+    }
+  }
+}
+```
 
 ## Module registry — `spec/drafts/0.8.0/modules.json`
 
@@ -3031,6 +3524,9 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
       "document": "synchronization.md",
       "dependencies": [
         { "id": "urn:awp:core", "version": "0.8.x" }
+      ],
+      "conditional_dependencies": [
+        { "when_capability": "silo-v1", "id": "urn:awp:capsule", "version": "0.5.x" }
       ]
     },
     {
@@ -3113,98 +3609,128 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
     {
       "id": "AWP-FAMILY-002",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 47,
+      "line": 49,
       "statement": "Every AWP 0.8 manifest MUST contain a `modules` array. It MUST declare exactly one Core entry, and that entry MUST be required. The following is a module-declaration excerpt rather than a complete manifest:"
     },
     {
       "id": "AWP-FAMILY-003",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 81,
+      "line": 83,
       "statement": "A writer MUST declare every module whose records, events, or required processing rules affect the effective workstate. It MUST include compatible declarations for all direct dependencies. It MUST mark a module required only when ignoring that module would prevent the receiver from safely performing the declared continuation."
     },
     {
       "id": "AWP-FAMILY-004",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 83,
+      "line": 85,
       "statement": "If a module is required, every dependency needed to interpret it MUST also be required. If an optional module depends on another optional module, a receiver may ignore both while preserving their data."
     },
     {
       "id": "AWP-FAMILY-005",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 85,
+      "line": 87,
       "statement": "Core owns the unqualified Core record types and fields. A module defining a new record type MUST include a `module` field naming its module ID. A module extending a Core record MUST place its fields under that record's `modules` object, keyed by module ID. Module-owned event kinds use the common event envelope's required `module` field. These rules prevent independent subspecifications from claiming the same unqualified name."
     },
     {
       "id": "AWP-FAMILY-006",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 89,
+      "line": 91,
       "statement": "A reader that encounters an unknown optional module MAY continue using understood modules. It MUST preserve or explicitly disclose loss of the unknown data, and it MUST NOT infer semantics from unknown fields."
     },
     {
       "id": "AWP-FAMILY-007",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 91,
+      "line": 93,
       "statement": "A reader that encounters an unknown required module MUST NOT claim a complete interpretation or perform a continuation that could depend on it. It SHOULD still present the human briefing, validate understood envelopes, and report the unsupported module."
     },
     {
       "id": "AWP-FAMILY-008",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 126,
+      "line": 128,
       "statement": "The conventional project-named form is `<project-name>.awp.md`. Producers MAY retain versioned archival copies using `<project-name>.v<revision>.awp.md`, such as `project.v2.awp.md`. This filename revision is only a human-facing label; protocol and workstate identity remain defined by the capsule metadata."
     },
     {
       "id": "AWP-FAMILY-009",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 132,
+      "line": 134,
       "statement": "Every shared AWP workstate MUST identify the exact specification artifact that governs it. A self-contained capsule MUST carry an explicit `specification` reference in its own metadata. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate."
     },
     {
       "id": "AWP-FAMILY-010",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 134,
+      "line": 136,
       "statement": "A reader MUST interpret a workstate according to its declared specification and module versions. It MUST NOT silently substitute a newer, older, or otherwise different specification, infer compatibility from a filename, or treat a moving branch URL as version-pinned. If the declared specification is unavailable or unsupported, the reader MUST report that condition rather than guess."
     },
     {
       "id": "AWP-FAMILY-011",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 136,
+      "line": 138,
       "statement": "AWP `0.x` is exploratory. A new minor family or module release MAY make incompatible changes. A patch release MUST NOT introduce incompatible normative semantics. Explicit specification binding allows protocol development to proceed without requiring backward compatibility between exploratory minor releases. Implementations MAY support multiple versions or provide explicit migrations, but conformance to one version does not imply support for another."
     },
     {
       "id": "AWP-FAMILY-012",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 138,
+      "line": 140,
       "statement": "The family version and module versions remain independent. The family version identifies a tested set of module releases, and a later family release may reuse an unchanged module version. Writers that change protocol semantics MUST publish a new versioned specification artifact and update affected workstates deliberately. Implementations MUST determine support by the declared specification, module ID, and module version, not by comparing only `awp_version`."
     },
     {
       "id": "AWP-FAMILY-013",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 158,
+      "line": 160,
       "statement": "An implementation MUST satisfy the conformance requirements in each module for every role it claims. Supporting AWP Core alone is valid AWP conformance. It does not imply support for capsules, handoffs, synchronization, coordination, signatures, encryption, or adapters."
     },
     {
       "id": "AWP-FAMILY-014",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 162,
+      "line": 164,
       "statement": "Every module and binding MUST preserve these rules:"
     },
     {
       "id": "AWP-FAMILY-015",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 171,
+      "line": 173,
       "statement": "8. Optional modules MUST NOT redefine Core field meanings."
     },
     {
       "id": "AWP-FAMILY-016",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 179,
+      "line": 181,
       "statement": "The migration is intentionally incompatible: a 0.8 self-contained capsule identifies its exact governing specification and discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. A 0.6 project that used `.awp.json` remains a valid historical input, but a 0.8 single-file capsule does not require that companion file."
     },
     {
       "id": "AWP-FAMILY-017",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 181,
+      "line": 183,
       "statement": "An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: self` to capsule metadata, update Capsule to `0.5.0`, and remove any redundant companion pointer from the portable package. Historical events remain unchanged."
+    },
+    {
+      "id": "AWP-FAMILY-018",
+      "source": "spec/drafts/0.8.0/index.md",
+      "line": 187,
+      "statement": "A specification family MAY distribute a generated **Agent Entry Core** beside a complete specification bundle. Its purpose is to give a model or other bounded-context participant the minimum cross-cutting rules needed to orient safely before it retrieves task-specific modules. It is a derived presentation artifact, not an additional source of normative semantics."
+    },
+    {
+      "id": "AWP-FAMILY-019",
+      "source": "spec/drafts/0.8.0/index.md",
+      "line": 189,
+      "statement": "An Agent Entry Core MUST identify its exact source bundle, source bundle SHA-256 digest, family version, generator identity, and the source documents and schemas that its task-routing guidance can name. A reader MUST verify the recorded digest against the available source bundle before relying on the profile. A profile whose bundle is unavailable or whose digest does not match is unavailable, not merely advisory; the reader MUST retrieve and use the complete governing specification or decline the continuation."
+    },
+    {
+      "id": "AWP-FAMILY-020",
+      "source": "spec/drafts/0.8.0/index.md",
+      "line": 191,
+      "statement": "The Entry Core MUST include the family invariants needed before any continuation, a statement that it cannot override the source specification, and mandatory expansion triggers. Those triggers MUST include an unknown or required module, a missing or unverifiable profile, an ambiguity or conflict, a requested semantic change spanning more than one routed module, and release, migration, or cross-module integration work. A receiver MAY apply stricter triggers under its own policy."
+    },
+    {
+      "id": "AWP-FAMILY-021",
+      "source": "spec/drafts/0.8.0/index.md",
+      "line": 193,
+      "statement": "Task-routing guidance in an Entry Core is non-normative performance guidance. It MUST name the source modules and schemas that a task class normally requires, including direct dependencies, but it MUST NOT claim that the listed material is sufficient in every circumstance or weaken a reader's obligation to obtain relevant normative state. When the profile and its governing source appear to disagree, the source governs and the reader MUST expand its reading rather than choose the profile."
+    },
+    {
+      "id": "AWP-FAMILY-022",
+      "source": "spec/drafts/0.8.0/index.md",
+      "line": 195,
+      "statement": "An implementation that claims Agent Entry Core support MUST generate or verify the profile as part of the same reproducible build that produces its source bundle. It MUST expose whether profile verification succeeded and which additional source documents it selected. A gateway MAY enforce selective access, but an instruction to a model alone is not evidence that the model did not read additional material."
     },
     {
       "id": "AWP-CORE-001",
@@ -3743,553 +4269,817 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
     {
       "id": "AWP-SYNC-006",
       "source": "spec/drafts/0.8.0/synchronization.md",
-      "line": 79,
-      "statement": "Mechanical merge unions events by ID after integrity validation. It preserves all concurrent tips. It MUST NOT silently apply last-write-wins to:"
+      "line": 81,
+      "statement": "A fork MAY record an exact parent Capsule digest in addition to its parent frontier. The Silo Profile requires that pin. A workstate whose continuation depends on `silo-v1` MUST declare that capability and mark Synchronization and its profile dependency Capsule required. A reader that lacks required silo processing MUST block dependent continuation even when it supports ordinary forks. Adopting selected results across workstate identities follows the profile's dependency-closure and publication rules, not a mechanical union of foreign events into the local graph."
     },
     {
       "id": "AWP-SYNC-007",
       "source": "spec/drafts/0.8.0/synchronization.md",
-      "line": 94,
-      "statement": "Replay MUST respect graph ancestry. When concurrent events require a deterministic processing order, processors sort by event ID only as a reproducibility device. This ordering has no semantic priority."
+      "line": 85,
+      "statement": "Mechanical merge unions events by ID after integrity validation. It preserves all concurrent tips. It MUST NOT silently apply last-write-wins to:"
     },
     {
       "id": "AWP-SYNC-008",
       "source": "spec/drafts/0.8.0/synchronization.md",
-      "line": 98,
-      "statement": "Unknown optional-module events remain graph nodes and participate in frontier computation. A processor MUST NOT advance a derived snapshot through an unknown event when doing so could alter a required Core or module result; it reports the projection as unverifiable instead."
+      "line": 100,
+      "statement": "Replay MUST respect graph ancestry. When concurrent events require a deterministic processing order, processors sort by event ID only as a reproducibility device. This ordering has no semantic priority."
     },
     {
       "id": "AWP-SYNC-009",
       "source": "spec/drafts/0.8.0/synchronization.md",
-      "line": 102,
-      "statement": "AWP 0.8.0 does not define destructive log compaction. A writer MAY create a summary or snapshot-only export, but it MUST disclose omitted history and MUST NOT claim `full` completeness."
+      "line": 104,
+      "statement": "Unknown optional-module events remain graph nodes and participate in frontier computation. A processor MUST NOT advance a derived snapshot through an unknown event when doing so could alter a required Core or module result; it reports the projection as unverifiable instead."
     },
     {
       "id": "AWP-SYNC-010",
       "source": "spec/drafts/0.8.0/synchronization.md",
-      "line": 112,
-      "statement": "High-frequency coordination presence and heartbeat state is a live materialized view, not a substitute for the durable event graph. A synchronization transport SHOULD coalesce heartbeat renewal and MUST NOT require every heartbeat to advance the portable workstate frontier. Lifecycle facts that affect semantic continuation, including entry, release, expiry, conflict, and incomplete handoff, MAY be published as Coordination events."
+      "line": 108,
+      "statement": "AWP 0.8.0 does not define destructive log compaction. A writer MAY create a summary or snapshot-only export, but it MUST disclose omitted history and MUST NOT claim `full` completeness."
     },
     {
       "id": "AWP-SYNC-011",
       "source": "spec/drafts/0.8.0/synchronization.md",
-      "line": 114,
-      "statement": "Concurrent agents publish events or deltas rather than independently replacing one canonical Capsule. A Capsule projector MUST compare the Capsule's current frontier and generated digest with the base it read before replacement. If either differs, it MUST reload and reconcile through this module, retry from the new base, or report divergence. It MUST NOT silently overwrite the newer projection."
+      "line": 118,
+      "statement": "High-frequency coordination presence and heartbeat state is a live materialized view, not a substitute for the durable event graph. A synchronization transport SHOULD coalesce heartbeat renewal and MUST NOT require every heartbeat to advance the portable workstate frontier. Lifecycle facts that affect semantic continuation, including entry, release, expiry, conflict, and incomplete handoff, MAY be published as Coordination events."
     },
     {
       "id": "AWP-SYNC-012",
       "source": "spec/drafts/0.8.0/synchronization.md",
-      "line": 116,
-      "statement": "A deployment with one canonical Capsule MUST identify how projection ownership is serialized. An enforced deployment may use a fenced `integration_owner` lease. An advisory deployment may use a single local writer with atomic compare-and-swap. Projection ownership controls representation updates only; it does not grant authority over project changes."
+      "line": 120,
+      "statement": "Concurrent agents publish events or deltas rather than independently replacing one canonical Capsule. A Capsule projector MUST compare the Capsule's current frontier and generated digest with the base it read before replacement. If either differs, it MUST reload and reconcile through this module, retry from the new base, or report divergence. It MUST NOT silently overwrite the newer projection."
     },
     {
       "id": "AWP-SYNC-013",
       "source": "spec/drafts/0.8.0/synchronization.md",
-      "line": 118,
-      "statement": "The projection base MUST include the exact whole-Capsule artifact digest in addition to the semantic frontier and generated-region digest. The generated-region digest alone does not protect changes to the manifest, snapshot, notes, or other authoritative sections. A projection writer MUST reject a stale whole-Capsule digest even when the generated briefing is unchanged."
+      "line": 122,
+      "statement": "A deployment with one canonical Capsule MUST identify how projection ownership is serialized. An enforced deployment may use a fenced `integration_owner` lease. An advisory deployment may use a single local writer with atomic compare-and-swap. Projection ownership controls representation updates only; it does not grant authority over project changes."
     },
     {
       "id": "AWP-SYNC-014",
       "source": "spec/drafts/0.8.0/synchronization.md",
-      "line": 120,
+      "line": 124,
+      "statement": "The projection base MUST include the exact whole-Capsule artifact digest in addition to the semantic frontier and generated-region digest. The generated-region digest alone does not protect changes to the manifest, snapshot, notes, or other authoritative sections. A projection writer MUST reject a stale whole-Capsule digest even when the generated briefing is unchanged."
+    },
+    {
+      "id": "AWP-SYNC-015",
+      "source": "spec/drafts/0.8.0/synchronization.md",
+      "line": 126,
       "statement": "A projection writer MUST make the replacement recoverable across a process crash. Before replacement it MUST durably record the expected and proposed whole-Capsule digests and the request identity in a projection journal or equivalent binding-owned state. Recovery MUST classify the result as `pending`, `recovered`, or `diverged`; it MUST never resolve an unknown result by last-write-wins."
+    },
+    {
+      "id": "AWP-SILO-001",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 21,
+      "statement": "An implementation using this profile MUST declare Synchronization with capability `silo-v1` and compatible Core and Capsule declarations. Synchronization and Capsule MUST be required when continuation depends on silo isolation, ancestry, or adoption. A receiver that does not support `silo-v1` MUST NOT claim a complete interpretation or perform dependent continuation, even if it supports ordinary Synchronization forks. Unknown optional profile data follows the family's preservation rules."
+    },
+    {
+      "id": "AWP-SILO-002",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 23,
+      "statement": "A silo requires no named COOP contract, service, Git installation, Node.js runtime, or network transport. Creating, entering, sharing, updating, or adopting a silo MUST NOT implicitly enable consultation, delegation, agent communication, or additional spending. Those actions remain subject to the currently authorized policy and Cooperation Contracts \u00a75 where applicable."
+    },
+    {
+      "id": "AWP-SILO-003",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 27,
+      "statement": "Every silo MUST have its own `workstate_id`, one current `silo` record, and a separate writable Capsule representation. Copies or replicas of that silo retain its identity. Its record MUST identify the canonical workstate, exactly one immediate parent, an immutable origin pin, purpose, owner, and current base pin. A new silo's origin and base MUST be equal. A parent may be canonical or another silo in the same canonical project."
+    },
+    {
+      "id": "AWP-SILO-004",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 29,
+      "statement": "A **state pin** identifies `workstate_id`, `frontier`, exact governing `specification`, and `capsule_digest` over the complete source Capsule bytes; it MAY also identify a checkpoint and generated-region digest. A generated-region digest MUST NOT substitute for a complete Capsule digest. The source Capsule and the state represented by its frontier MUST be validated before derivation or adoption; a digest alone proves neither a valid projection nor acceptance by the project. A snapshot-only source MUST disclose its omitted-history boundary and source digest under Synchronization and MUST NOT claim full replay evidence."
+    },
+    {
+      "id": "AWP-SILO-005",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 31,
+      "statement": "The parent relation MUST be acyclic, with exactly one parent for each silo. The origin pin and parent identity MUST remain immutable. A receiver MUST validate ancestry to the designated canonical root before claiming a complete hierarchy; a missing ancestor is `unavailable`, not proof of an independent root. Multiple inheritance and automatic parent selection are outside `silo-v1`. Implementations MAY impose and disclose depth or retrieval limits; exceeding one blocks the affected operation with a diagnostic rather than silently truncating ancestry."
+    },
+    {
+      "id": "AWP-SILO-006",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 33,
+      "statement": "The child fork genesis MUST identify its parent pin as external provenance. Parent events retain their original workstate IDs and MUST NOT be relabeled as child events or inserted as unresolved local event parents. A child starts its own event graph and retains or references the pinned parent state under Synchronization's history-completeness rules. Cross-workstate references MUST qualify the source workstate, record ID, and revision; matching local ID strings do not establish identity across forks."
+    },
+    {
+      "id": "AWP-SILO-007",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 35,
+      "statement": "Entry MUST explicitly select and display the current workstate identity, its silo purpose, canonical identity, base, lifecycle, and effective authority limits before dependent mutation. A locator or optional silo catalog is discovery data, not authority. Creating a silo MUST NOT require updating the canonical Capsule or switching the project's default discovery pointer. Registering it in a canonical catalog is a separate authorized canonical change. A host MUST NOT silently substitute a parent or canonical Capsule when the selected silo is unavailable."
+    },
+    {
+      "id": "AWP-SILO-008",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 39,
+      "statement": "The effective silo state consists of the validated pinned base plus explicit child additions, replacements, and tombstones. The silo record's `inherited_records` MUST enumerate the exact qualified revision pins selected from the base. It MUST include every record and module dependency necessary for the declared continuation; omission of unrelated material is permitted with an accurate completeness declaration. Retained pins MAY reference immutable packaged or retrievable source material rather than duplicate every byte."
+    },
+    {
+      "id": "AWP-SILO-009",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 41,
+      "statement": "An `overrides` entry MUST identify the inherited pin, operation (`replace` or `tombstone`), reason, and, for replacement, a qualified child record pin. At most one uncontested effective override may apply to an inherited pin. Additions are ordinary child-owned records. Replacements create child-owned records and retain origin provenance; they MUST NOT revise the parent record or erase a competing child revision. Tombstones affect only the child's effective view and preserve history. Omission from the view MUST NOT be interpreted as deletion in any parent or adoption target."
+    },
+    {
+      "id": "AWP-SILO-010",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 43,
+      "statement": "Parent changes MUST NOT automatically change a child's effective state. A base update is an explicit `silo.base_updated` event that pins the expected silo revision, prior base, new base from the same parent identity, and an approved reconciliation of inherited records and local overrides. The event MUST preserve the origin pin and old history, record the responsible actor, rationale, decision reference, dependency changes, and per-override disposition. A changed or missing inherited dependency MUST block the affected continuation until its disposition is recorded. A successor from a different parent requires a new fork identity with provenance to the prior silo."
+    },
+    {
+      "id": "AWP-SILO-011",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 45,
+      "statement": "A reader MUST distinguish historical project decisions inherited at the pinned base from current operational authority. Current host guardrails, authority expiry, revocation, and access restrictions apply immediately to operations; an old base MUST NOT preserve revoked permission or permit evasion of a mandatory guardrail. A silo MAY explore an alternative project constraint only within current operational authority and with the alternative explicitly scoped to that silo."
+    },
+    {
+      "id": "AWP-SILO-012",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 49,
+      "statement": "Project governance distinguishes three responsibilities, which MAY belong to the same principal:"
+    },
+    {
+      "id": "AWP-SILO-013",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 57,
+      "statement": "The destination MUST identify its decision owner and accepted policy for adoption. A project MAY appoint component stewards or use a threshold approval policy. Every relied-upon delegation MUST identify grantor, grantee, permitted actions, resources or scope, conditions, expiry or explicit absence of expiry, delegation permission, and revocation basis. Receivers MUST evaluate the delegation chain under current local policy before relying on it. Ownership transfer or policy revision MUST be an explicit accepted decision preserving prior provenance."
+    },
+    {
+      "id": "AWP-SILO-014",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 59,
+      "statement": "A child owner MUST NOT derive authority over a parent or canonical workstate from ancestry, ownership, a role label, or a local approval. A proposal to adopt authority or governance changes MUST undergo the destination's existing policy; it MUST NOT authorize its own acceptance. A role labeled `super-admin` has no special protocol privilege beyond its explicitly accepted grants. Authority conflict or an unavailable authorized decision owner blocks the affected adoption, not unrelated exploration."
+    },
+    {
+      "id": "AWP-SILO-015",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 61,
+      "statement": "Serialization and approval are distinct. A publisher MUST use Capsule \u00a73.2 and Synchronization \u00a79.1 for expected-state checks and recovery. Publication ownership MUST NOT grant authority over the content. COOP-1 may record responsibilities and human decisions and provide cooperating-writer exclusion; it does not authenticate all actors or prevent a bypassing writer. Claims of enforced cross-principal role separation or protected canonical mutation require COOP-3 and the named enforcing path. Below that boundary, the deployment MUST disclose unenforced roles; independently checked authority evidence remains useful without implying protected enforcement."
+    },
+    {
+      "id": "AWP-SILO-016",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 67,
+      "statement": "A silo performing guarded work on a work product MUST either use a verified isolated location or use one common atomic collision-control binding that covers every cooperating writer to the shared resource. Worktree names and path spelling alone are not isolation evidence; resource aliases, linked files, generated outputs, and shared services MUST be considered under the declared scope model. An isolated worktree does not isolate a shared database or deployment target."
+    },
+    {
+      "id": "AWP-SILO-017",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 69,
+      "statement": "For `shared` mode, the deployment MUST record the complete common binding identity, resource/scope mapping, atomicity mechanism, and observation of coverage. All participating silos and canonical actors MUST publish and check physical intents in that same binding before a guarded write. Intents MUST retain their originating semantic workstate as qualified provenance while using the common binding's workstate and event graph for admission. Silo-local semantic stores remain separate. Participants MUST NOT union unrelated store histories to manufacture a combined permission, and a local silo lease MUST NOT be treated as a reservation in the common binding."
+    },
+    {
+      "id": "AWP-SILO-018",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 71,
+      "statement": "If no such common binding is available, shared guarded mutation MUST be blocked or explicitly conducted outside an active COOP guarantee under host policy. Cross-binding informational notices, asynchronous mirroring, and separate successful announce operations are insufficient for atomic exclusion. A binding lacking the resource mapping or coverage evidence MUST NOT claim this shared-location capability."
+    },
+    {
+      "id": "AWP-SILO-019",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 86,
+      "statement": "`closed` is terminal; further exploration creates a successor silo. Closure reasons MAY include completed, abandoned, rejected, or superseded. A paused or closed silo MUST NOT start new implementation work; lifecycle administration, receipt recovery, read-only review, and adoption of previously pinned results MAY continue when separately authorized. Pause or closure MUST NOT silently complete intents, release leases, discard uncommitted artifacts, delete files, or claim a successful handoff; each binding's exit rules still apply."
+    },
+    {
+      "id": "AWP-SILO-020",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 88,
+      "statement": "Closing a parent MUST NOT close its children or invalidate their origin pins. Descendants retain their historical base. An unavailable parent representation or decision owner MUST be disclosed separately from lifecycle. A new destination or owner can be approved without rewriting ancestry. Silo deletion, redaction, retention, and artifact removal follow the existing family rules and are not implied by closure."
+    },
+    {
+      "id": "AWP-SILO-021",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 90,
+      "statement": "Partial or repeated adoption MUST NOT automatically pause or close a silo. A closed silo MAY remain a valid source of historical results if their pins, dependencies, and current destination approval can be verified."
+    },
+    {
+      "id": "AWP-SILO-022",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 94,
+      "statement": "**Adoption** is the explicit acceptance of selected results from a silo into canonical state or an ancestor silo. It may publish a proposal as a proposal; it does not inherently accept the proposal's substance. `silo-v1` permits adoption into an ancestor in the same canonical project; arbitrary cross-project adoption and sibling adoption are outside this profile. A source and destination MUST differ."
+    },
+    {
+      "id": "AWP-SILO-023",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 96,
+      "statement": "An adoption record MUST identify source and destination state pins, exact selected record revisions, proposed destination records, qualified source-to-destination mapping, dependency closure evidence, base-divergence observations, intended scopes, destination decision owner and policy reference, publisher, and an idempotency key. It MUST identify bypassed ancestors when the target is not the immediate parent. Bypassing an ancestor requires destination authorization and all applicable approval obligations, but does not require an intermediate adoption, invalidate historical ancestor bases, or authorize writing to those ancestors. Notices MAY be published when authorized."
+    },
+    {
+      "id": "AWP-SILO-024",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 100,
+      "statement": "Before approval and again before publication, the processor MUST establish that the selected result is causally closed over all references required to interpret or use it at the pinned destination frontier. Each dependency MUST resolve to (a) an included input, (b) an exact existing destination record or artifact, or (c) an explicit qualified source reference retained with its required availability and interpretation rules. Historical source ancestry may remain externally pinned; closure does not require copying the whole source event graph."
+    },
+    {
+      "id": "AWP-SILO-025",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 102,
+      "statement": "Missing dependencies MUST cause the processor to extend the selection, explicitly re-derive the affected result and its references with evidence, or reject it. A closure or reference rewrite that changes the proposed result MUST invalidate prior approval and require approval of the revised proposal. Unknown required modules, contested references, unsupported dependency semantics, or insufficient evidence MUST block adoption; a processor MUST NOT claim closure by inspecting only recognized fields."
+    },
+    {
+      "id": "AWP-SILO-026",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 104,
+      "statement": "New destination records MUST have destination-owned identities and explicit origin pins. Revising an existing destination record MUST use its expected revision and retain the source mapping. Bare ID equality MUST NOT select a destination record. Source events and revisions MUST remain immutable; adoption emits new destination events whose local parents belong to the destination graph, with source pins as external provenance. A dependency cycle MUST either be preserved as a valid combined unit under the owning modules or block adoption; it MUST NOT be broken by silently dropping an edge."
+    },
+    {
+      "id": "AWP-SILO-027",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 108,
+      "statement": "The processor MUST compare the selected results' inherited dependencies and all applicable destination constraints and policies with current destination state. Its `divergence` observations MUST identify each relied-upon pin, the current matching destination pin or its absence, comparison basis, result (`unchanged`, `changed`, `missing`, `contested`, or `unknown`), and disposition. Unrelated parent changes do not by themselves invalidate the selected result. Changed material assumptions require explicit reconciliation and destination-owner disposition; missing or unverifiable required dependencies remain blocking."
+    },
+    {
+      "id": "AWP-SILO-028",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 110,
+      "statement": "Adoption MUST preserve the distinction between proposals, accepted decisions, reports, and verified claims. Acceptance in a source silo MUST NOT imply destination acceptance. Verification evidence MUST retain its original subject, scope, artifact revisions, and environment; if those no longer support the destination claim, the claim MUST be revalidated or explicitly represented as unverified or stale. A clean Git merge or passing source test suite MUST NOT be sufficient evidence of destination semantic compatibility."
+    },
+    {
+      "id": "AWP-SILO-029",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 114,
+      "statement": "Approval MUST bind the exact adoption proposal revision, source pin, destination pin, resulting record mapping, declared scopes, and conditions. The publisher MUST re-evaluate current authority, conditions, applicable COOP decisions, and destination freshness immediately before publication. Any changed expected destination state MUST return `stale_base`; the writer MUST reconcile and obtain approval for a successor proposal rather than apply last-write-wins."
+    },
+    {
+      "id": "AWP-SILO-030",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 116,
+      "statement": "The adopted semantic records and the adoption fact MUST become visible together in one recoverable destination publication using Capsule \u00a73.2. This atomic boundary concerns the destination workstate only. File merges, deployments, and other external changes MUST have separately authorized operations and receipts; a binding MUST NOT claim a transaction spanning them without a mechanism that actually provides it. An adoption depending on external results MUST verify and pin those results before claiming completion."
+    },
+    {
+      "id": "AWP-SILO-031",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 118,
+      "statement": "The publication journal and returned receipt MUST bind the idempotency key, approved proposal revision, prior and resulting whole-Capsule digests, generated-region digests, destination frontier, checkpoint, and publication status. The resulting complete-Capsule digest MUST be stored in the external receipt or journal, not required inside the bytes it hashes. The Capsule's adoption fact identifies the operation and approved proposal; a processor confirms publication using the matching receipt or recovery evidence."
+    },
+    {
+      "id": "AWP-SILO-032",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 120,
+      "statement": "A retry of the same idempotency key and exact request MUST return the original result or recover its pending state. Reuse with a different request MUST be rejected. If a crash leaves publication uncertain, the binding MUST report `pending` and compare the journal's expected and proposed state before classifying it as adopted, not published, or diverged. It MUST NOT repeat uncertain external side effects or issue a success receipt based only on a planned filename. Source or ancestor receipt mirroring is optional and MUST NOT make a confirmed destination adoption appear uncommitted when only that mirroring failed."
+    },
+    {
+      "id": "AWP-SILO-033",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 135,
+      "statement": "`adopted`, `stale`, `rejected`, `cancelled`, and `failed` are terminal. A changed or retried failed proposal uses a successor record and new key; recovery of the same pending operation retains its key. An uncertain or diverged pending publication MUST remain unresolved until recovery establishes the outcome. Adoption lifecycle observations may live in binding-owned durable state; the confirmed adoption fact belongs in the destination graph. A source observation of that fact retains the destination pin and MUST NOT masquerade as a destination event."
+    },
+    {
+      "id": "AWP-SILO-034",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 139,
+      "statement": "The structural schema defines `silo` and `silo_adoption` records, both owned by `urn:awp:sync` with `profile: silo-v1`. Records MUST include `id`, `type`, `module`, `profile`, positive integer `revision`, `status`, `created_by`, and `created_at`. The silo record lives in `snapshot.modules[\"urn:awp:sync\"].silos`; adoption records, when projected in a workstate, live in that module state's `silo_adoptions`. Project governance MAY be recorded as accepted Core decisions and authority declarations referenced by `adoption_policy`; no parallel authority-grant record is introduced."
+    },
+    {
+      "id": "AWP-SILO-035",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 141,
+      "statement": "Profile events MUST use the Core envelope and owning module `urn:awp:sync`. In addition to the lifecycle events above, the profile defines `silo.updated` for purpose, ownership, policy, and override changes and `silo.base_updated` for explicit base reconciliation. An update MUST pin the prior revision, assign the next integer revision, and carry a complete replacement plus required decision or reconciliation evidence. It MUST NOT change immutable identity or origin fields or use `silo.updated` to bypass a lifecycle or base-update condition. Creation uses revision 1. Concurrent non-commuting updates remain contested and MUST block dependent adoption until a recorded Synchronization resolution identifies both outcomes and the selected successor. Transport order and timestamps do not resolve that conflict."
+    },
+    {
+      "id": "AWP-SILO-036",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 153,
+      "statement": "Profile processors MUST emit stable diagnostics with code, severity, operation or record subjects, explanation, and recovery. The following codes have severity `error` and block the affected operation:"
+    },
+    {
+      "id": "AWP-SILO-037",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 170,
+      "statement": "A profile claim MUST state supported roles (`silo-reader`, `silo-writer`, `silo-adopter`), representation and dependency coverage, any active COOP contract, authority enforcement, and the tested operating envelope. Writer claims require reader behavior; adopter claims additionally require closure, destination approval, atomic publication, and recovery. A structural schema validator alone MUST NOT claim these roles."
+    },
+    {
+      "id": "AWP-SILO-038",
+      "source": "spec/drafts/0.8.0/silos.md",
+      "line": 172,
+      "statement": "Before an operational claim, fixtures MUST demonstrate: reproducible pinned derivation; parent changes leaving children unchanged; explicit base reconciliation; local override and tombstone isolation; duplicate IDs across forks; missing and cyclic ancestry; partial adoption with missing dependencies; external historical dependency retention; changed constraints and stale evidence; proposal approval invalidation; repeated partial adoption without closure; closed parent with active child; direct ancestor adoption; unauthorized self-approval; shared-location collisions including aliases; independent locations with shared external resources; concurrent destination publishers; retry and crash recovery; unknown required semantics; and preservation of disabled collaboration and declared budgets."
     },
     {
       "id": "AWP-COORD-001",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 73,
-      "statement": "A processor MUST NOT advertise a Cooperation Contract whose required composed behaviors it does not implement. A reader MAY support a weaker contract, but it MUST reject safe continuation when unsupported required semantics affect the requested action. A component such as a projector, registry, or enforcing gateway advertises capabilities and evidence rather than claiming a complete contract by itself."
+      "line": 74,
+      "statement": "The following table attributes the Coordination mechanisms to their minimum contract. A mechanism may be implemented below that level, but it MUST NOT be used to support a higher contract claim until its listed composition is present."
     },
     {
       "id": "AWP-COORD-002",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 75,
-      "statement": "Cooperation Contract, operational mode, and ledger reach remain separate declarations because the latter two describe current availability rather than another conformance ladder. Operational mode is `ledger_bound`, `snapshot_only`, `degraded`, or `unavailable`. Ledger reach is `shared`, `worktree_local`, or `cross_host`. Ledger unavailability changes what work may safely proceed and MUST be disclosed; it does not silently convert one contract into another."
+      "line": 83,
+      "statement": "A processor MUST NOT advertise a Cooperation Contract whose required composed behaviors it does not implement. A reader MAY support a weaker contract, but it MUST reject safe continuation when unsupported required semantics affect the requested action. A component such as a projector, registry, or enforcing gateway advertises capabilities and evidence rather than claiming a complete contract by itself."
     },
     {
       "id": "AWP-COORD-003",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 87,
-      "statement": "An implementation MAY adopt `coordination-awareness` before implementing the complete integration-assurance workflow. Capability declarations state what a component processes; the selected Cooperation Contract states the end-to-end guarantees participants may rely upon."
+      "line": 85,
+      "statement": "Under `COOP-1`, a processor MAY surface a material conflict, ambiguity, or bounded question to the decision owner, but it MUST NOT autonomously start a work-affecting agent-to-agent consultation or negotiation loop. `COOP-2` and `COOP-3` may do so only through an enabled managed-collaboration policy that declares authorization, participants, purpose, scope, decision owner, and all budget limits. The availability of a messaging transport, A2A task, model, or tool does not enable collaboration by itself."
     },
     {
       "id": "AWP-COORD-004",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 91,
-      "statement": "An AWP-aware writer that discovers a writable shared event ledger and supports the `coordination-awareness` bundle MUST enable ledger-backed advisory coordination by default unless project or receiver policy explicitly disables it. Before materially changing shared state, the writer MUST refresh the available ledger frontier, publish its intent and revision-pinned declared scopes, evaluate known overlaps under the effective policy, and make resulting warnings or guarded outcomes visible. Before integration or handoff, it MUST refresh again and publish the terminal intent, change-set, checkpoint, or synchronization delta required to explain its result."
+      "line": 87,
+      "statement": "Cooperation Contract, operational mode, and ledger reach remain separate declarations because the latter two describe current availability rather than another conformance ladder. Operational mode is `ledger_bound`, `snapshot_only`, `degraded`, or `unavailable`. Ledger reach is `shared`, `worktree_local`, or `cross_host`. Ledger unavailability changes what work may safely proceed and MUST be disclosed; it does not silently convert one contract into another."
     },
     {
       "id": "AWP-COORD-005",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 93,
-      "statement": "This default is a protocol behavior, not a required runtime service. A local append-only file, immutable event package, transactional database, source-control binding, or remote event transport MAY supply the ledger when it preserves Core event identity, ancestry, atomic publication, and conflict-preserving replay. SQLite and the local adapter are optional implementation aids. Presence monitoring MAY reduce discovery latency but is not a prerequisite. Authenticated protected leases, epochs, and fencing are COOP-2 capabilities and remain separately configured from COOP-1 participant liveness leases."
+      "line": 99,
+      "statement": "An implementation MAY adopt `coordination-awareness` before implementing the complete integration-assurance workflow. Capability declarations state what a component processes; the selected Cooperation Contract states the end-to-end guarantees participants may rely upon."
     },
     {
       "id": "AWP-COORD-006",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 95,
-      "statement": "If no safe writable ledger is discoverable, the writer SHOULD attempt to establish a project-scoped ledger through an authorized writable binding, provided it can publish the binding location, workstate identity, retention, and access expectations to the intended participants. If it cannot establish or discover such a binding, it MUST disclose operational mode `snapshot_only` or `unavailable` with diagnostic `AWP-COORD-LEDGER-UNAVAILABLE` before material mutation. A private temporary file, process memory, unshared worktree, or unconfirmed model output is not a shared ledger. A worktree-local ledger MAY be used when its limited reach is disclosed. The writer MUST NOT silently describe metadata preservation, a stale snapshot, or an unvalidated event sink as active coordination. Receiver policy determines whether work may continue. A tool MUST NOT advertise COOP-1 merely because it implements this default; its contract claim remains limited to the complete composed behavior it can demonstrate."
+      "line": 103,
+      "statement": "An AWP-aware writer that discovers a writable shared event ledger and supports the `coordination-awareness` bundle MUST enable ledger-backed advisory coordination by default unless project or receiver policy explicitly disables it. Before materially changing shared state, the writer MUST refresh the available ledger frontier, publish its intent and revision-pinned declared scopes, evaluate known overlaps under the effective policy, and make resulting warnings or guarded outcomes visible. Before integration or handoff, it MUST refresh again and publish the terminal intent, change-set, checkpoint, or synchronization delta required to explain its result."
     },
     {
       "id": "AWP-COORD-007",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 97,
-      "statement": "The default is an agent/model workflow contract. A model may produce valid intents, events, deltas, diagnostics, or a requested ledger operation as output, while a host binding performs persistence and authorization. A model is not required to open a database, run a service, or possess mutation authority. A host that exposes only a capsule or read-only event view MUST make that limitation visible; it MUST NOT imply that a model-generated event was durably published until the binding confirms persistence. Prompt instructions, tool schemas, MCP resources, A2A data parts, repository files, and other bindings MAY carry the same records when they preserve the declared ledger semantics."
+      "line": 105,
+      "statement": "This default is a protocol behavior, not a required runtime service. A local append-only file, immutable event package, transactional database, source-control binding, or remote event transport MAY supply the ledger when it preserves Core event identity, ancestry, atomic publication, and conflict-preserving replay. SQLite and the local adapter are optional implementation aids. Presence monitoring MAY reduce discovery latency but is not a prerequisite. Authenticated protected leases, epochs, and fencing are COOP-3 capabilities and remain separately configured from COOP-1 participant liveness leases."
     },
     {
       "id": "AWP-COORD-008",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 99,
-      "statement": "For the default workflow, an AWP-aware agent or model SHOULD follow this sequence:"
+      "line": 107,
+      "statement": "If no safe writable ledger is discoverable, the writer SHOULD attempt to establish a project-scoped ledger through an authorized writable binding, provided it can publish the binding location, workstate identity, retention, and access expectations to the intended participants. If it cannot establish or discover such a binding, it MUST disclose operational mode `snapshot_only` or `unavailable` with diagnostic `AWP-COORD-LEDGER-UNAVAILABLE` before material mutation. A private temporary file, process memory, unshared worktree, or unconfirmed model output is not a shared ledger. A worktree-local ledger MAY be used when its limited reach is disclosed. The writer MUST NOT silently describe metadata preservation, a stale snapshot, or an unvalidated event sink as active coordination. Receiver policy determines whether work may continue. A tool MUST NOT advertise COOP-1 merely because it implements this default; its contract claim remains limited to the complete composed behavior it can demonstrate."
     },
     {
       "id": "AWP-COORD-009",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 108,
-      "statement": "The sequence is advisory with respect to external mutation under COOP-1: an unresolved `warn` outcome is visible but does not itself grant or deny authority. A receiver MAY require `block`, user arbitration, or an external policy gate. A model's claim that it followed the sequence is reported evidence until the binding makes the event bytes and resulting frontier inspectable."
+      "line": 109,
+      "statement": "The default is an agent/model workflow contract. A model may produce valid intents, events, deltas, diagnostics, or a requested ledger operation as output, while a host binding performs persistence and authorization. A model is not required to open a database, run a service, or possess mutation authority. A host that exposes only a capsule or read-only event view MUST make that limitation visible; it MUST NOT imply that a model-generated event was durably published until the binding confirms persistence. Prompt instructions, tool schemas, MCP resources, A2A data parts, repository files, and other bindings MAY carry the same records when they preserve the declared ledger semantics."
     },
     {
       "id": "AWP-COORD-010",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 112,
-      "statement": "An active Coordination binding MUST expose a transport-neutral descriptor containing at least the profile identifier, workstate identity, ledger location or retrieval reference, operational mode, ledger reach, durability and retention policy, event publication semantics, frontier-read semantics, and publication confirmation method. The descriptor MAY be carried in a manifest, Capsule module state, repository discovery file, tool resource, MCP resource, A2A data part, or another binding-owned record. A location alone is not confirmation that a ledger is shared or writable. A binding that cannot provide a descriptor MUST report its mode and reach as `unverifiable` and MUST NOT claim cross-participant coordination."
+      "line": 111,
+      "statement": "For the default workflow, an AWP-aware agent or model SHOULD follow this sequence:"
     },
     {
       "id": "AWP-COORD-011",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 152,
-      "statement": "`id`, `type`, `module`, `revision`, `status`, `created_by`, and `created_at` are required. `revision` begins at `1`. An update MUST identify `prior_revision` in its event and produce exactly `prior_revision + 1`."
+      "line": 120,
+      "statement": "The sequence is advisory with respect to external mutation under COOP-1: an unresolved `warn` outcome is visible but does not itself grant or deny authority. A receiver MAY require `block`, user arbitration, or an external policy gate. A model's claim that it followed the sequence is reported evidence until the binding makes the event bytes and resulting frontier inspectable."
     },
     {
       "id": "AWP-COORD-012",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 158,
-      "statement": "Unknown fields MUST be preserved by lossless processors. A processor MUST distinguish a registered record type above its advertised capability or Cooperation Contract from a genuinely unregistered type. It preserves registered stronger-contract records without interpreting them and may still perform weaker-contract actions that do not depend on their meaning. A genuinely unregistered type owned by this required module makes only the affected action or projection `unverifiable` unless a declared compatibility rule permits preservation without interpretation. A weaker-contract reader MAY always perform safe display or export."
+      "line": 124,
+      "statement": "An active Coordination binding MUST expose a transport-neutral descriptor containing at least the profile identifier, workstate identity, ledger location or retrieval reference, operational mode, ledger reach, durability and retention policy, event publication semantics, frontier-read semantics, and publication confirmation method. The descriptor MAY be carried in a manifest, Capsule module state, repository discovery file, tool resource, MCP resource, A2A data part, or another binding-owned record. A location alone is not confirmation that a ledger is shared or writable. A binding that cannot provide a descriptor MUST report its mode and reach as `unverifiable` and MUST NOT claim cross-participant coordination."
     },
     {
       "id": "AWP-COORD-013",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 167,
-      "statement": "Safety-relevant references in contracts, preconditions, readiness decisions, verification, overlaps, and integration plans MUST be revision-pinned. A missing, superseded, or contested pinned revision remains historically addressable but MUST NOT be silently replaced by another revision. An unpinned reference that is absent, contested, or ambiguous is unresolved."
+      "line": 164,
+      "statement": "`id`, `type`, `module`, `revision`, `status`, `created_by`, and `created_at` are required. `revision` begins at `1`. An update MUST identify `prior_revision` in its event and produce exactly `prior_revision + 1`."
     },
     {
       "id": "AWP-COORD-014",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 173,
-      "statement": "The passage of time never changes projected state. An identified actor or service MUST emit a valid timeout, expiration, or deadline-observation event under a declared clock authority. Until that event is present, a deadline may be overdue but the prior projected lifecycle state remains unchanged; processors SHOULD surface the overdue condition."
+      "line": 170,
+      "statement": "Unknown fields MUST be preserved by lossless processors. A processor MUST distinguish a registered record type above its advertised capability or Cooperation Contract from a genuinely unregistered type. It preserves registered stronger-contract records without interpreting them and may still perform weaker-contract actions that do not depend on their meaning. A genuinely unregistered type owned by this required module makes only the affected action or projection `unverifiable` unless a declared compatibility rule permits preservation without interpretation. A weaker-contract reader MAY always perform safe display or export."
     },
     {
       "id": "AWP-COORD-015",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 250,
-      "statement": "Within one workstate, an active alias MUST resolve to at most one semantic definition. Merging ambiguous aliases creates diagnostic `AWP-COORD-REGISTRY-AMBIGUOUS` and affected overlap analysis becomes `unknown` until resolved."
+      "line": 179,
+      "statement": "Safety-relevant references in contracts, preconditions, readiness decisions, verification, overlaps, and integration plans MUST be revision-pinned. A missing, superseded, or contested pinned revision remains historically addressable but MUST NOT be silently replaced by another revision. An unpinned reference that is absent, contested, or ambiguous is unresolved."
     },
     {
       "id": "AWP-COORD-016",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 254,
-      "statement": "Selector comparison across pinned state-space revisions is a COOP-2 semantic-awareness operation. An analyzer MUST resolve both selectors against their pinned bases and attempt to relate moved, renamed, subdivided, aggregated, or replaced targets using a declared selector profile. Resolution results are `same`, `related`, `different`, `unresolvable`, or `ambiguous`, with evidence and confidence. `unresolvable` or `ambiguous` forces overlap classification `unknown`; it MUST NOT yield `none`."
+      "line": 185,
+      "statement": "The passage of time never changes projected state. An identified actor or service MUST emit a valid timeout, expiration, or deadline-observation event under a declared clock authority. Until that event is present, a deadline may be overdue but the prior projected lifecycle state remains unchanged; processors SHOULD surface the overdue condition."
     },
     {
       "id": "AWP-COORD-017",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 256,
-      "statement": "Language-specific selector syntax and drift algorithms belong to registered adapter profiles. The initial reference implementation SHOULD provide Python AST and TypeScript compiler-symbol profiles, but their identifiers and outputs remain usable by agents implemented in any language."
+      "line": 262,
+      "statement": "Within one workstate, an active alias MUST resolve to at most one semantic definition. Merging ambiguous aliases creates diagnostic `AWP-COORD-REGISTRY-AMBIGUOUS` and affected overlap analysis becomes `unknown` until resolved."
     },
     {
       "id": "AWP-COORD-018",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 260,
-      "statement": "A scope is a first-class record selecting a physical or semantic region. Intents, claims, change sets, and contracts reference it by ID and revision. An inline selector MAY be used as an unshared query value, but an inline selector is not a scope record and cannot be revised or used as a dependency target."
+      "line": 266,
+      "statement": "Selector comparison across pinned state-space revisions is a COOP-2 semantic-awareness operation. An analyzer MUST resolve both selectors against their pinned bases and attempt to relate moved, renamed, subdivided, aggregated, or replaced targets using a declared selector profile. Resolution results are `same`, `related`, `different`, `unresolvable`, or `ambiguous`, with evidence and confidence. `unresolvable` or `ambiguous` forces overlap classification `unknown`; it MUST NOT yield `none`."
     },
     {
       "id": "AWP-COORD-019",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 283,
-      "statement": "Physical selector kinds include `repository`, `directory`, `file`, `symbol`, `syntax_node`, `configuration_key`, `schema_object`, `generated_output`, `test`, `fixture`, `spatial_region`, `model_element`, `assembly`, `document_region`, `domain_object`, and `interface`. A selector profile defines how a domain resolves fields such as `state_space`, `object_id`, geometry, containment, adjacency, or document coordinates. Coordinates or line ranges are hints and MUST NOT be the only selector for a safety-relevant claim."
+      "line": 268,
+      "statement": "Language-specific selector syntax and drift algorithms belong to registered adapter profiles. The initial reference implementation SHOULD provide Python AST and TypeScript compiler-symbol profiles, but their identifiers and outputs remain usable by agents implemented in any language."
     },
     {
       "id": "AWP-COORD-020",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 289,
-      "statement": "Authors SHOULD declare relied-upon reads only for assumptions whose incompatible change could invalidate the output, not every file or symbol inspected. Tools may propose candidates from dependency traces, but the published set SHOULD be summarized at stable interface, invariant, schema, or behavior boundaries. Fine-grained automatic reads MAY remain evidence behind that summary. This keeps the reverse index useful rather than turning ordinary repository browsing into conflicts."
+      "line": 274,
+      "statement": "A scope is a first-class record selecting a physical or semantic region. Intents, claims, change sets, and contracts reference it by ID and revision. An inline selector MAY be used as an unshared query value, but an inline selector is not a scope record and cannot be revised or used as a dependency target."
     },
     {
       "id": "AWP-COORD-021",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 358,
-      "statement": "An actor SHOULD publish an intent before materially changing shared state."
+      "line": 297,
+      "statement": "Physical selector kinds include `repository`, `directory`, `file`, `symbol`, `syntax_node`, `configuration_key`, `schema_object`, `generated_output`, `test`, `fixture`, `spatial_region`, `model_element`, `assembly`, `document_region`, `domain_object`, and `interface`. A selector profile defines how a domain resolves fields such as `state_space`, `object_id`, geometry, containment, adjacency, or document coordinates. Coordinates or line ranges are hints and MUST NOT be the only selector for a safety-relevant claim."
     },
     {
       "id": "AWP-COORD-022",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 403,
-      "statement": "If observed work expands beyond the declared scope, the writer MUST either update the intent before publishing a ready change set or record an explicit deviation. Under a COOP-2 policy, unresolved material under-declaration prevents `ready`."
+      "line": 303,
+      "statement": "Authors SHOULD declare relied-upon reads only for assumptions whose incompatible change could invalidate the output, not every file or symbol inspected. Tools may propose candidates from dependency traces, but the published set SHOULD be summarized at stable interface, invariant, schema, or behavior boundaries. Fine-grained automatic reads MAY remain evidence behind that summary. This keeps the reverse index useful rather than turning ordinary repository browsing into conflicts."
     },
     {
       "id": "AWP-COORD-023",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 435,
-      "statement": "Observed-scope lifecycle statuses are `final` and `superseded`; outcome is `complete`, `partial`, or `error`. The analyzer, base, result, method, and evidence digest MUST be recorded. `declared_not_observed` is informational unless policy says otherwise. `undeclared` MUST be evaluated for new overlaps and may stale earlier acknowledgements. An omitted effect or scope means unknown; an explicitly present empty array asserts that none were observed or declared under the stated method."
+      "line": 374,
+      "statement": "An actor SHOULD publish an intent before materially changing shared state."
     },
     {
       "id": "AWP-COORD-024",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 482,
-      "statement": "`unknown` MUST NOT be treated as `compatible`. The configured policy determines whether it warns, negotiates, or blocks."
+      "line": 419,
+      "statement": "If observed work expands beyond the declared scope, the writer MUST either update the intent before publishing a ready change set or record an explicit deviation. Under a COOP-2 policy, unresolved material under-declaration prevents `ready`."
     },
     {
       "id": "AWP-COORD-025",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 508,
-      "statement": "`accepted`, `rejected`, `timed_out`, `cancelled`, and `escalated` are terminal. Escalation after rejection or timeout creates a successor negotiation referencing the terminal record. A further round likewise creates a successor. A processor MUST NOT infer acceptance from silence unless the declared decision policy explicitly defines silence and the enforcing authority supports it."
+      "line": 453,
+      "statement": "Observed-scope lifecycle statuses are `final` and `superseded`; outcome is `complete`, `partial`, or `error`. The analyzer, base, result, method, and evidence digest MUST be recorded. `declared_not_observed` is informational unless policy says otherwise. `undeclared` MUST be evaluated for new overlaps and may stale earlier acknowledgements. An omitted effect or scope means unknown; an explicitly present empty array asserts that none were observed or declared under the stated method."
     },
     {
       "id": "AWP-COORD-026",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 510,
-      "statement": "An accepted proposal MAY create commitments. A commitment identifies:"
+      "line": 502,
+      "statement": "`unknown` MUST NOT be treated as `compatible`. The configured policy determines whether it warns, negotiates, or blocks."
     },
     {
       "id": "AWP-COORD-027",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 536,
-      "statement": "Agent-to-agent negotiation is preferred for routine, low-risk coordination. It MUST escalate to user-mediated arbitration when the agents cannot reach a permitted outcome within the declared negotiation bounds, when applicable policies disagree, when a decision requires authority held by the user or another named principal, or when the competing changes have material safety, compatibility, data-loss, security, or delivery consequences."
+      "line": 530,
+      "statement": "`accepted`, `rejected`, `timed_out`, `cancelled`, and `escalated` are terminal. Escalation after rejection or timeout creates a successor negotiation referencing the terminal record. A further round likewise creates a successor. A processor MUST NOT infer acceptance from silence unless the declared decision policy explicitly defines silence and the enforcing authority supports it."
     },
     {
       "id": "AWP-COORD-028",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 538,
-      "statement": "An arbitration request is a durable coordination record. It MUST identify:"
+      "line": 532,
+      "statement": "An accepted proposal MAY create commitments. A commitment identifies:"
     },
     {
       "id": "AWP-COORD-029",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 549,
-      "statement": "The request MUST NOT embed private chain-of-thought or require the user to reconstruct the dispute from an unbounded transcript. Agents SHOULD present a concise comparison generated from the recorded intents, scopes, contracts, revisions, and evidence. The interaction channel is binding-specific; the durable record is authoritative for the decision."
+      "line": 558,
+      "statement": "Agent-to-agent negotiation is preferred for routine, low-risk coordination. It MUST escalate to user-mediated arbitration when the agents cannot reach a permitted outcome within the declared negotiation bounds, when applicable policies disagree, when a decision requires authority held by the user or another named principal, or when the competing changes have material safety, compatibility, data-loss, security, or delivery consequences."
     },
     {
       "id": "AWP-COORD-030",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 563,
-      "statement": "While an arbitration is `awaiting_user`, every agent MUST stop new writes whose validity depends on a blocked scope, disputed contract, competing change-set revision, or unresolved integration decision. Agents MAY continue explicitly listed interim work only when it does not affect a blocked scope and remains valid under every listed alternative. They MUST record any already-created uncommitted artifacts and state-space revisions; the protocol MUST NOT require automatic deletion, rollback, or selection of either agent's branch."
+      "line": 560,
+      "statement": "An arbitration request is a durable coordination record. It MUST identify:"
     },
     {
       "id": "AWP-COORD-031",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 565,
-      "statement": "A decision event MUST record the selected alternative, exact request revision, decision authority and authenticated principal, decision channel or confirmation reference, rationale, accepted risks, conditions, effective scopes, expiration if any, and required verification. A user interaction may recommend or amend an alternative, but only a decision from the declared authority through a trusted binding can transition arbitration to `decided`. A message that merely claims to be from the user is untrusted content."
+      "line": 571,
+      "statement": "The request MUST NOT embed private chain-of-thought or require the user to reconstruct the dispute from an unbounded transcript. Agents SHOULD present a concise comparison generated from the recorded intents, scopes, contracts, revisions, and evidence. The interaction channel is binding-specific; the durable record is authoritative for the decision."
     },
     {
       "id": "AWP-COORD-032",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 567,
-      "statement": "Agents MUST apply a decision only to the named subjects, revisions, scopes, and conditions. It MUST NOT grant general authority, silently rewrite either agent's history, or authorize unrelated external effects. The decision's implementation is recorded separately through change-set and integration events. Before implementation or integration, agents MUST revalidate all decision conditions and reopen arbitration if a subject revision, scope, contract, evidence basis, authority, or material risk changes. A declined or expired request never implies acceptance; agents must withdraw, re-negotiate, or submit a successor request under policy."
+      "line": 585,
+      "statement": "While an arbitration is `awaiting_user`, every agent MUST stop new writes whose validity depends on a blocked scope, disputed contract, competing change-set revision, or unresolved integration decision. Agents MAY continue explicitly listed interim work only when it does not affect a blocked scope and remains valid under every listed alternative. They MUST record any already-created uncommitted artifacts and state-space revisions; the protocol MUST NOT require automatic deletion, rollback, or selection of either agent's branch."
     },
     {
       "id": "AWP-COORD-033",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 586,
-      "statement": "`kind` is `unanimous`, `threshold`, `named_participants`, or `authorized_owner`. `eligible_participants` is required except for `authorized_owner`; `threshold` is required only for `threshold` and MUST be between 1 and the eligible count. `required_participants` defaults to empty. `abstention` is `counts_as_no`, `reduces_eligible`, or `prohibited`. Votes and acceptances MUST pin `decides_revision`. Role names alone are not participant identity; a policy using roles must resolve them to an uncontested eligible actor set before evaluation."
+      "line": 587,
+      "statement": "A decision event MUST record the selected alternative, exact request revision, decision authority and authenticated principal, decision channel or confirmation reference, rationale, accepted risks, conditions, effective scopes, expiration if any, and required verification. A user interaction may recommend or amend an alternative, but only a decision from the declared authority through a trusted binding can transition arbitration to `decided`. A message that merely claims to be from the user is untrusted content."
     },
     {
       "id": "AWP-COORD-034",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 601,
-      "statement": "Global contract status MUST NOT be derived from a single participant's adoption status. Each participant has one of `unaware`, `reviewing`, `accepted`, `implementing`, `implemented`, `verified`, `rejected`, `withdrawn`, or `not_applicable`, with its own evidence and revision."
+      "line": 589,
+      "statement": "Agents MUST apply a decision only to the named subjects, revisions, scopes, and conditions. It MUST NOT grant general authority, silently rewrite either agent's history, or authorize unrelated external effects. The decision's implementation is recorded separately through change-set and integration events. Before implementation or integration, agents MUST revalidate all decision conditions and reopen arbitration if a subject revision, scope, contract, evidence basis, authority, or material risk changes. A declined or expired request never implies acceptance; agents must withdraw, re-negotiate, or submit a successor request under policy."
     },
     {
       "id": "AWP-COORD-035",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 603,
-      "statement": "The contract's decision policy specifies named required parties or a quorum. A contract MUST NOT become `accepted`, `implemented`, or `verified` until that state's policy is satisfied."
+      "line": 610,
+      "statement": "`kind` is `unanimous`, `threshold`, `named_participants`, or `authorized_owner`. `eligible_participants` is required except for `authorized_owner`; `threshold` is required only for `threshold` and MUST be between 1 and the eligible count. `required_participants` defaults to empty. `abstention` is `counts_as_no`, `reduces_eligible`, or `prohibited`. Votes and acceptances MUST pin `decides_revision`. Role names alone are not participant identity; a policy using roles must resolve them to an uncontested eligible actor set before evaluation."
     },
     {
       "id": "AWP-COORD-036",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 632,
-      "statement": "Precondition lifecycle statuses are `active`, `retired`, and `superseded`. `on_false` is `warn`, `block_ready`, `stale`, or `escalate`. `on_unknown` is `warn`, `block_ready`, or `escalate`; it MUST NOT silently pass."
+      "line": 625,
+      "statement": "Global contract status MUST NOT be derived from a single participant's adoption status. Each participant has one of `unaware`, `reviewing`, `accepted`, `implementing`, `implemented`, `verified`, `rejected`, `withdrawn`, or `not_applicable`, with its own evidence and revision."
     },
     {
       "id": "AWP-COORD-037",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 653,
-      "statement": "`pure` evaluators read only the identified AWP projection or supplied bytes. Adapter-relative and host-relative results MUST record the state space or environment they observed. All evaluators MUST be side-effect-free with respect to the project, deterministic for identical declared inputs, bounded by an explicit timeout, and return `error` rather than partial success after timeout or internal failure. Constraint syntax is owned by the registered evaluator-interface version; an implementation MUST NOT guess unsupported syntax."
+      "line": 627,
+      "statement": "The contract's decision policy specifies named required parties or a quorum. A contract MUST NOT become `accepted`, `implemented`, or `verified` until that state's policy is satisfied."
     },
     {
       "id": "AWP-COORD-038",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 655,
-      "statement": "An asserted precondition records a natural-language statement, asserting actor, scope, epistemic status, evidence if any, and required reviewer or authority. It MUST NOT be presented as machine-verified."
+      "line": 658,
+      "statement": "Precondition lifecycle statuses are `active`, `retired`, and `superseded`. `on_false` is `warn`, `block_ready`, `stale`, or `escalate`. `on_unknown` is `warn`, `block_ready`, or `escalate`; it MUST NOT silently pass."
     },
     {
       "id": "AWP-COORD-039",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 764,
-      "statement": "A verification result MUST bind the claim being checked to exact inputs."
+      "line": 679,
+      "statement": "`pure` evaluators read only the identified AWP projection or supplied bytes. Adapter-relative and host-relative results MUST record the state space or environment they observed. All evaluators MUST be side-effect-free with respect to the project, deterministic for identical declared inputs, bounded by an explicit timeout, and return `error` rather than partial success after timeout or internal failure. Constraint syntax is owned by the registered evaluator-interface version; an implementation MUST NOT guess unsupported syntax."
     },
     {
       "id": "AWP-COORD-040",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 803,
-      "statement": "For each event that changes a record revision or status, a deterministic Coordination projector MUST:"
+      "line": 681,
+      "statement": "An asserted precondition records a natural-language statement, asserting actor, scope, epistemic status, evidence if any, and required reviewer or authority. It MUST NOT be presented as machine-verified."
     },
     {
       "id": "AWP-COORD-041",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 827,
-      "statement": "An adapter MUST reject `atomic` when its state-space transaction mechanism cannot supply the claimed atomic boundary. Rollback is a separately recorded operation and MUST NOT be assumed successful."
+      "line": 794,
+      "statement": "A verification result MUST bind the claim being checked to exact inputs."
     },
     {
       "id": "AWP-COORD-042",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 829,
-      "statement": "Before starting integration, the owner MUST refresh available coordination events, compare the target base, re-evaluate expiring or base-bound preconditions, confirm contract revisions, and re-open any invalidated overlap dispositions."
+      "line": 835,
+      "statement": "For each event that changes a record revision or status, a deterministic Coordination projector MUST:"
     },
     {
       "id": "AWP-COORD-043",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 847,
-      "statement": "A successful adapter transaction or source-control merge MUST NOT by itself transition an integration to `completed` when combined semantic verification is required."
+      "line": 861,
+      "statement": "An adapter MUST reject `atomic` when its state-space transaction mechanism cannot supply the claimed atomic boundary. Rollback is a separately recorded operation and MUST NOT be assumed successful."
     },
     {
       "id": "AWP-COORD-044",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 855,
-      "statement": "A deterministic Coordination projector MUST:"
+      "line": 863,
+      "statement": "Before starting integration, the owner MUST refresh available coordination events, compare the target base, re-evaluate expiring or base-bound preconditions, confirm contract revisions, and re-open any invalidated overlap dispositions."
     },
     {
       "id": "AWP-COORD-045",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 887,
-      "statement": "Synchronization 0.2 governs retention and compaction: a snapshot does not authorize destructive pruning, and snapshot-only exports disclose omitted history. A portable Coordination view MAY omit terminal records irrelevant to the requested continuation only when it declares the omission and does not claim full audit completeness. It MUST retain or make retrievable every active dependency, unresolved conflict, governing contract, precondition, verification, authority decision, and causal record needed to justify current readiness. Physical deletion or redaction follows Synchronization, Artifact, and Security rules."
+      "line": 881,
+      "statement": "A successful adapter transaction or source-control merge MUST NOT by itself transition an integration to `completed` when combined semantic verification is required."
     },
     {
       "id": "AWP-COORD-046",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 921,
-      "statement": "Errors invalidate the affected transition. Warnings preserve state but MUST be visible before a safety-relevant continuation. Implementations MAY add namespaced diagnostics."
+      "line": 891,
+      "statement": "A deterministic Coordination projector MUST:"
     },
     {
       "id": "AWP-COORD-047",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 961,
-      "statement": "Required fields are `agent_id`, `session_id`, `principal`, `workstate_id`, `project`, `execution_location`, `base`, `declared_scopes`, `access_mode`, `monitoring_profile`, `heartbeat_at`, and `expires_at`. Project identity MUST be stable across worktrees or execution locations. `session_id` identifies one runtime generation and MUST NOT be reused after release or expiry. `base` binds the announcement to the revision from which work began. `declared_scopes` contains pinned Coordination scope references; a broad provisional scope MAY be announced and narrowed by a later revision."
+      "line": 923,
+      "statement": "Synchronization 0.2 governs retention and compaction: a snapshot does not authorize destructive pruning, and snapshot-only exports disclose omitted history. A portable Coordination view MAY omit terminal records irrelevant to the requested continuation only when it declares the omission and does not claim full audit completeness. It MUST retain or make retrievable every active dependency, unresolved conflict, governing contract, precondition, verification, authority decision, and causal record needed to justify current readiness. Physical deletion or redaction follows Synchronization, Artifact, and Security rules."
     },
     {
       "id": "AWP-COORD-048",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 963,
-      "statement": "Presence states are `active`, `released`, `expired`, and `superseded`. Entry MUST publish an active presence record before the actor performs a declared write. A heartbeat atomically advances `heartbeat_at` and `expires_at` for the same active session. It MUST NOT revive an expired, released, or superseded session; a returning runtime creates a new session identity."
+      "line": 957,
+      "statement": "Errors invalidate the affected transition. Warnings preserve state but MUST be visible before a safety-relevant continuation. Implementations MAY add namespaced diagnostics."
     },
     {
       "id": "AWP-COORD-049",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 965,
-      "statement": "The monitoring profile defines heartbeat interval, session duration, registry clock authority, retry policy, watcher cursor retention, and notification delivery. A monitor classifies a session as expired only through the profile's registry clock and an atomic compare against the latest heartbeat. Client wall clocks alone MUST NOT authoritatively expire a shared session. In an advisory deployment, an observer that cannot reach the registry reports presence as `unverifiable`, not absent."
+      "line": 997,
+      "statement": "Required fields are `agent_id`, `session_id`, `principal`, `workstate_id`, `project`, `execution_location`, `base`, `declared_scopes`, `access_mode`, `monitoring_profile`, `heartbeat_at`, and `expires_at`. Project identity MUST be stable across worktrees or execution locations. `session_id` identifies one runtime generation and MUST NOT be reused after release or expiry. `base` binds the announcement to the revision from which work began. `declared_scopes` contains pinned Coordination scope references; a broad provisional scope MAY be announced and narrowed by a later revision."
     },
     {
       "id": "AWP-COORD-050",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 967,
-      "statement": "A watcher maintains a durable cursor over lifecycle notifications. It announces at least new sessions, terminal sessions, and newly detected overlaps or conflicts. Delivery MUST be idempotent by notification identity. Restarting a watcher MUST resume from its stored cursor or explicitly disclose an observation gap. Heartbeats SHOULD update materialized live state without producing a durable event for every renewal; implementations MAY sample heartbeat evidence under a declared retention policy."
+      "line": 999,
+      "statement": "Presence states are `active`, `released`, `expired`, and `superseded`. Entry MUST publish an active presence record before the actor performs a declared write. A heartbeat atomically advances `heartbeat_at` and `expires_at` for the same active session. It MUST NOT revive an expired, released, or superseded session; a returning runtime creates a new session identity."
     },
     {
       "id": "AWP-COORD-051",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 969,
-      "statement": "On entry, an implementation using presence monitoring MUST:"
+      "line": 1001,
+      "statement": "The monitoring profile defines heartbeat interval, session duration, registry clock authority, retry policy, watcher cursor retention, and notification delivery. A monitor classifies a session as expired only through the profile's registry clock and an atomic compare against the latest heartbeat. Client wall clocks alone MUST NOT authoritatively expire a shared session. In an advisory deployment, an observer that cannot reach the registry reports presence as `unverifiable`, not absent."
     },
     {
       "id": "AWP-COORD-052",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 978,
-      "statement": "On normal exit, an implementation MUST stop new mutation, publish its final change set and semantic checkpoint or synchronization delta, refresh the canonical Capsule through the current projection owner, and then release its presence session. If the Capsule cannot be refreshed, the writer MUST publish an incomplete-handoff diagnostic rather than presenting the prior Capsule as current. Crash recovery relies on expiry and MUST preserve an `expired` terminal observation."
+      "line": 1003,
+      "statement": "A watcher maintains a durable cursor over lifecycle notifications. It announces at least new sessions, terminal sessions, and newly detected overlaps or conflicts. Delivery MUST be idempotent by notification identity. Restarting a watcher MUST resume from its stored cursor or explicitly disclose an observation gap. Heartbeats SHOULD update materialized live state without producing a durable event for every renewal; implementations MAY sample heartbeat evidence under a declared retention policy."
     },
     {
       "id": "AWP-COORD-053",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 980,
-      "statement": "Heartbeats and other high-frequency live values MUST NOT be written into the project Capsule. The Capsule remains a durable semantic projection updated at checkpoints and handoff. Entry, release, expiry, conflict, and incomplete-handoff facts MAY be retained as durable Coordination events when they affect interpretation or audit."
+      "line": 1005,
+      "statement": "On entry, an implementation using presence monitoring MUST:"
     },
     {
       "id": "AWP-COORD-054",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 982,
-      "statement": "Multiple agents MUST NOT independently overwrite one canonical Capsule from the same base frontier. Each agent publishes events or deltas; a single current projection owner updates the Capsule using compare-and-swap against its frontier and generated digest. A stale writer merges, retries, or reports divergence through Synchronization. It MUST NOT use last-write-wins."
+      "line": 1014,
+      "statement": "On normal exit, an implementation MUST stop new mutation, publish its final change set and semantic checkpoint or synchronization delta, refresh the canonical Capsule through the current projection owner, and then release its presence session. If the Capsule cannot be refreshed, the writer MUST publish an incomplete-handoff diagnostic rather than presenting the prior Capsule as current. Crash recovery relies on expiry and MUST preserve an `expired` terminal observation."
     },
     {
       "id": "AWP-COORD-055",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 992,
-      "statement": "An implementation intended for many concurrent agents MUST avoid project-wide polling and all-pairs overlap comparison. It SHOULD:"
+      "line": 1016,
+      "statement": "Heartbeats and other high-frequency live values MUST NOT be written into the project Capsule. The Capsule remains a durable semantic projection updated at checkpoints and handoff. Entry, release, expiry, conflict, and incomplete-handoff facts MAY be retained as durable Coordination events when they affect interpretation or audit."
     },
     {
       "id": "AWP-COORD-056",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1004,
-      "statement": "Sharding MUST NOT change the semantic result of overlap evaluation. Cross-partition scopes, wildcard scopes, integration ownership, and project-wide invariants require an identified routing or aggregation strategy. An implementation MUST disclose any scope class it cannot compare completely."
+      "line": 1018,
+      "statement": "Multiple agents MUST NOT independently overwrite one canonical Capsule from the same base frontier. Each agent publishes events or deltas; a single current projection owner updates the Capsule using compare-and-swap against its frontier and generated digest. A stale writer merges, retries, or reports divergence through Synchronization. It MUST NOT use last-write-wins."
     },
     {
       "id": "AWP-COORD-057",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1010,
-      "statement": "The profile has four logical responsibilities, which MAY be implemented by one service or separate replicated services:"
+      "line": 1028,
+      "statement": "An implementation intended for many concurrent agents MUST avoid project-wide polling and all-pairs overlap comparison. It SHOULD:"
     },
     {
       "id": "AWP-COORD-058",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1019,
-      "statement": "The primary partition key MUST include stable project identity and state-space identity. Session ownership, renewal, release, and expiry for one session MUST be linearizable within its owning partition. Exact pinned scopes SHOULD use an inverted index keyed by scope identity and access mode rather than scanning all active sessions."
+      "line": 1040,
+      "statement": "Sharding MUST NOT change the semantic result of overlap evaluation. Cross-partition scopes, wildcard scopes, integration ownership, and project-wide invariants require an identified routing or aggregation strategy. An implementation MUST disclose any scope class it cannot compare completely."
     },
     {
       "id": "AWP-COORD-059",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1021,
-      "statement": "A scope router MUST identify every partition that can contain a potentially interacting scope under the declared comparison policy. Cross-partition scopes, wildcard scopes, integration ownership, and project-wide invariants MUST be routed to an aggregator or a declared global-scope partition. If any required partition or index is unavailable, the result is `unverifiable`; the implementation MUST NOT report that no conflict exists."
+      "line": 1046,
+      "statement": "The profile has four logical responsibilities, which MAY be implemented by one service or separate replicated services:"
     },
     {
       "id": "AWP-COORD-060",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1023,
-      "statement": "Partition rebalancing MUST preserve session generation, terminal state, watcher position, and overlap results. A former partition owner MUST NOT accept a renewal or release after ownership has transferred. Implementations SHOULD use epochs, compare-and-swap, or equivalent stale-owner rejection even though presence itself remains advisory."
+      "line": 1055,
+      "statement": "The primary partition key MUST include stable project identity and state-space identity. Session ownership, renewal, release, and expiry for one session MUST be linearizable within its owning partition. Exact pinned scopes SHOULD use an inverted index keyed by scope identity and access mode rather than scanning all active sessions."
     },
     {
       "id": "AWP-COORD-061",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1027,
-      "statement": "Heartbeats MUST route directly by session identity and update coalesced materialized state. They MUST NOT produce one durable broker event per renewal. A heartbeat update MUST compare the session generation and current active state atomically, so a delayed message cannot revive a terminal or replaced session."
+      "line": 1057,
+      "statement": "A scope router MUST identify every partition that can contain a potentially interacting scope under the declared comparison policy. Cross-partition scopes, wildcard scopes, integration ownership, and project-wide invariants MUST be routed to an aggregator or a declared global-scope partition. If any required partition or index is unavailable, the result is `unverifiable`; the implementation MUST NOT report that no conflict exists."
     },
     {
       "id": "AWP-COORD-062",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1029,
-      "statement": "Expiry MUST be scheduled from the authoritative registry time of the owning partition. An expiry worker MUST atomically compare the expected session generation and latest expiration before publishing `presence.expired`. Duplicate expiry attempts and duplicate lifecycle delivery MUST converge through stable event identity and idempotent processing."
+      "line": 1059,
+      "statement": "Partition rebalancing MUST preserve session generation, terminal state, watcher position, and overlap results. A former partition owner MUST NOT accept a renewal or release after ownership has transferred. Implementations SHOULD use epochs, compare-and-swap, or equivalent stale-owner rejection even though presence itself remains advisory."
     },
     {
       "id": "AWP-COORD-063",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1033,
-      "statement": "Watchers SHOULD subscribe by project plus pinned scopes, scope classes, or declared global interest. The broker MUST support durable cursors, bounded delivery pages, idempotent retry, and an explicit retention interval. Cursor state MAY be compacted, but a watcher whose cursor falls behind retained history MUST receive `presence.observation_gap` before current state is presented as complete."
+      "line": 1063,
+      "statement": "Heartbeats MUST route directly by session identity and update coalesced materialized state. They MUST NOT produce one durable broker event per renewal. A heartbeat update MUST compare the session generation and current active state atomically, so a delayed message cannot revive a terminal or replaced session."
     },
     {
       "id": "AWP-COORD-064",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1035,
-      "statement": "When a hot or wildcard scope matches many sessions, the registry SHOULD publish a bounded conflict-set summary plus a resumable cursor instead of one unbounded notification per pair. Backpressure MUST NOT silently discard a safety-relevant lifecycle, conflict, gap, or incomplete-handoff observation. A deployment MUST declare queue limits, overflow behavior, retry limits, and the point at which presence becomes `unverifiable`."
+      "line": 1065,
+      "statement": "Expiry MUST be scheduled from the authoritative registry time of the owning partition. An expiry worker MUST atomically compare the expected session generation and latest expiration before publishing `presence.expired`. Duplicate expiry attempts and duplicate lifecycle delivery MUST converge through stable event identity and idempotent processing."
     },
     {
       "id": "AWP-COORD-065",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1037,
-      "statement": "Terminal sessions, lifecycle events, watcher cursors, conflict summaries, and sampled liveness evidence MUST have explicit retention policies. Retention expiry MUST NOT erase durable semantic events already incorporated into a checkpoint or Capsule projection."
+      "line": 1069,
+      "statement": "Watchers SHOULD subscribe by project plus pinned scopes, scope classes, or declared global interest. The broker MUST support durable cursors, bounded delivery pages, idempotent retry, and an explicit retention interval. Cursor state MAY be compacted, but a watcher whose cursor falls behind retained history MUST receive `presence.observation_gap` before current state is presented as complete."
     },
     {
       "id": "AWP-COORD-066",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1041,
-      "statement": "The registry MUST authenticate the submitting runtime and bind it to the asserted agent and principal under deployment policy. Authorization MUST constrain which projects, scopes, subscriptions, and presence details that identity may publish or observe. Authentication of presence proves only who made the announcement; it grants no project authority and no permission to mutate a scope."
+      "line": 1071,
+      "statement": "When a hot or wildcard scope matches many sessions, the registry SHOULD publish a bounded conflict-set summary plus a resumable cursor instead of one unbounded notification per pair. Backpressure MUST NOT silently discard a safety-relevant lifecycle, conflict, gap, or incomplete-handoff observation. A deployment MUST declare queue limits, overflow behavior, retry limits, and the point at which presence becomes `unverifiable`."
     },
     {
       "id": "AWP-COORD-067",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1043,
-      "statement": "Deployments spanning trust boundaries MUST define transport protection, replay protection, tenant isolation, audit retention, and redaction of worktree, branch, scope, and principal metadata. A monitor MUST distinguish unauthorized, unreachable, stale, and absent state."
+      "line": 1073,
+      "statement": "Terminal sessions, lifecycle events, watcher cursors, conflict summaries, and sampled liveness evidence MUST have explicit retention policies. Retention expiry MUST NOT erase durable semantic events already incorporated into a checkpoint or Capsule projection."
     },
     {
       "id": "AWP-COORD-068",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1047,
-      "statement": "Agents MUST publish final semantic events or synchronization deltas before release; they MUST NOT race to overwrite the canonical Capsule. For each workstate, the projection service MUST expose one logical writer and compare the expected frontier and generated digest before replacement. Replicated projectors MUST use fenced ownership or an equivalent mechanism that prevents a stale projector from publishing after ownership transfer."
+      "line": 1077,
+      "statement": "The registry MUST authenticate the submitting runtime and bind it to the asserted agent and principal under deployment policy. Authorization MUST constrain which projects, scopes, subscriptions, and presence details that identity may publish or observe. Authentication of presence proves only who made the announcement; it grants no project authority and no permission to mutate a scope."
     },
     {
       "id": "AWP-COORD-069",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1049,
-      "statement": "A projection conflict MUST reload and reconcile the new frontier, retry under policy, or publish divergence. It MUST NOT resolve by last-write-wins. Projector failure does not keep heartbeat values in the Capsule: it produces an incomplete-handoff observation while the live registry and durable event stream remain separate."
+      "line": 1079,
+      "statement": "Deployments spanning trust boundaries MUST define transport protection, replay protection, tenant isolation, audit retention, and redaction of worktree, branch, scope, and principal metadata. A monitor MUST distinguish unauthorized, unreachable, stale, and absent state."
     },
     {
       "id": "AWP-COORD-070",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1053,
-      "statement": "A conforming deployment MUST publish the profile parameters and tested envelope on which its capacity claim depends, including session duration, heartbeat interval, active-session count, scope distribution, wildcard rate, partitions, replication, event retention, and watcher fan-out. It SHOULD report p50, p95, and p99 entry, renewal, expiry, notification, conflict-query, and projection latency together with error, retry, gap, and false-alarm rates."
+      "line": 1083,
+      "statement": "Agents MUST publish final semantic events or synchronization deltas before release; they MUST NOT race to overwrite the canonical Capsule. For each workstate, the projection service MUST expose one logical writer and compare the expected frontier and generated digest before replacement. Replicated projectors MUST use fenced ownership or an equivalent mechanism that prevents a stale projector from publishing after ownership transfer."
     },
     {
       "id": "AWP-COORD-071",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1055,
-      "statement": "Load tests MUST include synchronized renewal bursts, hot scopes, wildcard scopes, broker restart, partition-owner failover, delayed and duplicated messages, watcher lag beyond retention, network partition, clock skew, and concurrent Capsule projection. A deployment MUST identify which guarantees remain available during each failure. Results from the local SQLite profile or a sequential synthetic probe MUST NOT be presented as evidence of distributed capacity."
+      "line": 1085,
+      "statement": "A projection conflict MUST reload and reconcile the new frontier, retry under policy, or publish divergence. It MUST NOT resolve by last-write-wins. Projector failure does not keep heartbeat values in the Capsule: it produces an incomplete-handoff observation while the live registry and durable event stream remain separate."
     },
     {
       "id": "AWP-COORD-072",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1073,
-      "statement": "Lease states are `requested`, `active`, `denied`, `released`, `expired`, `revoked`, and `superseded`. The coordinator grants a lease only after an atomic comparison against current protected state. Renewal creates a new expiration and MUST NOT reduce the fencing token."
+      "line": 1089,
+      "statement": "A conforming deployment MUST publish the profile parameters and tested envelope on which its capacity claim depends, including session duration, heartbeat interval, active-session count, scope distribution, wildcard rate, partitions, replication, event retention, and watcher fan-out. It SHOULD report p50, p95, and p99 entry, renewal, expiry, notification, conflict-query, and projection latency together with error, retry, gap, and false-alarm rates."
     },
     {
       "id": "AWP-COORD-073",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1075,
-      "statement": "An adapter claiming enforcement MUST reject a protected mutation whose token is older than the highest token it has accepted for that namespace. A new grant, new holder, or new coordinator epoch MUST issue a token strictly greater than every previously issued token in that protected namespace. Renewal of the same uninterrupted lease retains its token; it changes expiration but does not create a new ownership generation. Without this fencing check, a paused or partitioned former holder may act after its lease expires."
+      "line": 1091,
+      "statement": "Load tests MUST include synchronized renewal bursts, hot scopes, wildcard scopes, broker restart, partition-owner failover, delayed and duplicated messages, watcher lag beyond retention, network partition, clock skew, and concurrent Capsule projection. A deployment MUST identify which guarantees remain available during each failure. Results from the local SQLite profile or a sequential synthetic probe MUST NOT be presented as evidence of distributed capacity."
     },
     {
       "id": "AWP-COORD-074",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1077,
-      "statement": "If coordinator identity, epoch, authentication, protected scope, or fencing validation is unavailable, the lease is `unverifiable` outside the reachable enforcement guarantee. The implementation MUST NOT describe it as exclusive. Local work may continue under policy, but integration MUST refresh state and re-evaluate overlap and preconditions."
+      "line": 1111,
+      "statement": "Lease states are `requested`, `active`, `denied`, `released`, `expired`, `revoked`, and `superseded`. The coordinator grants a lease only after an atomic comparison against current protected state. Renewal creates a new expiration and MUST NOT reduce the fencing token."
     },
     {
       "id": "AWP-COORD-075",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1079,
-      "statement": "A COOP-2 enforcement profile MUST specify retry limits, heartbeat interval, lease duration, expiry clock authority, deadlock detection, starvation policy, cancellation consequences, and human/organizational arbitration. The base module defines no universal timing defaults because safe values depend on task duration, network delay, and the protected system. Named interoperability and test profiles MAY define explicit defaults."
+      "line": 1113,
+      "statement": "An adapter claiming enforcement MUST reject a protected mutation whose token is older than the highest token it has accepted for that namespace. A new grant, new holder, or new coordinator epoch MUST issue a token strictly greater than every previously issued token in that protected namespace. Renewal of the same uninterrupted lease retains its token; it changes expiration but does not create a new ownership generation. Without this fencing check, a paused or partitioned former holder may act after its lease expires."
     },
     {
       "id": "AWP-COORD-076",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1085,
-      "statement": "A principal is the human or organization accountable for an actor's participation. A COOP-2 session MUST bind authenticated actors to principals and declare the governing policy. Cross-principal coordination MUST identify:"
+      "line": 1115,
+      "statement": "If coordinator identity, epoch, authentication, protected scope, or fencing validation is unavailable, the lease is `unverifiable` outside the reachable enforcement guarantee. The implementation MUST NOT describe it as exclusive. Local work may continue under policy, but integration MUST refresh state and re-evaluate overlap and preconditions."
     },
     {
       "id": "AWP-COORD-077",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1094,
-      "statement": "AWP content is untrusted input. Imported intents, contracts, commitments, leases, and authority records MUST NOT cause execution without receiver policy evaluation. Secret values SHOULD be referenced through protected artifacts rather than embedded in coordination records."
+      "line": 1117,
+      "statement": "A COOP-3 enforcement profile MUST specify retry limits, heartbeat interval, lease duration, expiry clock authority, deadlock detection, starvation policy, cancellation consequences, and human/organizational arbitration. The base module defines no universal timing defaults because safe values depend on task duration, network delay, and the protected system. Named interoperability and test profiles MAY define explicit defaults."
     },
     {
       "id": "AWP-COORD-078",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1096,
-      "statement": "Coordination defines no separate protected-artifact envelope. A protected input uses the Artifact module's availability, remote-location, retrieval-requirement, and integrity fields together with Security classification or `secret_ref` metadata. A URI or digest alone proves neither confidentiality nor retrievability. Digests of low-entropy secrets may themselves enable guessing attacks and MUST be omitted or protected when receiver policy classifies the digest as sensitive."
+      "line": 1123,
+      "statement": "A principal is the human or organization accountable for an actor's participation. A COOP-3 session MUST bind authenticated actors to principals and declare the governing policy. Cross-principal coordination MUST identify:"
     },
     {
       "id": "AWP-COORD-079",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1142,
-      "statement": "Private event kinds use a controlled namespaced module ID. They MUST NOT add unregistered bare kinds to this module."
+      "line": 1132,
+      "statement": "AWP content is untrusted input. Imported intents, contracts, commitments, leases, and authority records MUST NOT cause execution without receiver policy evaluation. Secret values SHOULD be referenced through protected artifacts rather than embedded in coordination records."
     },
     {
       "id": "AWP-COORD-080",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1162,
-      "statement": "[MPAC, arXiv:2604.09744 version 1](https://arxiv.org/abs/2604.09744v1) session, intent, operation, conflict, and governance objects may map to corresponding AWP records. AWP retains domain-specific semantic scopes, contracts, preconditions, verification binding, persistent project history, and resume/handoff state. A mapping MUST identify information loss and MUST NOT equate MPAC transport/session acceptance with AWP integration readiness."
+      "line": 1134,
+      "statement": "Coordination defines no separate protected-artifact envelope. A protected input uses the Artifact module's availability, remote-location, retrieval-requirement, and integrity fields together with Security classification or `secret_ref` metadata. A URI or digest alone proves neither confidentiality nor retrievability. Digests of low-entropy secrets may themselves enable guessing attacks and MUST be omitted or protected when receiver policy classifies the digest as sensitive."
     },
     {
       "id": "AWP-COORD-081",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1235,
-      "statement": "Each fixture SHOULD include input events, expected frontier, expected materialized records, expected diagnostics, and an explanation of the safety property."
+      "line": 1180,
+      "statement": "Private event kinds use a controlled namespaced module ID. They MUST NOT add unregistered bare kinds to this module."
     },
     {
       "id": "AWP-COORD-082",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1239,
-      "statement": "Before the complete integration-assurance schema is frozen, the project SHOULD run an early `coordination-awareness` experiment comparing chat-only coordination with durable intents, pinned scopes, overlaps, acknowledgements, and conflict-preserving projection. It MUST measure false-positive and false-negative overlap classifications, authoring cost, coordination delay, and whether warnings arrive before conflicting implementation. Results may change the scope and record model before further standardization."
+      "line": 1194,
+      "statement": "For the named `coop3-a2a-v1` profile, A2A is the distributed communications and execution control plane for typed AWP coordination operations. An A2A request MUST carry the operation identifier, workstate identifier, stable binding identity, acting AWP actor, and the expected revision, frontier, or fencing token applicable to the operation. A response MUST carry either a durable AWP receipt that identifies the accepted event or protected decision, or a stable rejection or conflict diagnostic. A2A delivery, task completion, or peer authentication does not replace the binding's durable persistence, principal mapping, authorization decision, epoch comparison, or fencing check."
     },
     {
       "id": "AWP-COORD-083",
       "source": "spec/drafts/0.8.0/coordination.md",
-      "line": 1257,
+      "line": 1196,
+      "statement": "An A2A adapter MUST preserve idempotency across retry, reconnect, duplicate delivery, endpoint migration, and task-status polling. It MUST make transport reachability and AWP store or gateway reachability separately observable. If protected enforcement cannot verify the actor/principal, binding epoch, expected state, protected scope, or fencing token, it MUST reject the protected operation even if the A2A task was successfully delivered. A2A is optional outside a binding that explicitly claims `coop3-a2a-v1`."
+    },
+    {
+      "id": "AWP-COORD-084",
+      "source": "spec/drafts/0.8.0/coordination.md",
+      "line": 1204,
+      "statement": "[MPAC, arXiv:2604.09744 version 1](https://arxiv.org/abs/2604.09744v1) session, intent, operation, conflict, and governance objects may map to corresponding AWP records. AWP retains domain-specific semantic scopes, contracts, preconditions, verification binding, persistent project history, and resume/handoff state. A mapping MUST identify information loss and MUST NOT equate MPAC transport/session acceptance with AWP integration readiness."
+    },
+    {
+      "id": "AWP-COORD-085",
+      "source": "spec/drafts/0.8.0/coordination.md",
+      "line": 1244,
+      "statement": "The fixture inventory does not itself establish a Cooperation Contract claim. The following minimum attribution makes the evidence boundary auditable: a `COOP-1` claim needs the applicable scenarios in Cooperation Contracts \u00a74.3, including deterministic replay, record-validity rejection, compatible and incompatible physical scopes, resolution, lease expiry, fresh handoff, and binding identity across filesystem paths. This inventory contributes direct coverage for physical non-overlap and same-file conflict (1\u20132), structural precondition or verification binding (7\u20138), contested projection (11\u201312), recovery and expiry (14\u201315, 23\u201325), and presence overlap behavior (21\u201322). A `COOP-2` claim additionally needs semantic conflict, relied-upon read, material undeclared scope, contract revision, dependency cycle, and integration-readiness coverage (3\u20136, 9\u201310, 13). A `COOP-3` claim additionally needs fenced mutation, epoch, authorization, and protected-operation coverage (16\u201318, 26\u201332 as applicable). A claimed operating envelope MUST identify any required scenario that has no corresponding executable fixture; the present inventory does not by itself discharge COOP-1 \u00a74.3 scenario 9's different-filesystem-path binding-identity evidence."
+    },
+    {
+      "id": "AWP-COORD-086",
+      "source": "spec/drafts/0.8.0/coordination.md",
+      "line": 1279,
+      "statement": "Each fixture SHOULD include input events, expected frontier, expected materialized records, expected diagnostics, and an explanation of the safety property."
+    },
+    {
+      "id": "AWP-COORD-087",
+      "source": "spec/drafts/0.8.0/coordination.md",
+      "line": 1283,
+      "statement": "Before the complete integration-assurance schema is frozen, the project SHOULD run an early `coordination-awareness` experiment comparing chat-only coordination with durable intents, pinned scopes, overlaps, acknowledgements, and conflict-preserving projection. It MUST measure false-positive and false-negative overlap classifications, authoring cost, coordination delay, and whether warnings arrive before conflicting implementation. Results may change the scope and record model before further standardization."
+    },
+    {
+      "id": "AWP-COORD-088",
+      "source": "spec/drafts/0.8.0/coordination.md",
+      "line": 1301,
       "statement": "1. Canonical JSON and digest rules remain a Core/Artifact/Security family issue and must be resolved before signed coordination evidence is portable. The family profile should evaluate RFC 8785 JCS while explicitly handling its I-JSON, IEEE-754 number, and Unicode-preservation constraints; Coordination MUST NOT select a conflicting local canonicalization."
     },
     {
@@ -4415,193 +5205,253 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
     {
       "id": "AWP-COOP-001",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 11,
+      "line": 8,
       "statement": "The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in BCP 14 when, and only when, they appear in all capitals."
     },
     {
       "id": "AWP-COOP-002",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 34,
-      "statement": "This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the additional interaction, guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed COOP contract. A workstate governed by released AWP 0.6 continues to interpret its original Coordination declaration under that released specification."
+      "statement": "This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the additional guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed contract. A workstate governed by released AWP 0.6 continues to interpret its original Coordination declaration under that released specification."
     },
     {
       "id": "AWP-COOP-003",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 42,
-      "statement": "An implementation MUST identify the selected contract, effective interaction policy, operational mode, and any material limitations in its entry or operation response. A binding disclosure uses `contract` for the selected ladder level, `claim_state` to distinguish `selected`, `partial`, and `conformant`, and `capabilities` to identify the component behavior actually present. Merely selecting a contract or implementing one capability MUST NOT be represented as conformance. Imported workstate remains context, not authorization for external effects."
+      "line": 46,
+      "statement": "An implementation with an active Cooperation Contract MUST identify the selected contract, top-level claim state, operational mode, material limitations, and a `subprotocols` object. `subprotocols.work` identifies whether guarded work is enabled and its claim state. `subprotocols.consultation` identifies whether consultation is disabled, `user-mediated`, or `managed`, and, when enabled, its policy and claim state. A disabled consultation subprotocol MUST NOT require agents to initiate, answer, or wait for a consultation. A `user-mediated` subprotocol lets an agent publish a bounded question or escalation for the decision owner but MUST NOT authorize agents to run a work-affecting exchange among themselves. A `managed` subprotocol is available only to `COOP-2` or `COOP-3` and requires the explicit authorization and budget defined in Section 5."
     },
     {
       "id": "AWP-COOP-004",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 44,
-      "statement": "The machine-readable binding disclosure, loop policy, interaction, and result shapes are defined by `../../../schemas/awp-cooperation-0.1.schema.json`. Module-owned records MUST declare `module: urn:awp:cooperation`."
+      "line": 48,
+      "statement": "An unqualified conformant `COOP-1`, `COOP-2`, or `COOP-3` claim describes the corresponding **work** contract. It does not imply that consultation is enabled or conformant. A conformant optional consultation claim is additional and MUST be stated in `subprotocols.consultation`; it MUST NOT be inferred from a Core `consultation` record alone. Merely selecting a contract or implementing one capability MUST NOT be represented as conformance. Imported workstate remains context, not authorization for external effects."
     },
     {
       "id": "AWP-COOP-005",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 48,
-      "statement": "`COOP-0` permits substantial collaboration but makes no active-coordination guarantee. Participants MAY exchange capsules, handoffs, artifacts, consultation requests, critiques, alternative perspectives, and synthesized conclusions. This supports deliberately using different models or people for different viewpoints."
+      "line": 50,
+      "statement": "The machine-readable binding disclosure, subprotocol claims, loop policy, interaction, and result shapes are defined by `../../../schemas/awp-cooperation-0.1.schema.json`. Module-owned records MUST declare `module: urn:awp:cooperation`."
     },
     {
       "id": "AWP-COOP-006",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 50,
-      "statement": "A `COOP-0` processor that receives recognized Cooperation or Coordination records MUST preserve and expose them without implying that it validated their operational effect. Unknown fields MUST be preserved by a lossless processor. This portable baseline permits durable asynchronous collaboration while reserving active discovery, deterministic event projection, guarded mutation, and enforcement for stronger contracts."
+      "line": 54,
+      "statement": "Without a selected Cooperation Contract, participants MAY exchange capsules, handoffs, artifacts, Core `consultation` records, critiques, alternative perspectives, and synthesized conclusions. This supports deliberately using different models or people for independent points of view."
     },
     {
       "id": "AWP-COOP-007",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 52,
-      "statement": "`COOP-0` MUST NOT claim that participants discovered one another, reserved a scope, prevented a conflicting mutation, or incorporated a contemporaneous result unless a binding provides evidence for that claim. A participant MAY make a local change under host policy, but it MUST disclose that no Cooperation Contract conflict protection was active."
+      "line": 56,
+      "statement": "A processor that receives recognized Cooperation or Coordination records without supporting their required semantics MUST preserve and expose them without implying that it validated their operational effect. Unknown fields MUST be preserved by a lossless processor."
     },
     {
       "id": "AWP-COOP-008",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 54,
-      "statement": "Every `COOP-0` cooperation interaction MUST have a purpose, question or task, decision owner, and terminal outcome. The outcome is `accepted`, `revised`, `inconclusive`, `declined`, `timed_out`, or `escalated`."
+      "line": 58,
+      "statement": "An uncontracted participant MUST NOT claim that participants discovered one another, reserved a scope, prevented a conflicting mutation, or incorporated a contemporaneous result unless a binding provides evidence for that claim. A participant MAY make a local change under host policy, but it MUST disclose that no active Cooperation Contract conflict protection was present."
     },
     {
       "id": "AWP-COOP-009",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 58,
-      "statement": "`COOP-1` is the default contract for a small shared project group. It is intended to be useful for more than two concurrent participants without making an unmeasured capacity claim, though Section 4.5 permits an explicitly bounded two-participant operating envelope. It MUST NOT require a separate database or continuously running service. A binding MAY use repository-local files, atomic filesystem operations, an embedded store, or another local mechanism, provided it preserves the requirements below."
+      "line": 60,
+      "statement": "Core `consultation` records remain available for asynchronous advice seeking. They require no participant lease or shared ledger. A response MUST identify uncertainty and supporting evidence when available; advice MUST NOT be treated as authorization for an action."
     },
     {
       "id": "AWP-COOP-010",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 62,
-      "statement": "`COOP-1` also incorporates deterministic coordination processing. For every Coordination record or event used to make a cooperation decision, the binding MUST validate workstate identity, event identity, ancestry, revisions, lifecycle transitions, pinned references, typed precondition and verification bindings, and applicable staleness rules. Projection MUST be independent of transport order, preserve concurrent non-commuting successors as contested, and return stable diagnostics for excluded or unverifiable input. A component MAY advertise a `deterministic-coordination-projector` capability, but that component alone MUST NOT claim `COOP-1`; the contract applies to the composed participant, binding, projector, checkpoint, and interaction behavior."
+      "line": 64,
+      "statement": "`COOP-1` is the default contract for a small shared project group. It reduces collisions in guarded, explicitly comparable work without requiring agents to exchange reasoning beyond the structured coordination information needed to proceed or block. A material conflict, ambiguity, or request for a work-affecting decision is surfaced to the declared decision owner; it does not start an autonomous agent-to-agent loop. It is intended to be useful for more than two concurrent participants without making an unmeasured capacity claim, though Section 4.3 permits an explicitly bounded two-participant operating envelope. It MUST NOT require a separate database or continuously running service. A binding MAY use repository-local files, atomic filesystem operations, an embedded store, or another local mechanism, provided it preserves the requirements below."
     },
     {
       "id": "AWP-COOP-011",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 64,
-      "statement": "A `COOP-1` participant lease is a bounded liveness record in the cooperation binding. It lets participating agents discover an active participant and recover when its renewal stops; it does not authenticate a principal, fence a source-control write, or grant authority. A binding's guarded-mutation guarantee applies only to participants that use the binding and obey its returned decision. Protected mutation paths, authenticated principals, epochs, and fencing are `COOP-2` guarantees and MUST NOT be inferred from a `COOP-1` claim."
+      "line": 66,
+      "statement": "For every Coordination record or event used to make a work-coordination decision, the binding MUST perform `COOP-1` record-validity validation of workstate identity, event identity, ancestry, revisions, lifecycle transitions, pinned references, and typed precondition and verification bindings. It MUST exclude or block structurally stale or unverifiable input with a stable diagnostic. Projection MUST be independent of transport order, preserve concurrent non-commuting successors as contested, and return stable diagnostics for excluded or unverifiable input. A component MAY advertise a `deterministic-coordination-projector` capability, but that component alone MUST NOT claim `COOP-1`; the contract applies to the composed participant, binding, projector, checkpoint, and recovery behavior."
     },
     {
       "id": "AWP-COOP-012",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 68,
-      "statement": "Before guarded work, a `COOP-1` participant MUST:"
+      "statement": "A `COOP-1` participant lease is a bounded liveness record with exit coupling in the cooperation binding. It lets participating agents discover an active participant and recover when its renewal stops; release is permitted only after the linked work is terminal and a durable handoff receipt is available. It does not authenticate a principal, fence a source-control write, grant authority, or require its holder to participate in a consultation. A binding's guarded-mutation guarantee applies only to participants that use the binding and obey its returned decision. Protected mutation paths, authenticated principals, epochs, and fencing are `COOP-3` guarantees and MUST NOT be inferred from a `COOP-1` claim."
     },
     {
       "id": "AWP-COOP-013",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 76,
-      "statement": "The binding MUST make the announce-and-check operation atomic with respect to other `COOP-1` announce operations for the same guarded scopes. Compatible work MAY proceed concurrently. A known incompatible guarded mutation MUST return `blocked`, `waiting`, or an equivalent non-permitted outcome until participants record a partition, order, withdrawal, or escalation. A warning-only result is insufficient for a binding to claim the `COOP-1` guarded-mutation guarantee."
+      "line": 72,
+      "statement": "Before guarded work, a `COOP-1` participant MUST:"
     },
     {
       "id": "AWP-COOP-014",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 78,
-      "statement": "Before guarded work, participants MUST compare a stable binding identity containing the workstate identifier, repository-intrinsic project identifier, canonical store identifier, scope-model identifier and version, and binding epoch. The project identifier MUST derive from repository-intrinsic state and MUST NOT derive from a filesystem path or mount location. Any mismatched or unverifiable stable identity field MUST produce `blocked`."
+      "line": 80,
+      "statement": "The binding MUST make the announce-and-check operation atomic with respect to other `COOP-1` announce operations for the same guarded scopes. Compatible work MAY proceed concurrently. A known incompatible guarded mutation MUST return `blocked`, `waiting`, or an equivalent non-permitted outcome until participants record a partition, order, withdrawal, or escalation. A warning-only result is insufficient for a binding to claim the `COOP-1` guarded-mutation guarantee."
     },
     {
       "id": "AWP-COOP-015",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 80,
-      "statement": "Operational reach and frontier are observations, not stable identity. Each observation MUST identify its observation time, reach, and current frontier. Frontier values MAY differ as the binding advances; a participant MUST refresh, reconcile an ancestor or newer frontier, and block on an unverifiable history gap rather than require byte equality with another participant's earlier frontier. Reach is `shared`, `worktree-local`, `configured-unverified`, `degraded`, `snapshot-only`, or `unavailable`. An explicit store path begins as `configured-unverified`; it becomes `shared` only after at least two declared interaction participants have each recorded a binding entry that names the same stable store identity. A binding MUST retain or return that handshake evidence. A participant MUST NOT merge records from different store identifiers into one interaction; it MUST select one declared binding or return `blocked`. A binding MUST disclose its atomicity mechanism and the storage or filesystem assumptions under which it is valid."
+      "line": 82,
+      "statement": "A binding that cannot make announce-and-check atomic with respect to concurrent announcements for the same guarded scopes MUST NOT claim `COOP-1`; it MUST disclose operational mode `snapshot_only`, `degraded`, or `unavailable` as applicable."
     },
     {
       "id": "AWP-COOP-016",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 82,
-      "statement": "A binding MUST normalize a path-like guarded scope to a repository-relative path, normalize separators and dot segments, and reject parent traversal outside the repository. Two path scopes overlap when they are equal or either is an ancestor of the other at a path-segment boundary. For every overlapping pair, the binding MUST apply a declared, versioned access-mode compatibility table. If either operation may mutate and the table does not explicitly permit the pair, the pair is incompatible. A scope kind without a declared comparison function is non-comparable; the binding MUST either conservatively block a guarded mutation or disclose that the scope is outside its guarded guarantee. \u201cKnown\u201d means visible in the same atomic decision from all active, non-expired intents within the binding's declared reach and frontier. Case-folding, Unicode normalization, and symbolic-link treatment MUST be declared by the scope model."
+      "line": 84,
+      "statement": "Before guarded work, participants MUST compare a stable binding identity containing the workstate identifier, repository-intrinsic project identifier, canonical store identifier, scope-model identifier and version, and binding epoch. The project identifier MUST derive from repository-intrinsic state and MUST NOT derive from a filesystem path or mount location. Any mismatched or unverifiable stable identity field MUST produce `blocked`."
     },
     {
       "id": "AWP-COOP-017",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 84,
-      "statement": "`COOP-1` requires only declared physical or otherwise explicitly comparable scope. It MUST disclose that semantic conflicts outside its declared scope model can remain undetected. A clean source-control merge is not proof of compatibility."
+      "line": 86,
+      "statement": "Operational reach and frontier are observations, not stable identity. Each observation MUST identify its observation time, reach, and current frontier. Frontier values MAY differ as the binding advances; a participant MUST refresh, reconcile an ancestor or newer frontier, and block on an unverifiable history gap rather than require byte equality with another participant's earlier frontier. Reach is `shared`, `worktree-local`, `configured-unverified`, `degraded`, `snapshot-only`, or `unavailable`. An explicit store path begins as `configured-unverified`; it becomes `shared` only after at least two declared work participants have each recorded a binding entry that names the same stable store identity. A binding MUST retain or return that handshake evidence. A participant MUST NOT merge records from different store identifiers into one work decision; it MUST select one declared binding or return `blocked`. A binding MUST disclose its atomicity mechanism and the storage or filesystem assumptions under which it is valid."
     },
     {
       "id": "AWP-COOP-018",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 88,
-      "statement": "`COOP-1` participants MAY initiate cooperation interactions while performing compatible work. Examples include asking a different model for an independent design, requesting a critique before integration, delegating a bounded investigation, or asking a decision owner to synthesize alternatives."
+      "statement": "A binding MUST normalize a path-like guarded scope to a repository-relative path, normalize separators and dot segments, and reject parent traversal outside the repository. Two path scopes overlap when they are equal or either is an ancestor of the other at a path-segment boundary. For every overlapping pair, the binding MUST apply a declared, versioned access-mode compatibility table. If either operation may mutate and the table does not explicitly permit the pair, the pair is incompatible. A scope kind without a declared comparison function is non-comparable; the binding MUST either conservatively block a guarded mutation or disclose that the scope is outside its guarded guarantee. \u201cKnown\u201d means visible in the same atomic decision from all active, non-expired intents within the binding's declared reach and frontier. Case-folding, Unicode normalization, and symbolic-link treatment MUST be declared by the scope model."
     },
     {
       "id": "AWP-COOP-019",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 90,
-      "statement": "An interaction MUST identify:"
+      "statement": "`COOP-1` requires only declared physical or otherwise explicitly comparable scope. It MUST disclose that semantic conflicts outside its declared scope model can remain undetected. A clean source-control merge is not proof of compatibility."
     },
     {
       "id": "AWP-COOP-020",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 100,
-      "statement": "An interaction MUST NOT silently authorize a guarded mutation. An accepted recommendation becomes actionable only when the decision owner records the resulting partition, order, intent, or other required project decision."
+      "line": 94,
+      "statement": "At a meaningful checkpoint and before exit, a participant MUST publish its actual scope, outcome, evidence references, unresolved work, and recommended next action through the selected binding. Actual scope is the participant's own assertion about work performed and its declared physical scopes; it is not an `observed_scope` record. An `observed_scope` record is analyzer-produced evidence under `COOP-2`, does not overwrite the participant's declaration, and may impose additional readiness consequences. The canonical capsule projection MUST identify the frontier it includes and its integrity digest. One logical publisher per workstate MUST serialize canonical capsule replacement using an expected capsule-frontier and digest comparison or an equivalent stale-writer exclusion rule. When a binding has a distinct event frontier, it MUST compare that expected event frontier independently; a legacy capsule frontier and a binding event frontier MUST NOT be assumed equal. A checkpoint receipt MUST identify the capsule path, whole-artifact digest, generated-region digest, and included frontier. A fresh-entry operation MUST report the capsule as `current`, `modified`, or `stale`; a binding MUST NOT permit guarded work while the canonical capsule is `modified` unless a host explicitly records an override outside the `COOP-1` claim."
     },
     {
       "id": "AWP-COOP-021",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 119,
-      "statement": "A round MUST add a new artifact, evidence item, explicit decision, or identified disagreement. The interaction MUST record that contribution as `progress.kind` with a reference to the new item. The `repeat_basis` MUST contain the purpose, canonical subject, context frontier, participant-set digest, and policy digest. `participant_set_digest` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of the lexicographically sorted array of participant identifier strings. `policy_digest` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of the complete effective policy object. `repeat_key` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of `repeat_basis`. A binding MUST reject an interaction whose supplied participant-set or policy digest does not match these calculations. A binding MUST deduplicate a repeated interaction with the same repeat key, or return the prior outcome, unless the repeat basis changed. On reaching a limit, it MUST return `inconclusive` or `escalated`; it MUST NOT start an unbounded optimization loop."
+      "line": 96,
+      "statement": "On exit, the participant MUST publish its final semantic handoff before releasing its lease. The binding MUST reject release while an intent linked to the lease remains nonterminal or unless a durable receipt identifies an already published handoff artifact and its integrity digest. Recording a planned output identifier before the artifact exists is not publication confirmation. If the capsule projection, terminal publication, or lease release cannot be confirmed, the participant MUST report a recoverable pending exit rather than claim completion. If a participant crashes, its lease MUST expire without requiring a capsule rewrite; the durable capsule remains the last confirmed semantic handoff."
     },
     {
       "id": "AWP-COOP-022",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 121,
-      "statement": "The loop policy is extensible. A project or binding MAY declare additional parameters, higher budgets, stricter cost limits, time limits, evaluator thresholds, model diversity requirements, or domain-specific stopping predicates. Unknown policy parameters MUST be preserved. A participant that does not understand a parameter marked required by the effective policy MUST NOT claim to enforce that policy and MUST request a compatible policy, delegate enforcement to the binding, or decline the interaction."
+      "line": 112,
+      "statement": "The claim MUST state the tested operating envelope. A claim with a maximum concurrent participant count of three or more MUST additionally show three or more compatible participants proceeding without false blocking. It MUST NOT infer a larger participant limit, cross-host reliability, semantic-conflict detection, or effectiveness from this minimum evidence."
     },
     {
       "id": "AWP-COOP-023",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 123,
-      "statement": "Only the declared decision owner MAY continue an interaction after the effective budget is exhausted. A policy MAY assign that authority to a human principal, a project role, or a bounded automated evaluator; it MUST identify the authority and its basis."
+      "line": 116,
+      "statement": "The work participant declares scope, access, evidence, and actual outcome; obeys blocked decisions; and supplies a concise rationale without private chain-of-thought. The work binding normalizes and compares scopes, owns transactions and leases, returns receipts, and enforces guarded-work lifecycle rules. A host enforces its own authority and side-effect policy; work metadata MUST NOT expand that authority."
     },
     {
       "id": "AWP-COOP-024",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 127,
-      "statement": "At a meaningful checkpoint and before exit, a participant MUST publish its actual scope, outcome, evidence references, unresolved work, and recommended next action through the selected binding. The canonical capsule projection MUST identify the frontier it includes and its integrity digest. One logical publisher per workstate MUST serialize canonical capsule replacement using an expected capsule-frontier and digest comparison or an equivalent stale-writer exclusion rule. When a binding has a distinct event frontier, it MUST compare that expected event frontier independently; a legacy capsule frontier and a binding event frontier MUST NOT be assumed equal. A checkpoint receipt MUST identify the capsule path, whole-artifact digest, generated-region digest, and included frontier. A fresh-entry operation MUST report the capsule as `current`, `modified`, or `stale`; a binding MUST NOT permit guarded work while the canonical capsule is `modified` unless a host explicitly records an override outside the `COOP-1` claim."
+      "line": 120,
+      "statement": "`subprotocols.consultation` is disabled unless explicitly enabled. Portable Core consultations may occur with no selected contract under Section 3. A `COOP-1` binding MAY enable only `user-mediated` consultation: agents may publish a bounded question, conflict, or escalation for the decision owner, but MUST NOT autonomously ask another agent to analyze, negotiate, delegate, or decide work whose outcome affects guarded work. Until the decision owner records a disposition, the affected work remains blocked, waiting, or explicitly outside the `COOP-1` guarantee."
     },
     {
       "id": "AWP-COOP-025",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 129,
-      "statement": "On exit, the participant MUST publish its final semantic handoff before releasing its lease. The binding MUST reject release while an intent linked to the lease remains nonterminal or unless a durable receipt identifies an already published handoff artifact and its integrity digest. Recording a planned output identifier before the artifact exists is not publication confirmation. If the capsule projection, terminal publication, or lease release cannot be confirmed, the participant MUST report a recoverable pending exit rather than claim completion. If a participant crashes, its lease MUST expire without requiring a capsule rewrite; the durable capsule remains the last confirmed semantic handoff."
+      "line": 122,
+      "statement": "`COOP-2` and `COOP-3` MAY enable `managed` collaboration. This is the level at which agents may directly exchange richer context, critique an approach, reconcile semantic conflicts, prepare an integration plan, or delegate bounded analysis. A managed interaction is never implicit: before its first agent-to-agent request, the binding MUST record an authorization reference from the decision owner or authorized principal and a policy naming the permitted participants, purpose, subject or scopes, decision owner, maximum rounds, maximum participant responses, maximum tool calls, maximum context tokens per request, maximum output tokens per response, and maximum total output tokens. A binding MUST stop or return `inconclusive` or `escalated` when any limit is reached. Token values are declared budget ceilings; a binding that cannot measure a value MUST disclose that limit as unenforced and MUST NOT claim enforced managed-collaboration budgeting."
     },
     {
       "id": "AWP-COOP-026",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 146,
-      "statement": "The claim MUST state the tested operating envelope. A claim with a maximum concurrent participant count of three or more MUST additionally show three or more compatible participants proceeding without false blocking. It MUST NOT infer a larger participant limit, cross-host reliability, semantic-conflict detection, or effectiveness from this minimum evidence."
+      "line": 126,
+      "statement": "When enabled, a cooperation interaction MUST identify:"
     },
     {
       "id": "AWP-COOP-027",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 150,
-      "statement": "The participant declares purpose, scope, access, evidence, progress, and actual outcome; obeys blocked decisions; and supplies a concise rationale without private chain-of-thought. The binding normalizes and compares scopes, owns transactions and leases, computes repeat keys and digests, deduplicates requests, returns receipts, and enforces loop limits. The decision owner accepts or rejects recommendations, authorizes continuation after an exhausted budget, and resolves escalations. A host enforces its own authority and side-effect policy; cooperation metadata MUST NOT expand that authority."
+      "line": 135,
+      "statement": "A managed interaction MUST additionally identify its authorization reference and the policy budget consumption or an explicit measurement limitation. A `user-mediated` interaction MUST identify the decision owner and MUST NOT treat a responder's advice as a disposition or permission for guarded work."
     },
     {
       "id": "AWP-COOP-028",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 154,
-      "statement": "`COOP-2` extends `COOP-1` and incorporates the stronger semantic-awareness, integration-assurance, and live-enforcement behaviors formerly described by the draft Coordination `C2` and `C3` levels. It MAY require a database, broker, sharded registry, subscription system, authenticated identity, protected mutation gateway, or another service-backed binding."
+      "line": 137,
+      "statement": "A consultation interaction MUST NOT silently authorize a guarded mutation or reserve a work scope. An accepted recommendation becomes actionable only when the decision owner records the resulting partition, order, intent, or other required project decision. A work lease MUST NOT be interpreted as consent to be interrupted for consultation, and a binding MUST NOT require a work lease as a precondition for initiating or responding to consultation."
     },
     {
       "id": "AWP-COOP-029",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 156,
-      "statement": "A `COOP-2` binding MUST maintain a stable semantic registry; resolve comparable selectors against pinned state revisions; compare declared scope, observed scope, and relied-upon reads; preserve `unknown` when relation evidence is ambiguous; and require acknowledgement or blocking under the effective policy. It MUST bind interface contracts, typed preconditions, verification results, staleness, change-set readiness, and integration results so that a stale or unsatisfied dependency cannot silently become integration-ready."
+      "line": 157,
+      "statement": "A round MUST add a new artifact, evidence item, explicit decision, or identified disagreement. The interaction MUST record that contribution as `progress.kind` with a reference to the new item. The `repeat_basis` MUST contain the purpose, canonical subject, context frontier, participant-set digest, and policy digest. `participant_set_digest` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of the lexicographically sorted array of participant identifier strings. `policy_digest` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of the complete effective policy object. `repeat_key` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of `repeat_basis`. A binding MUST reject an interaction whose supplied participant-set or policy digest does not match these calculations. A binding MUST deduplicate a repeated interaction with the same repeat key, or return the prior outcome, unless the repeat basis changed. On reaching a limit, it MUST return `inconclusive` or `escalated`; it MUST NOT start an unbounded optimization loop."
     },
     {
       "id": "AWP-COOP-030",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 158,
-      "statement": "For guarded mutation, a `COOP-2` binding MUST authenticate actors to principals and use protected optimistic-concurrency or lease operations with epochs and fencing tokens. It MUST reject stale owners at the protected mutation path; advisory metadata or an unprotected lock file is insufficient. Its policy MUST define retry bounds, lease duration, clock authority, deadlock and starvation behavior, cancellation consequences, and human or organizational arbitration."
+      "line": 159,
+      "statement": "Loop budgets are independent of participant-lease duration and work-operation retry policy. A project or binding MAY declare additional parameters, higher budgets, stricter cost limits, time limits, evaluator thresholds, model diversity requirements, or domain-specific stopping predicates. Unknown policy parameters MUST be preserved. A participant that does not understand a parameter marked required by the effective policy MUST NOT claim to enforce that policy and MUST request a compatible policy, delegate enforcement to the binding, or decline the interaction. Only the declared decision owner MAY continue an interaction after the effective budget is exhausted."
     },
     {
       "id": "AWP-COOP-031",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 160,
-      "statement": "A `COOP-2` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, trust boundary, protected mutation paths, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST include fault evidence for stale-owner rejection, event loss or retention gaps, projector races, binding-identity disagreement, and recovery after interruption. It MUST NOT infer scale, availability, semantic accuracy, or enforcement from a storage technology alone."
+      "line": 167,
+      "statement": "`COOP-2` extends `COOP-1` work coordination with semantic awareness and integration assurance. It is also the first contract that may enable managed, directly inter-agent collaboration under Section 5's explicit authorization and budget. It MAY require a database, broker, registry, subscription system, or another service-backed binding, but neither a storage technology nor consultation alone supplies `COOP-2` semantics."
     },
     {
       "id": "AWP-COOP-032",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 180,
+      "line": 169,
+      "statement": "A `COOP-2` binding MUST maintain a stable semantic registry; resolve comparable selectors against pinned state revisions; compare declared scope, observed scope, and relied-upon reads; preserve `unknown` when relation evidence is ambiguous; and require acknowledgement or blocking under the effective policy. It MUST bind interface contracts, typed preconditions, verification results, staleness, change-set readiness, and integration results so that a stale or unsatisfied dependency cannot silently become integration-ready."
+    },
+    {
+      "id": "AWP-COOP-033",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 171,
+      "statement": "A `COOP-2` claim MUST declare its semantic-analysis coverage, selector and scope model, integration policy, tested participant count, and the failure behavior for unavailable or ambiguous semantic evidence. It MUST NOT infer protected external mutation, authentication, fencing, cross-host availability, or scalability from this claim."
+    },
+    {
+      "id": "AWP-COOP-034",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 173,
+      "statement": "A registry, selector analyzer, verification evaluator, or integration-readiness evaluator alone MUST NOT claim `COOP-2`; the contract applies to the composed participant, binding, semantic registry, analyzer, readiness evaluator, checkpoint, and recovery behavior."
+    },
+    {
+      "id": "AWP-COOP-035",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 177,
+      "statement": "`COOP-3` extends `COOP-2` with authenticated protected mutation and a declared scalable operating envelope. It MAY require a database, broker, sharded registry, protected mutation gateway, or another service-backed binding."
+    },
+    {
+      "id": "AWP-COOP-036",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 179,
+      "statement": "For guarded mutation, a `COOP-3` binding MUST authenticate actors to principals and use protected optimistic-concurrency or lease operations with epochs and fencing tokens. It MUST reject stale owners at the protected mutation path; advisory metadata or an unprotected lock file is insufficient. Its policy MUST define retry bounds, lease duration, clock authority, deadlock and starvation behavior, cancellation consequences, and human or organizational arbitration."
+    },
+    {
+      "id": "AWP-COOP-037",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 181,
+      "statement": "A `COOP-3` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, trust boundary, protected mutation paths, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST include fault evidence for stale-owner rejection, event loss or retention gaps, projector races, binding-identity disagreement, and recovery after interruption. It MUST NOT infer scale, availability, semantic accuracy, or enforcement from a storage technology alone."
+    },
+    {
+      "id": "AWP-COOP-038",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 185,
+      "statement": "`coop3-a2a-v1` is a named optional COOP-3 binding profile for participants that communicate across runtimes, hosts, or organizational boundaries through the Agent2Agent (A2A) protocol. A2A is the profile's communications and execution control plane; it is not the authoritative coordination state or a substitute for protected mutation enforcement. An A2A task accepted, updated, completed, failed, cancelled, or resumed state MUST NOT by itself be interpreted as an AWP intent decision, lease grant, fenced mutation, checkpoint, integration result, or authority grant."
+    },
+    {
+      "id": "AWP-COOP-039",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 187,
+      "statement": "A binding claiming `transport.profile: coop3-a2a-v1` MUST declare the supported A2A protocol version and interfaces, the authenticated mapping from A2A peer identity to AWP actor and accountable principal, its task-to-AWP-operation correlation and idempotency rule, its authoritative coordination-store identity, and its protected mutation gateway. It MUST carry an immutable AWP operation identifier and the relevant workstate and binding identity in every coordination request. The binding MUST durably record the resulting AWP event or return a stable rejection before it acknowledges the operation as accepted to a participant."
+    },
+    {
+      "id": "AWP-COOP-040",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 189,
+      "statement": "The profile MAY use A2A tasks, messages, artifacts, or data parts to carry typed AWP coordination requests and receipts. At minimum it MUST support carrying a request and response for participant entry or renewal, guarded intent announcement, guarded decision or conflict result, checkpoint or handoff publication, and terminal completion or withdrawal. A retry, reconnect, duplicate delivery, or a task routed to another A2A endpoint MUST resolve through the same AWP operation identifier; it MUST return the prior receipt or a stable conflict or rejection, and MUST NOT create a second lease, intent, fencing generation, or protected mutation."
+    },
+    {
+      "id": "AWP-COOP-041",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 191,
+      "statement": "The authoritative COOP-3 store and protected mutation gateway MUST enforce the actor/principal authorization, expected binding epoch and frontier or revision, protected scope, and current fencing token independently of A2A task state. The gateway MUST reject a stale, unauthenticated, or mismatched request even when A2A reports successful delivery. A binding MUST disclose A2A reachability, authentication failure, transport retry, and store or gateway availability separately; it MUST fail closed for protected mutation when any required enforcement check is unavailable."
+    },
+    {
+      "id": "AWP-COOP-042",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 212,
       "statement": "The checkpoint step SHOULD use the selected canonical workstate projector. A verified `no_change` receipt is sufficient when no semantic state changed; an incomplete or stale projection is not."
     }
   ]
@@ -4994,11 +5844,11 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
     "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "binding": {
       "type": "object",
-      "required": ["type", "module", "contract", "claim_state", "capabilities", "operational_mode", "identity", "observation", "atomicity_mechanism", "storage_assumptions", "interaction_policy", "limitations"],
+      "required": ["type", "module", "contract", "claim_state", "capabilities", "operational_mode", "identity", "observation", "atomicity_mechanism", "storage_assumptions", "subprotocols", "limitations"],
       "properties": {
         "type": {"const": "cooperation_binding"},
         "module": {"const": "urn:awp:cooperation"},
-        "contract": {"enum": ["COOP-0", "COOP-1", "COOP-2"]},
+        "contract": {"enum": ["COOP-1", "COOP-2", "COOP-3"]},
         "claim_state": {"enum": ["selected", "partial", "conformant"]},
         "capabilities": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "operational_mode": {"enum": ["portable", "ledger-backed-advisory", "ledger-bound", "snapshot-only", "degraded", "unavailable"]},
@@ -5027,19 +5877,55 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
         "atomicity_mechanism": {"type": "string", "minLength": 1},
         "storage_assumptions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
         "limitations": {"type": "array", "items": {"type": "string"}},
-        "interaction_policy": {
+        "transport": {"$ref": "#/$defs/transportDescriptor"},
+        "subprotocols": {
           "type": "object",
-          "required": ["policy_id", "enforcement"],
+          "required": ["work", "consultation"],
           "properties": {
-            "policy_id": {"$ref": "#/$defs/id"},
-            "enforcement": {"enum": ["enforced", "delegated", "not-implemented"]},
-            "digest": {"$ref": "#/$defs/digest"}
+            "work": {"$ref": "#/$defs/workSubprotocolClaim"},
+            "consultation": {"$ref": "#/$defs/consultationSubprotocolClaim"}
           },
           "additionalProperties": true
         },
         "tested_envelope": {"$ref": "#/$defs/testedEnvelope"}
       },
       "allOf": [
+        {
+          "if": {
+            "properties": {"transport": {"properties": {"profile": {"const": "coop3-a2a-v1"}}, "required": ["profile"]}},
+            "required": ["transport"]
+          },
+          "then": {
+            "properties": {
+              "contract": {"const": "COOP-3"},
+              "capabilities": {"contains": {"const": "a2a-control-plane"}},
+              "transport": {"$ref": "#/$defs/a2aTransportDescriptor"}
+            },
+            "required": ["contract", "capabilities", "transport"]
+          }
+        },
+        {
+          "if": {
+            "properties": {"subprotocols": {"properties": {"consultation": {"properties": {"mode": {"const": "managed"}}, "required": ["mode"]}}, "required": ["consultation"]}},
+            "required": ["subprotocols"]
+          },
+          "then": {
+            "properties": {
+              "contract": {"enum": ["COOP-2", "COOP-3"]},
+              "capabilities": {"contains": {"const": "bounded-interactions"}}
+            },
+            "required": ["contract", "capabilities"]
+          }
+        },
+        {
+          "if": {
+            "properties": {"contract": {"const": "COOP-1"}, "subprotocols": {"properties": {"consultation": {"properties": {"enabled": {"const": true}}, "required": ["enabled"]}}, "required": ["consultation"]}},
+            "required": ["contract", "subprotocols"]
+          },
+          "then": {
+            "properties": {"subprotocols": {"properties": {"consultation": {"properties": {"mode": {"const": "user-mediated"}}, "required": ["mode"]}}}}
+          }
+        },
         {
           "if": {"properties": {"contract": {"const": "COOP-1"}, "claim_state": {"const": "conformant"}}, "required": ["contract", "claim_state"]},
           "then": {
@@ -5050,15 +5936,50 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
                   {"contains": {"const": "coordination-awareness"}},
                   {"contains": {"const": "guarded-scope-announce-check"}},
                   {"contains": {"const": "participant-leases"}},
-                  {"contains": {"const": "bounded-interactions"}},
                   {"contains": {"const": "checkpoint-handoff"}}
                 ]
+              },
+              "subprotocols": {
+                "properties": {
+                  "work": {
+                    "properties": {"enabled": {"const": true}, "claim_state": {"const": "conformant"}},
+                    "required": ["enabled", "claim_state"]
+                  }
+                },
+                "required": ["work"]
               }
             }
           }
         },
         {
           "if": {"properties": {"contract": {"const": "COOP-2"}, "claim_state": {"const": "conformant"}}, "required": ["contract", "claim_state"]},
+          "then": {
+            "properties": {
+              "capabilities": {
+                "allOf": [
+                  {"contains": {"const": "deterministic-coordination-projector"}},
+                  {"contains": {"const": "coordination-awareness"}},
+                  {"contains": {"const": "guarded-scope-announce-check"}},
+                  {"contains": {"const": "participant-leases"}},
+                  {"contains": {"const": "checkpoint-handoff"}},
+                  {"contains": {"const": "semantic-awareness"}},
+                  {"contains": {"const": "integration-assurance"}}
+                ]
+              },
+              "subprotocols": {
+                "properties": {
+                  "work": {
+                    "properties": {"enabled": {"const": true}, "claim_state": {"const": "conformant"}},
+                    "required": ["enabled", "claim_state"]
+                  }
+                },
+                "required": ["work"]
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"contract": {"const": "COOP-3"}, "claim_state": {"const": "conformant"}}, "required": ["contract", "claim_state"]},
           "then": {
             "required": ["tested_envelope"],
             "properties": {
@@ -5068,18 +5989,122 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
                   {"contains": {"const": "coordination-awareness"}},
                   {"contains": {"const": "guarded-scope-announce-check"}},
                   {"contains": {"const": "participant-leases"}},
-                  {"contains": {"const": "bounded-interactions"}},
                   {"contains": {"const": "checkpoint-handoff"}},
                   {"contains": {"const": "semantic-awareness"}},
                   {"contains": {"const": "integration-assurance"}},
                   {"contains": {"const": "protected-mutation-enforcement"}},
                   {"contains": {"const": "scalable-binding"}}
                 ]
+              },
+              "subprotocols": {
+                "properties": {
+                  "work": {
+                    "properties": {"enabled": {"const": true}, "claim_state": {"const": "conformant"}},
+                    "required": ["enabled", "claim_state"]
+                  }
+                },
+                "required": ["work"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "subprotocols": {
+                "properties": {
+                  "consultation": {
+                    "properties": {"enabled": {"const": true}, "claim_state": {"const": "conformant"}},
+                    "required": ["enabled", "claim_state"]
+                  }
+                },
+                "required": ["consultation"]
+              }
+            },
+            "required": ["subprotocols"]
+          },
+          "then": {
+            "properties": {
+              "capabilities": {"contains": {"const": "bounded-interactions"}},
+              "subprotocols": {
+                "properties": {
+                  "consultation": {
+                    "properties": {
+                      "policy": {
+                        "properties": {"enforcement": {"enum": ["enforced", "delegated"]}},
+                        "required": ["enforcement"]
+                      }
+                    },
+                    "required": ["policy"]
+                  }
+                }
               }
             }
           }
         }
       ],
+      "additionalProperties": true
+    },
+    "transportDescriptor": {
+      "type": "object",
+      "required": ["profile", "role"],
+      "properties": {
+        "profile": {"$ref": "#/$defs/id"},
+        "role": {"enum": ["communications-control-plane", "event-transport", "hybrid"]}
+      },
+      "additionalProperties": true
+    },
+    "a2aTransportDescriptor": {
+      "type": "object",
+      "required": ["profile", "role", "a2a_protocol_version", "supported_interfaces", "actor_principal_mapping", "idempotency", "authoritative_store", "protected_mutation_gateway"],
+      "properties": {
+        "profile": {"const": "coop3-a2a-v1"},
+        "role": {"const": "communications-control-plane"},
+        "a2a_protocol_version": {"type": "string", "minLength": 1},
+        "supported_interfaces": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "actor_principal_mapping": {"type": "string", "minLength": 1},
+        "idempotency": {"type": "string", "minLength": 1},
+        "authoritative_store": {"$ref": "#/$defs/id"},
+        "protected_mutation_gateway": {"$ref": "#/$defs/id"}
+      },
+      "additionalProperties": true
+    },
+    "workSubprotocolClaim": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "claim_state": {"enum": ["selected", "partial", "conformant"]}
+      },
+      "allOf": [{
+        "if": {"properties": {"enabled": {"const": true}}, "required": ["enabled"]},
+        "then": {"required": ["claim_state"]}
+      }],
+      "additionalProperties": true
+    },
+    "consultationPolicy": {
+      "type": "object",
+      "required": ["policy_id", "enforcement"],
+      "properties": {
+        "policy_id": {"$ref": "#/$defs/id"},
+        "enforcement": {"enum": ["enforced", "delegated", "not-implemented"]},
+        "digest": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": true
+    },
+    "consultationSubprotocolClaim": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "mode": {"enum": ["user-mediated", "managed"]},
+        "claim_state": {"enum": ["selected", "partial", "conformant"]},
+        "policy": {"$ref": "#/$defs/consultationPolicy"}
+      },
+      "allOf": [{
+        "if": {"properties": {"enabled": {"const": true}}, "required": ["enabled"]},
+        "then": {"required": ["mode", "claim_state", "policy"]}
+      }],
       "additionalProperties": true
     },
     "testedEnvelope": {
@@ -5103,6 +6128,9 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
         "max_rounds": {"type": "integer", "minimum": 1},
         "max_participant_responses": {"type": "integer", "minimum": 1},
         "max_tool_calls": {"type": "integer", "minimum": 0},
+        "max_context_tokens_per_request": {"type": "integer", "minimum": 1},
+        "max_output_tokens_per_response": {"type": "integer", "minimum": 1},
+        "max_total_output_tokens": {"type": "integer", "minimum": 1},
         "progress_requirement": {"const": "new_artifact_evidence_decision_or_disagreement"},
         "repeat_key_algorithm": {"const": "rfc8785-sha256-v1"},
         "on_limit": {"enum": ["inconclusive", "escalated", "inconclusive_or_escalated"]},
@@ -5125,12 +6153,34 @@ The agent does not need to construct raw event ancestry, revisions, capsule dige
         "decision_owner": {"$ref": "#/$defs/id"},
         "binding": {"$ref": "#/$defs/binding"},
         "policy": {"type": "object", "required": ["policy_id", "digest", "definition"], "properties": {"policy_id": {"$ref": "#/$defs/id"}, "digest": {"$ref": "#/$defs/digest"}, "definition": {"$ref": "#/$defs/policy"}}, "additionalProperties": true},
+        "authorization_ref": {"$ref": "#/$defs/id"},
+        "budget_consumption": {"type": "object", "properties": {"context_tokens": {"type": "integer", "minimum": 0}, "output_tokens": {"type": "integer", "minimum": 0}, "tool_calls": {"type": "integer", "minimum": 0}, "measurement_state": {"enum": ["measured", "unavailable"]}}, "additionalProperties": true},
         "round": {"type": "integer", "minimum": 1},
         "repeat_basis": {"type": "object", "required": ["purpose", "subject", "context_frontier", "participant_set_digest", "policy_digest"], "properties": {"purpose": {"type": "string"}, "subject": {"type": "object"}, "context_frontier": {"type": "array", "items": {"$ref": "#/$defs/id"}}, "participant_set_digest": {"$ref": "#/$defs/digest"}, "policy_digest": {"$ref": "#/$defs/digest"}}, "additionalProperties": false},
         "repeat_key": {"$ref": "#/$defs/digest"},
         "progress": {"type": "object", "required": ["kind", "ref"], "properties": {"kind": {"enum": ["artifact", "evidence", "decision", "disagreement"]}, "ref": {"$ref": "#/$defs/id"}}, "additionalProperties": false},
         "result": {"type": "object", "required": ["outcome", "recorded_at"], "properties": {"outcome": {"enum": ["accepted", "revised", "inconclusive", "declined", "timed_out", "escalated"]}, "recorded_at": {"type": "string", "format": "date-time"}}, "additionalProperties": true}
       },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"binding": {"properties": {"subprotocols": {"properties": {"consultation": {"properties": {"mode": {"const": "managed"}}, "required": ["mode"]}}, "required": ["consultation"]}}, "required": ["subprotocols"]}},
+            "required": ["binding"]
+          },
+          "then": {
+            "required": ["authorization_ref", "budget_consumption"],
+            "properties": {
+              "policy": {
+                "properties": {
+                  "definition": {
+                    "required": ["max_context_tokens_per_request", "max_output_tokens_per_response", "max_total_output_tokens"]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
       "additionalProperties": true
     },
     "handoffReceipt": {"type": "object", "required": ["path", "digest", "verified_at"], "properties": {"path": {"type": "string", "minLength": 1}, "digest": {"$ref": "#/$defs/digest"}, "verified_at": {"type": "string", "format": "date-time"}}, "additionalProperties": false},

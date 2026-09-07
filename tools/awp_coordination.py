@@ -4,7 +4,7 @@ The local-ledger-awareness-v1 profile is the default advisory coordination
 path for agents that share a Git common directory.  It stores durable AWP
 Coordination events in SQLite so publication and projection are atomic without
 requiring a daemon.  It does not authenticate actors, enforce protected leases,
-fence writes, or claim complete COOP-1 or COOP-2 conformance.
+fence writes, or claim complete COOP-1, COOP-2, or COOP-3 conformance.
 """
 
 from __future__ import annotations
@@ -1590,9 +1590,9 @@ def operational_context(start: Path, ledger_override: Path | None = None) -> dic
                     "observation": context["binding_observation"],
                     "atomicity_mechanism": "sqlite-begin-immediate",
                     "storage_assumptions": context["binding_observation"]["storage_assumptions"],
-                    "interaction_policy": {
-                        "policy_id": "coop-1-default-loop-v1",
-                        "enforcement": "not-implemented",
+                    "subprotocols": {
+                        "work": {"enabled": True, "claim_state": "partial"},
+                        "consultation": {"enabled": False},
                     },
                     "limitations": [
                         "advisory enforcement; source-control writes are not fenced",

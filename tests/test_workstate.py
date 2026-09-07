@@ -149,6 +149,38 @@ class WorkstateWriterTests(unittest.TestCase):
                 ),
             )
 
+    def test_checkpoint_updates_all_duplicate_record_projections(self) -> None:
+        temporary, project, capsule = self.copy_capsule()
+        self.addCleanup(temporary.cleanup)
+        result = self.module.checkpoint(
+            project,
+            capsule,
+            self.request(
+                capsule,
+                records=[
+                    {
+                        "id": "artifact:participation-conversations",
+                        "type": "artifact",
+                        "revision": 3,
+                        "supersedes": "artifact:participation-conversations",
+                        "name": "Updated conversations",
+                        "modules": {
+                            "urn:awp:artifact": {
+                                "status": "retrievable",
+                                "locations": [{"kind": "local", "path": "changed"}],
+                                "integrity": {"algorithm": "sha256", "digest": "e" * 64},
+                            }
+                        },
+                    }
+                ],
+            ),
+        )
+        artifacts = self.module._sections(capsule.read_text(encoding="utf-8"))["snapshot"]["records"]["artifacts"]
+        projected = [item for item in artifacts if item["id"] == "artifact:participation-conversations"]
+        self.assertEqual(len(projected), 2)
+        self.assertTrue(all(item["revision"] == 3 for item in projected))
+        self.assertEqual(result["updated_record_ids"], ["artifact:participation-conversations"])
+
     def test_whole_capsule_compare_and_swap_rejects_stale_request(self) -> None:
         temporary, project, capsule = self.copy_capsule()
         self.addCleanup(temporary.cleanup)

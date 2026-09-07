@@ -39,7 +39,7 @@ Coordination does not replace Git, A2A, MCP, a task scheduler, a distributed con
 
 ## 3. Capability profiles and Cooperation Contract integration
 
-The module declaration advertises the Coordination capabilities actually implemented and, when Cooperation is active, the selected Cooperation Contract. Coordination capabilities describe component behavior; `COOP-0`, `COOP-1`, and `COOP-2` are the only cumulative project-level cooperation and coordination conformance claims in AWP 0.8.
+The module declaration advertises the Coordination capabilities actually implemented and, when Cooperation is active, the selected Cooperation Contract. Coordination capabilities describe component behavior; `COOP-1`, `COOP-2`, and `COOP-3` are the only cumulative project-level work-coordination conformance claims in AWP 0.8. Portable collaboration has no named Cooperation Contract, and optional consultation is configured independently of work coordination.
 
 ```json
 {
@@ -66,15 +66,27 @@ The Cooperation Contract maps those capabilities into one cumulative ladder:
 
 | Contract | Coordination behavior incorporated by the contract |
 |---|---|
-| `COOP-0` | Coordination is optional; recognized records are preserved and exposed without an active-coordination guarantee |
-| `COOP-1` | Coordination awareness, deterministic projection, atomic guarded-scope decisions, bounded participant leases, checkpoint freshness, and recovery |
-| `COOP-2` | All COOP-1 behavior plus semantic awareness, integration assurance, authenticated protected mutation, epochs, fencing, and a declared scalable operating envelope |
+| No Cooperation Contract | Portable records and asynchronous consultation may be exchanged, with no active-coordination guarantee |
+| `COOP-1` | Coordination awareness, deterministic projection, atomic guarded-scope decisions, bounded participant leases, checkpoint freshness, recovery, and user-mediated escalation for material work decisions |
+| `COOP-2` | All COOP-1 work behavior plus semantic awareness, integration assurance, and optionally enabled managed inter-agent collaboration under a decision-owner authorization and declared budget |
+| `COOP-3` | All COOP-2 work behavior plus authenticated protected mutation, epochs, fencing, and a declared scalable operating envelope |
+
+The following table attributes the Coordination mechanisms to their minimum contract. A mechanism may be implemented below that level, but it MUST NOT be used to support a higher contract claim until its listed composition is present.
+
+| Mechanism sections | Minimum contract | Boundary |
+|---|---|---|
+| §§4, 6 physical selectors/access modes, 7, 9 physical overlap, 17 structural projection | `COOP-1` | Durable physical-scope collision reduction, record-validity checks, actual-scope reconciliation, guarded decisions, and checkpoint/recovery |
+| §5; §6 semantic targets and relied-upon reads; §§8, 10–16; §17 dependency-staleness propagation | `COOP-2` | Semantic evidence and selector resolution, dependency predicate evaluation and propagation, negotiation, readiness, and integration assurance |
+| §19 and protected portions of §20 | `COOP-3` | Authenticated principals, live protected mutation, epochs, and fencing |
+| §§1–3, 18, 21–27 | baseline or informative as marked | Definitions, diagnostics, mappings, fixtures, maturity, and open issues do not independently establish a contract claim |
 
 A processor MUST NOT advertise a Cooperation Contract whose required composed behaviors it does not implement. A reader MAY support a weaker contract, but it MUST reject safe continuation when unsupported required semantics affect the requested action. A component such as a projector, registry, or enforcing gateway advertises capabilities and evidence rather than claiming a complete contract by itself.
 
+Under `COOP-1`, a processor MAY surface a material conflict, ambiguity, or bounded question to the decision owner, but it MUST NOT autonomously start a work-affecting agent-to-agent consultation or negotiation loop. `COOP-2` and `COOP-3` may do so only through an enabled managed-collaboration policy that declares authorization, participants, purpose, scope, decision owner, and all budget limits. The availability of a messaging transport, A2A task, model, or tool does not enable collaboration by itself.
+
 Cooperation Contract, operational mode, and ledger reach remain separate declarations because the latter two describe current availability rather than another conformance ladder. Operational mode is `ledger_bound`, `snapshot_only`, `degraded`, or `unavailable`. Ledger reach is `shared`, `worktree_local`, or `cross_host`. Ledger unavailability changes what work may safely proceed and MUST be disclosed; it does not silently convert one contract into another.
 
-`unknown_overlap_policy` is `allow`, `warn`, `negotiate`, or `block`. `lease_enforcement` is `none`, `advisory`, or `enforced`. A COOP-1 guarded decision binds conforming participants but does not fence an external mutation path. Protected external effect requires the authenticated epochs and fencing guarantees of COOP-2 or an explicitly identified enforcing adapter.
+`unknown_overlap_policy` is `allow`, `warn`, `negotiate`, or `block`. `lease_enforcement` is `none`, `advisory`, or `enforced`. A COOP-1 guarded decision binds conforming participants but does not fence an external mutation path. Protected external effect requires the authenticated epochs and fencing guarantees of COOP-3 or an explicitly identified enforcing adapter.
 
 The module defines three cumulative capability bundles used by the Cooperation Contracts:
 
@@ -90,7 +102,7 @@ An implementation MAY adopt `coordination-awareness` before implementing the com
 
 An AWP-aware writer that discovers a writable shared event ledger and supports the `coordination-awareness` bundle MUST enable ledger-backed advisory coordination by default unless project or receiver policy explicitly disables it. Before materially changing shared state, the writer MUST refresh the available ledger frontier, publish its intent and revision-pinned declared scopes, evaluate known overlaps under the effective policy, and make resulting warnings or guarded outcomes visible. Before integration or handoff, it MUST refresh again and publish the terminal intent, change-set, checkpoint, or synchronization delta required to explain its result.
 
-This default is a protocol behavior, not a required runtime service. A local append-only file, immutable event package, transactional database, source-control binding, or remote event transport MAY supply the ledger when it preserves Core event identity, ancestry, atomic publication, and conflict-preserving replay. SQLite and the local adapter are optional implementation aids. Presence monitoring MAY reduce discovery latency but is not a prerequisite. Authenticated protected leases, epochs, and fencing are COOP-2 capabilities and remain separately configured from COOP-1 participant liveness leases.
+This default is a protocol behavior, not a required runtime service. A local append-only file, immutable event package, transactional database, source-control binding, or remote event transport MAY supply the ledger when it preserves Core event identity, ancestry, atomic publication, and conflict-preserving replay. SQLite and the local adapter are optional implementation aids. Presence monitoring MAY reduce discovery latency but is not a prerequisite. Authenticated protected leases, epochs, and fencing are COOP-3 capabilities and remain separately configured from COOP-1 participant liveness leases.
 
 If no safe writable ledger is discoverable, the writer SHOULD attempt to establish a project-scoped ledger through an authorized writable binding, provided it can publish the binding location, workstate identity, retention, and access expectations to the intended participants. If it cannot establish or discover such a binding, it MUST disclose operational mode `snapshot_only` or `unavailable` with diagnostic `AWP-COORD-LEDGER-UNAVAILABLE` before material mutation. A private temporary file, process memory, unshared worktree, or unconfirmed model output is not a shared ledger. A worktree-local ledger MAY be used when its limited reach is disclosed. The writer MUST NOT silently describe metadata preservation, a stale snapshot, or an unvalidated event sink as active coordination. Receiver policy determines whether work may continue. A tool MUST NOT advertise COOP-1 merely because it implements this default; its contract claim remains limited to the complete composed behavior it can demonstrate.
 
@@ -172,7 +184,7 @@ State-space revisions use adapter-qualified immutable identifiers. A Git object 
 
 The passage of time never changes projected state. An identified actor or service MUST emit a valid timeout, expiration, or deadline-observation event under a declared clock authority. Until that event is present, a deadline may be overdue but the prior projected lifecycle state remains unchanged; processors SHOULD surface the overdue condition.
 
-Without COOP-2 protected enforcement, authority may be `asserted`, `verified`, or `unverifiable`. Verification identifies the evaluator, receiver policy, evidence, time, scope, and relevant revocation state. COOP-2 is required for live cross-principal enforcement, not for every authority check. No AWP authority record implies an external side effect by itself.
+Without COOP-3 protected enforcement, authority may be `asserted`, `verified`, or `unverifiable`. Verification identifies the evaluator, receiver policy, evidence, time, scope, and relevant revocation state. COOP-3 is required for live cross-principal enforcement, not for every authority check. No AWP authority record implies an external side effect by itself.
 
 ### 4.3 Canonical event example
 
@@ -256,6 +268,8 @@ Selector comparison across pinned state-space revisions is a COOP-2 semantic-awa
 Language-specific selector syntax and drift algorithms belong to registered adapter profiles. The initial reference implementation SHOULD provide Python AST and TypeScript compiler-symbol profiles, but their identifiers and outputs remain usable by agents implemented in any language.
 
 ## 6. Scopes and access claims
+
+**Minimum contract:** `COOP-1` for physical or otherwise explicitly comparable selectors and access modes. `COOP-2` is required for semantic targets and relied-upon reads whose relationship is established semantically.
 
 A scope is a first-class record selecting a physical or semantic region. Intents, claims, change sets, and contracts reference it by ID and revision. An inline selector MAY be used as an unshared query value, but an inline selector is not a scope record and cannot be revised or used as a dependency target.
 
@@ -355,6 +369,8 @@ The first two scopes may overlap at their shared wall even though they are diffe
 
 ## 7. Work intent
 
+**Minimum contract:** `COOP-1`. A participant's self-declared actual-versus-declared physical-scope reconciliation is a checkpoint obligation at this level; analyzer-produced observed scope and readiness gating are `COOP-2`.
+
 An actor SHOULD publish an intent before materially changing shared state.
 
 ```json
@@ -404,6 +420,8 @@ If observed work expands beyond the declared scope, the writer MUST either updat
 
 ## 8. Observed scope
 
+**Minimum contract:** `COOP-2`.
+
 An observed scope is tool-produced evidence about actual work. It does not overwrite the author's declaration.
 
 ```json
@@ -435,6 +453,8 @@ An observed scope is tool-produced evidence about actual work. It does not overw
 Observed-scope lifecycle statuses are `final` and `superseded`; outcome is `complete`, `partial`, or `error`. The analyzer, base, result, method, and evidence digest MUST be recorded. `declared_not_observed` is informational unless policy says otherwise. `undeclared` MUST be evaluated for new overlaps and may stale earlier acknowledgements. An omitted effect or scope means unknown; an explicitly present empty array asserts that none were observed or declared under the stated method.
 
 ## 9. Overlap and conflict
+
+**Minimum contract:** `COOP-1` for physical-scope `none`, `informational`, `compatible`, `ordered`, and `blocking` outcomes. `COOP-2` is required when semantic ambiguity produces `unknown` or policy requires semantic negotiation.
 
 Overlap classifications are:
 
@@ -486,6 +506,8 @@ Overlap lifecycle:
 A conflict is an overlap whose policy action requires resolution. A conflict records competing claims, responsible owner, allowed resolution strategies, evidence, accepted risk, and final disposition. Resolution strategies include scope partition, contract first, ordered integration, compatibility adapter, feature isolation, rebase and re-derive, combined implementation, authorized risk acceptance, and withdrawal.
 
 ## 10. Negotiation and commitments
+
+**Minimum contract:** `COOP-2`.
 
 A negotiation makes coordination dialogue finite, typed, and auditable.
 
@@ -568,6 +590,8 @@ Agents MUST apply a decision only to the named subjects, revisions, scopes, and 
 
 ## 11. Interface contracts
 
+**Minimum contract:** `COOP-2`.
+
 A contract identifies owners, producers, consumers, prior and proposed revisions, observable interface/schema/behavior, states, errors, invariants, compatibility class, migration strategy, tests, decision policy, and participant adoption.
 
 Contract decision policy is a machine-readable object:
@@ -607,6 +631,8 @@ A revised accepted contract triggers staleness evaluation for every dependent in
 Terminal contract states are `verified`, `superseded`, `rejected`, and `withdrawn`. `accepted` and `implemented` are nonterminal. A change to verified contract content creates a successor revision or successor contract rather than reopening the verified record.
 
 ## 12. Typed preconditions
+
+**Minimum contract:** `COOP-2` for predicate evaluation and readiness consequences. `COOP-1` validates only the structural binding of a typed precondition to its named subject, revision, evaluator, and evidence.
 
 A precondition is either `mechanical` or `asserted`.
 
@@ -695,6 +721,8 @@ Result lifecycle status is `final` or `superseded`; outcome is `pass`, `fail`, `
 
 ## 13. Change sets
 
+**Minimum contract:** `COOP-2`.
+
 A change set is an integration candidate rather than merely a patch.
 
 ```json
@@ -761,6 +789,8 @@ Terminal change-set states are `integrated`, `failed`, `withdrawn`, and `superse
 
 ## 14. Verification
 
+**Minimum contract:** `COOP-2` for verification evaluation and readiness consequences. `COOP-1` validates only the structural binding of a verification record to its named subject, base, evaluator, and evidence.
+
 A verification result MUST bind the claim being checked to exact inputs.
 
 ```json
@@ -798,6 +828,8 @@ Verification becomes stale when its subject revision, tested state-space revisio
 
 ## 15. Dependency graph and staleness
 
+**Minimum contract:** `COOP-2` for dependency-staleness propagation and readiness consequences. `COOP-1` retains record-validity staleness checks defined by the Cooperation Contract.
+
 Dependency edge kinds are `requires`, `implements`, `verifies`, `derived_from`, `relies_on`, `orders_before`, `conflicts_with`, `supersedes`, and `integrates`.
 
 For each event that changes a record revision or status, a deterministic Coordination projector MUST:
@@ -815,6 +847,8 @@ Staleness is cleared only by a successful type-specific `*.revalidated`, `*.reba
 Cycles in `requires` or `orders_before` are diagnostic `AWP-COORD-DEPENDENCY-CYCLE`. A cycle blocks automatic readiness or integration ordering until an integration plan explicitly groups the cycle into one combined unit or an authorized resolution changes the graph.
 
 ## 16. Integration plan and result
+
+**Minimum contract:** `COOP-2`.
 
 An integration plan identifies owner, target state space and base revision, exact change-set revisions, dependency-derived order, shared contracts, required precondition evaluations, verification plan, rollback, authority requirements, and `atomicity`. A repository and commit are one possible adapter representation of the target state space.
 
@@ -850,6 +884,8 @@ Terminal integration states are `completed`, `failed`, `cancelled`, and `superse
 
 ## 17. Deterministic projection
 
+**Minimum contract:** `COOP-1` for structural event validation and deterministic projection. Dependency-staleness propagation after valid semantic change is `COOP-2`.
+
 Coordination state is derived from valid Core events at a declared frontier.
 
 A deterministic Coordination projector MUST:
@@ -861,7 +897,7 @@ A deterministic Coordination projector MUST:
 5. allow only module-defined commutative operations, currently acknowledgement-set union and evidence-reference-set union;
 6. preserve invalid or unknown events in history while excluding their claimed state change from the valid projection;
 7. order diagnostic emission using Kahn's topological algorithm with the lexicographically smallest event ID selected from the ready set;
-8. propagate staleness after applying each valid semantic change;
+8. when `COOP-2` dependency semantics are active, propagate dependency staleness after applying each valid semantic change;
 9. compute module state at the same frontier as the containing Core snapshot.
 
 Acknowledgements commute only when keyed by `(subject revision, actor, acknowledgement kind, association ID)`. Two differing acknowledgements with the same identity conflict; they do not use last-write-wins.
@@ -922,7 +958,7 @@ Errors invalidate the affected transition. Warnings preserve state but MUST be v
 
 ## 18.1 Agent presence and monitoring
 
-Presence monitoring makes active participation observable before agents mutate a shared project. It is an advisory coordination capability incorporated by COOP-1 and COOP-2. Presence does not grant authority, reserve a scope, establish exclusivity, or imply that the announced actor is trusted. An authenticated fenced lease remains a COOP-2 operation distinct from a COOP-1 participant liveness lease.
+Presence monitoring makes active participation observable before agents mutate a shared project. It is an advisory coordination capability incorporated by COOP-1 and COOP-2. Presence does not grant authority, reserve a scope, establish exclusivity, or imply that the announced actor is trusted. An authenticated fenced lease remains a COOP-3 operation distinct from a COOP-1 participant liveness lease.
 
 A presence record identifies one runtime session:
 
@@ -985,7 +1021,7 @@ Multiple agents MUST NOT independently overwrite one canonical Capsule from the 
 
 The informative profile `local-sqlite-presence-v1` supports agents sharing one local Git common directory. It uses SQLite transactions for atomic entry, expiry, release, and watcher-cursor advancement. Its registry clock is the host running the transaction. The profile uses a 90-second session duration, recommends renewal at most every 30 seconds, and treats exact pinned-scope equality plus an explicit wildcard as its only automatic overlap evidence.
 
-This profile is advisory. It does not authenticate principals, fence writes, provide cross-host availability, infer semantic overlap, or satisfy COOP-2. A deployment that changes its timing, clock, matching, or retention behavior declares a distinct profile or explicit profile parameters.
+This profile is advisory. It does not authenticate principals, fence writes, provide cross-host availability, infer semantic overlap, or satisfy COOP-2 or COOP-3. A deployment that changes its timing, clock, matching, or retention behavior declares a distinct profile or explicit profile parameters.
 
 ## 18.2 Scaling requirements
 
@@ -1005,7 +1041,7 @@ Sharding MUST NOT change the semantic result of overlap evaluation. Cross-partit
 
 ### 18.2.1 Brokered and sharded presence profile
 
-The candidate profile `brokered-sharded-presence-v1` defines advisory presence for deployments in which agents may run on different hosts and a single local registry is insufficient. This profile remains an advisory presence capability: it does not become a COOP-2 protected lease merely because its transport is distributed.
+The candidate profile `brokered-sharded-presence-v1` defines advisory presence for deployments in which agents may run on different hosts and a single local registry is insufficient. This profile remains an advisory presence capability: it does not become a COOP-3 protected lease merely because its transport is distributed.
 
 The profile has four logical responsibilities, which MAY be implemented by one service or separate replicated services:
 
@@ -1056,7 +1092,9 @@ Load tests MUST include synchronized renewal bursts, hot scopes, wildcard scopes
 
 ## 19. Live coordination and leases
 
-COOP-2 protected mutation enforcement requires a live coordinator or an external protected system, not merely a shared file.
+**Minimum contract:** `COOP-3`.
+
+COOP-3 protected mutation enforcement requires a live coordinator or an external protected system, not merely a shared file.
 
 Protected operations use optimistic concurrency control with:
 
@@ -1076,13 +1114,13 @@ An adapter claiming enforcement MUST reject a protected mutation whose token is 
 
 If coordinator identity, epoch, authentication, protected scope, or fencing validation is unavailable, the lease is `unverifiable` outside the reachable enforcement guarantee. The implementation MUST NOT describe it as exclusive. Local work may continue under policy, but integration MUST refresh state and re-evaluate overlap and preconditions.
 
-A COOP-2 enforcement profile MUST specify retry limits, heartbeat interval, lease duration, expiry clock authority, deadlock detection, starvation policy, cancellation consequences, and human/organizational arbitration. The base module defines no universal timing defaults because safe values depend on task duration, network delay, and the protected system. Named interoperability and test profiles MAY define explicit defaults.
+A COOP-3 enforcement profile MUST specify retry limits, heartbeat interval, lease duration, expiry clock authority, deadlock detection, starvation policy, cancellation consequences, and human/organizational arbitration. The base module defines no universal timing defaults because safe values depend on task duration, network delay, and the protected system. Named interoperability and test profiles MAY define explicit defaults.
 
 ## 20. Security, principals, and governance
 
 Actor identity, principal identity, trust, and authority are separate.
 
-A principal is the human or organization accountable for an actor's participation. A COOP-2 session MUST bind authenticated actors to principals and declare the governing policy. Cross-principal coordination MUST identify:
+A principal is the human or organization accountable for an actor's participation. A COOP-3 session MUST bind authenticated actors to principals and declare the governing policy. Cross-principal coordination MUST identify:
 
 - permitted operations and visible scopes;
 - confidentiality and redaction rules;
@@ -1151,7 +1189,11 @@ Git revisions map to immutable `base.revision` and `result_revision` values. Bra
 
 ### A2A
 
-An A2A Task may carry a AWP intent reference. A2A Artifacts may carry AWP deltas, bundles, change sets, evidence, or integration results. A2A Task state does not replace AWP record state; adapters record the mapping and preserve both identities.
+An A2A Task may carry an AWP intent reference. A2A Artifacts may carry AWP deltas, bundles, change sets, evidence, or integration results. A2A Task state does not replace AWP record state; adapters record the mapping and preserve both identities.
+
+For the named `coop3-a2a-v1` profile, A2A is the distributed communications and execution control plane for typed AWP coordination operations. An A2A request MUST carry the operation identifier, workstate identifier, stable binding identity, acting AWP actor, and the expected revision, frontier, or fencing token applicable to the operation. A response MUST carry either a durable AWP receipt that identifies the accepted event or protected decision, or a stable rejection or conflict diagnostic. A2A delivery, task completion, or peer authentication does not replace the binding's durable persistence, principal mapping, authorization decision, epoch comparison, or fencing check.
+
+An A2A adapter MUST preserve idempotency across retry, reconnect, duplicate delivery, endpoint migration, and task-status polling. It MUST make transport reachability and AWP store or gateway reachability separately observable. If protected enforcement cannot verify the actor/principal, binding epoch, expected state, protected scope, or fencing token, it MUST reject the protected operation even if the A2A task was successfully delivered. A2A is optional outside a binding that explicitly claims `coop3-a2a-v1`.
 
 ### MCP
 
@@ -1198,6 +1240,8 @@ complete intents and release presence and live coordination state
 ## 24. Minimum conformance fixtures
 
 The experimental module is not ready for stable status without fixtures covering at least:
+
+The fixture inventory does not itself establish a Cooperation Contract claim. The following minimum attribution makes the evidence boundary auditable: a `COOP-1` claim needs the applicable scenarios in Cooperation Contracts §4.3, including deterministic replay, record-validity rejection, compatible and incompatible physical scopes, resolution, lease expiry, fresh handoff, and binding identity across filesystem paths. This inventory contributes direct coverage for physical non-overlap and same-file conflict (1–2), structural precondition or verification binding (7–8), contested projection (11–12), recovery and expiry (14–15, 23–25), and presence overlap behavior (21–22). A `COOP-2` claim additionally needs semantic conflict, relied-upon read, material undeclared scope, contract revision, dependency cycle, and integration-readiness coverage (3–6, 9–10, 13). A `COOP-3` claim additionally needs fenced mutation, epoch, authorization, and protected-operation coverage (16–18, 26–32 as applicable). A claimed operating envelope MUST identify any required scenario that has no corresponding executable fixture; the present inventory does not by itself discharge COOP-1 §4.3 scenario 9's different-filesystem-path binding-identity evidence.
 
 1. independent non-overlapping changes;
 2. same-file physical conflict;
@@ -1258,14 +1302,14 @@ The repository's `tools/awp_projector.py` is an informative deterministic Coordi
 2. The initial semantic registry needs language-specific selector profiles for symbols, schemas, and dependency graphs.
 3. Confidence calibration for inferred semantic overlap is unspecified; policy must not confuse a model score with verification.
 4. Composition and conflict rules for multiple organization-specific contract decision policies need implementation experience.
-5. COOP-2 needs a formally modeled coordinator protocol and at least one real enforcing adapter.
+5. COOP-2 needs a semantic integration binding, while COOP-3 additionally needs a formally modeled coordinator protocol and at least one real enforcing adapter.
 6. The candidate brokered/sharded presence profile needs independent implementations and measured interoperability, capacity, notification-loss, failover, privacy, and operating-cost evidence before its parameters can be stabilized.
 7. Privacy-preserving coordination across principals may require selective disclosure or commitments to hidden evidence.
 8. Benchmark tasks must measure false alarms and coordination overhead as well as conflicts caught.
 
 ## 27. Summary
 
-Coordination 0.5.0 supplies the durable records and executable mechanisms used by AWP Cooperation Contracts. COOP-0 provides portable substantive collaboration, COOP-1 adds deterministic small-group coordination and bounded symbiosis without requiring a service, and COOP-2 adds semantic awareness, integration assurance, authenticated enforcement, fencing, and a scalable operating envelope.
+Coordination 0.5.0 supplies the durable records and executable mechanisms used by AWP Cooperation Contracts. Portable collaboration needs no Cooperation Contract, COOP-1 adds deterministic small-group conflict reduction without requiring a service, COOP-2 adds semantic awareness and integration assurance, and COOP-3 adds authenticated enforcement, fencing, and a scalable operating envelope. Consultation is a separately enabled optional Cooperation subprotocol.
 
 The essential invariant is:
 

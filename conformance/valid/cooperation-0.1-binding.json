@@ -22,6 +22,9 @@
     "All participants open the same SQLite file.",
     "The filesystem preserves SQLite locking and atomic commit semantics."
   ],
-  "interaction_policy": {"policy_id": "coop-1-default-loop-v1", "enforcement": "not-implemented"},
+  "subprotocols": {
+    "work": {"enabled": true, "claim_state": "partial"},
+    "consultation": {"enabled": false}
+  },
   "limitations": ["Shared reach requires a successful participant handshake."]
 }

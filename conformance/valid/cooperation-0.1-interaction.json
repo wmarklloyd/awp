@@ -10,18 +10,23 @@
   "binding": {
     "type": "cooperation_binding",
     "module": "urn:awp:cooperation",
-    "contract": "COOP-1",
+    "contract": "COOP-2",
     "claim_state": "conformant",
-    "capabilities": ["deterministic-coordination-projector", "coordination-awareness", "guarded-scope-announce-check", "participant-leases", "bounded-interactions", "checkpoint-handoff"],
+    "capabilities": ["deterministic-coordination-projector", "coordination-awareness", "guarded-scope-announce-check", "participant-leases", "bounded-interactions", "semantic-awareness", "integration-assurance", "checkpoint-handoff"],
     "operational_mode": "ledger-bound",
     "identity": {"workstate_id": "workstate:example", "project_id": "git-root:0123456789abcdef", "store_id": "binding:example", "scope_model": "awp-repository-path-v1", "binding_epoch": 1},
     "observation": {"observed_at": "2026-09-05T16:00:00Z", "operational_reach": "shared", "frontier": ["evt:one"]},
     "atomicity_mechanism": "sqlite-begin-immediate",
     "storage_assumptions": ["All participants open the same SQLite file."],
-    "interaction_policy": {"policy_id": "coop-1-default-loop-v1", "enforcement": "enforced", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+    "subprotocols": {
+      "work": {"enabled": true, "claim_state": "conformant"},
+      "consultation": {"enabled": true, "mode": "managed", "claim_state": "conformant", "policy": {"policy_id": "coop-consult-default-loop-v1", "enforcement": "enforced", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}
+    },
     "limitations": ["The fixture demonstrates record shape, not independent implementation evidence."]
   },
-  "policy": {"policy_id": "coop-1-default-loop-v1", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "definition": {"policy_id": "coop-1-default-loop-v1", "max_rounds": 2, "max_participant_responses": 3, "max_tool_calls": 8, "progress_requirement": "new_artifact_evidence_decision_or_disagreement", "repeat_key_algorithm": "rfc8785-sha256-v1", "on_limit": "inconclusive_or_escalated", "continuation_authority": "decision_owner"}},
+  "policy": {"policy_id": "coop-consult-default-loop-v1", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "definition": {"policy_id": "coop-consult-default-loop-v1", "max_rounds": 2, "max_participant_responses": 3, "max_tool_calls": 8, "max_context_tokens_per_request": 12000, "max_output_tokens_per_response": 2000, "max_total_output_tokens": 6000, "progress_requirement": "new_artifact_evidence_decision_or_disagreement", "repeat_key_algorithm": "rfc8785-sha256-v1", "on_limit": "inconclusive_or_escalated", "continuation_authority": "decision_owner"}},
+  "authorization_ref": "decision:owner-approved-review",
+  "budget_consumption": {"context_tokens": 4500, "output_tokens": 900, "tool_calls": 2, "measurement_state": "measured"},
   "round": 1,
   "repeat_basis": {"purpose": "critique", "subject": {"ref": "artifact:spec"}, "context_frontier": ["evt:one"], "participant_set_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "policy_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
   "repeat_key": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",

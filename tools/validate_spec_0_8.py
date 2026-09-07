@@ -20,6 +20,7 @@ COORDINATION_SCHEMA = ROOT / "schemas" / "awp-coordination-0.5.schema.json"
 COOPERATION_SCHEMA = ROOT / "schemas" / "awp-cooperation-0.1.schema.json"
 DISCOVERY_SCHEMA = ROOT / "schemas" / "awp-discovery-0.2.schema.json"
 SECURITY_SCHEMA = ROOT / "schemas" / "awp-security-0.5.schema.json"
+SILO_SCHEMA = ROOT / "schemas" / "awp-silo-0.1.schema.json"
 
 CORE_RECORD_TYPES = {
     "goal",
@@ -132,7 +133,7 @@ def validate_registry(failures: list[str]) -> dict:
             schema_path = (SPEC_DIR / module["schema"]).resolve()
             if not schema_path.is_file() or ROOT.resolve() not in schema_path.parents:
                 failures.append(f"{module['id']} schema path is missing or outside the workspace")
-        for dependency in module["dependencies"]:
+        for dependency in [*module["dependencies"], *module.get("conditional_dependencies", [])]:
             target = by_id.get(dependency["id"])
             if target is None:
                 failures.append(f"{module['id']} depends on unknown {dependency['id']}")
@@ -183,7 +184,12 @@ def validate_manifest_modules(
                 f"{location}: {module_id} declares {declaration['version']}, "
                 f"family registry has {module['version']}"
             )
-        for dependency in module["dependencies"]:
+        dependencies = list(module["dependencies"])
+        dependencies.extend(
+            dependency for dependency in module.get("conditional_dependencies", [])
+            if dependency["when_capability"] in declaration.get("capabilities", [])
+        )
+        for dependency in dependencies:
             dependency_declaration = declared.get(dependency["id"])
             if dependency_declaration is None:
                 failures.append(f"{location}: {module_id} omits dependency {dependency['id']}")
@@ -210,11 +216,13 @@ def validate_examples(
     cooperation_schema = json.loads(COOPERATION_SCHEMA.read_text(encoding="utf-8"))
     discovery_schema = json.loads(DISCOVERY_SCHEMA.read_text(encoding="utf-8"))
     security_schema = json.loads(SECURITY_SCHEMA.read_text(encoding="utf-8"))
+    silo_schema = json.loads(SILO_SCHEMA.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(core_schema)
     Draft202012Validator.check_schema(coordination_schema)
     Draft202012Validator.check_schema(cooperation_schema)
     Draft202012Validator.check_schema(discovery_schema)
     Draft202012Validator.check_schema(security_schema)
+    Draft202012Validator.check_schema(silo_schema)
     checked_json = 0
     checked_digests = 0
 
@@ -227,6 +235,12 @@ def validate_examples(
                 failures.append(
                     f"{document.relative_to(ROOT)} JSON block {block_index} is invalid: {error.msg}"
                 )
+                continue
+            if isinstance(value, dict) and value.get("type") in {"silo", "silo_adoption"}:
+                checked_json += 1
+                location = f"{document.relative_to(ROOT)} JSON block {block_index}"
+                for error in validator_for(silo_schema).iter_errors(value):
+                    failures.append(f"{location} (silo-v1): {error.message}")
                 continue
             if isinstance(value, dict) and "awp_discovery_version" in value:
                 checked_json += 1
