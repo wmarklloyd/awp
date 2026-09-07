@@ -106,7 +106,7 @@ Receivers SHOULD place newly imported workstates in local quarantine until they 
 
 - origin and transport context;
 - required modules and schemas;
-- package-path and size safety;
+- project-path and size safety;
 - declared and verified integrity;
 - classification and handling policy;
 - active instructions and executables;

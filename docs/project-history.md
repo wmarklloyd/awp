@@ -12,6 +12,8 @@ The preserved release and module documents are available in the repository’s [
 
 The active design is the unreleased **AWP 0.8.0 working draft**. It unifies cooperation into the COOP-1/2/3 ladder, adds optional managed consultation, introduces persistent silos for alternative project states, and defines an optional A2A binding for protected COOP-3 coordination. The draft is developed alongside schemas, generated bundles, validators, conformance fixtures, reference tools, and explicit evidence of what remains unimplemented.
 
+Standalone capsule exchange, packages, wire payloads, and cross-project collaboration are archived directions rather than part of the active draft. The current focus is one project’s shared workstate, maintained alongside its repository and coordinated through COOP-1, COOP-2, or COOP-3. They can be revisited if a concrete use case requires them.
+
 The [main README](../README.md) is the best starting point for the current project. The [0.8.0 draft overview](../spec/drafts/0.8.0/index.md) and [generated draft bundle](../dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md) are the normative development references.
 
 ## Reading the history

@@ -31,7 +31,7 @@ Coordination does not replace Git, A2A, MCP, a task scheduler, a distributed con
 2. **Semantic conflicts are first class.** A clean textual merge is not evidence of compatible behavior.
 3. **Claims have provenance.** Agent declarations, tool observations, verification results, and authority decisions are distinct.
 4. **Concurrency is preserved.** Timestamp order or file order does not silently resolve concurrent updates.
-5. **Offline use remains useful.** Portable files provide deterministic inspection and validation without a live service.
+5. **Project-local inspection remains useful.** Project files provide deterministic inspection and validation without a live service.
 6. **Enforcement is never implied.** Exclusivity exists only when a protected mutation path validates it.
 7. **Progress is bounded.** Negotiations, leases, retries, and waits have explicit termination or escalation paths.
 8. **The protocol is topology neutral.** Central managers, peers, human-agent teams, and single-agent re-entry use the same durable records.
@@ -39,7 +39,7 @@ Coordination does not replace Git, A2A, MCP, a task scheduler, a distributed con
 
 ## 3. Capability profiles and Cooperation Contract integration
 
-The module declaration advertises the Coordination capabilities actually implemented and, when Cooperation is active, the selected Cooperation Contract. Coordination capabilities describe component behavior; `COOP-1`, `COOP-2`, and `COOP-3` are the only cumulative project-level work-coordination conformance claims in AWP 0.8. Portable collaboration has no named Cooperation Contract, and optional consultation is configured independently of work coordination.
+The module declaration advertises the Coordination capabilities actually implemented and, when Cooperation is active, the selected Cooperation Contract. Coordination capabilities describe component behavior; `COOP-1`, `COOP-2`, and `COOP-3` are the only cumulative project-level work-coordination conformance claims in AWP 0.8. The active draft has no standalone or portable-collaboration tier, and optional consultation is configured independently of work coordination.
 
 ```json
 {
@@ -1309,7 +1309,7 @@ The repository's `tools/awp_projector.py` is an informative deterministic Coordi
 
 ## 27. Summary
 
-Coordination 0.5.0 supplies the durable records and executable mechanisms used by AWP Cooperation Contracts. Portable collaboration needs no Cooperation Contract, COOP-1 adds deterministic small-group conflict reduction without requiring a service, COOP-2 adds semantic awareness and integration assurance, and COOP-3 adds authenticated enforcement, fencing, and a scalable operating envelope. Consultation is a separately enabled optional Cooperation subprotocol.
+Coordination 0.5.0 supplies the durable records and executable mechanisms used by AWP Cooperation Contracts. COOP-1 adds deterministic small-group conflict reduction without requiring a service, COOP-2 adds semantic awareness and integration assurance, and COOP-3 adds authenticated enforcement, fencing, and a scalable operating envelope. Consultation is a separately enabled optional Cooperation subprotocol within a project.
 
 The essential invariant is:
 

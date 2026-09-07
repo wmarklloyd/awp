@@ -42,7 +42,7 @@
           "type": "object",
           "required": ["kind"],
           "properties": {
-            "kind": { "enum": ["package-path", "capsule-section", "remote", "events-only"] }
+            "kind": { "enum": ["project-path", "capsule-section", "remote", "events-only"] }
           },
           "additionalProperties": true
         },

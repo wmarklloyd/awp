@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:awp:schema:capsule:0.5.0",
   "title": "AWP Capsule 0.5 metadata",
-  "description": "Structural schema for the front matter of an AWP 0.8 self-contained Markdown capsule.",
+  "description": "Structural schema for the front matter of an AWP 0.8 project-scoped Markdown capsule.",
   "type": "object",
   "required": [
     "awp_version",
@@ -19,7 +19,7 @@
     "awp_version": { "type": "string", "pattern": "^0\\.8\\.[0-9]+$" },
     "specification": { "type": "string", "minLength": 1, "pattern": "^\\S+$" },
     "format": { "const": "single-file-capsule" },
-    "discovery": { "const": "self" },
+    "discovery": { "const": "project" },
     "capsule_boundary": { "type": "string", "pattern": "^[0-9a-f]{32,}$" },
     "workstate_id": { "type": "string", "minLength": 1, "pattern": "^\\S+$" },
     "frontier": {

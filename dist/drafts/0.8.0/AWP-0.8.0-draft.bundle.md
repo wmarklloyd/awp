@@ -23,20 +23,19 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **
 
 ## 1. Purpose
 
-AWP is a family of composable specifications for preserving, exchanging, inspecting, and resuming work performed by humans and software agents. Version 0.8.0 makes the governing specification and discovery metadata part of every self-contained shared workstate. It advances the family modules to explicit exploratory versions while retaining the Coordination design introduced in 0.6.0.
+AWP is a family of composable specifications for preserving, inspecting, resuming, and coordinating project work performed by humans and software agents. Version 0.8.0 makes the governing specification and discovery metadata part of every project-scoped shared workstate. It advances the family modules to explicit exploratory versions while retaining the Coordination design introduced in 0.6.0.
 
 The family has one required foundation, AWP Core. Every other subspecification is a module with its own identifier, version, dependencies, schema, and conformance claim. A module is a logical capability: it may occupy its own file in an editable workstate or be embedded in a single `.awp.md` capsule.
 
 ### 1.1 Target use cases
 
-AWP is intended for agents and users that already have their own working environments. It provides a common, portable format to:
+AWP is intended for agents and users that already have their own working environments. It provides a project-scoped coordination format to:
 
-1. Enable a user or agent to send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
-2. Provide a new agent with a clear, shared project orientation before it inspects the wider repository;
-3. Allow an agent or user to return to a project and resume from a recorded checkpoint rather than reconstructing its state from scratch; and
-4. Enable multiple agents to discover active participants, monitor advisory presence, and negotiate interdependent changes to shared work products—including code, models, documents, physical designs, schedules, and other domain outputs—above the byte-level coordination provided by Git or comparable systems.
+1. Provide a new agent with a clear, shared project orientation before it inspects the wider repository;
+2. Allow an agent or user to return to a project and resume from a recorded checkpoint rather than reconstructing its state from scratch; and
+3. Enable multiple agents to discover active participants, monitor advisory presence, and negotiate interdependent changes to shared work products—including code, models, documents, physical designs, schedules, and other domain outputs—above the byte-level coordination provided by Git or comparable systems.
 
-AWP does not replace an agent runtime, source control, artifact storage, or an agent-specific startup convention. Its purpose is to provide portable semantic state and coordination information that those systems can consume.
+AWP does not replace an agent runtime, source control, artifact storage, or an agent-specific startup convention. Its purpose is to provide project semantic state and coordination information that those systems can consume. Standalone capsule exchange and cross-project collaboration are deferred from this draft.
 
 ## 2. Specification family
 
@@ -143,7 +142,7 @@ The manifest is authoritative for physical locations. Module-specific events par
 
 ## 6. Versioning and specification binding
 
-Every shared AWP workstate MUST identify the exact specification artifact that governs it. A self-contained capsule MUST carry an explicit `specification` reference in its own metadata. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate.
+Every shared AWP project workstate MUST identify the exact specification artifact that governs it. A project capsule MUST carry an explicit `specification` reference in its own metadata. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate.
 
 A reader MUST interpret a workstate according to its declared specification and module versions. It MUST NOT silently substitute a newer, older, or otherwise different specification, infer compatibility from a filename, or treat a moving branch URL as version-pinned. If the declared specification is unavailable or unsupported, the reader MUST report that condition rather than guess.
 
@@ -188,11 +187,11 @@ Every module and binding MUST preserve these rules:
 
 ## 9. Migration from 0.7.0
 
-AWP 0.8.0 preserves the 0.2 event envelope and the module identifiers from AWP 0.6.0. Core advances to `0.8.0`; the dependent modules advance to `0.5.0`. Embedded discovery is defined by Capsule 0.5.0 rather than by a companion project file.
+AWP 0.8.0 preserves the 0.2 event envelope and the module identifiers from AWP 0.6.0. Core advances to `0.8.0`; the dependent modules advance to `0.5.0`. Project discovery and the canonical project capsule are defined together by Capsule 0.5.0.
 
-The migration is intentionally incompatible: a 0.8 self-contained capsule identifies its exact governing specification and discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. A 0.6 project that used `.awp.json` remains a valid historical input, but a 0.8 single-file capsule does not require that companion file.
+The migration is intentionally incompatible: a 0.8 project capsule identifies its exact governing specification and project discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. The project discovery document and the capsule MUST agree on the current workstate and governing specification.
 
-An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: self` to capsule metadata, update Capsule to `0.5.0`, and remove any redundant companion pointer from the portable package. Historical events remain unchanged.
+An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: project` to capsule metadata, update Capsule to `0.5.0`, and create or update the project discovery document. Historical events remain unchanged.
 
 ## 10. Agent entry profiles
 
@@ -561,40 +560,33 @@ A Core writer MUST:
 
 ## 1. Scope
 
-AWP Capsule defines human-readable and packaged representations of one logical workstate. It does not define the semantics of optional modules carried by those representations.
+AWP Capsule defines the human-readable, project-local representation of one logical workstate. It does not define the semantics of optional modules carried by that representation.
 
-The representations are:
-
-- editable directory: `name.workstate/`;
-- self-contained Markdown capsule: `name.awp.md`;
-- ZIP-compatible package: `name.pws`;
-- JSON wire payloads.
-
-Logical equivalence does not require identical bytes or file layout. The manifest maps logical data to physical locations.
+The active 0.8 direction uses one canonical Markdown capsule, `<project-name>.awp.md`, inside a declared project. The project discovery document identifies that capsule and its governing specification. Standalone capsule exchange, editable-directory packages, ZIP packages, and JSON wire payloads are archived directions; they are not active 0.8 collaboration or conformance profiles.
 
 For a project-named Markdown capsule, the default conventional filename is `<project-name>.awp.md`. When the project name is unavailable or ambiguous, producers SHOULD use `project.awp.md`. A producer MAY retain multiple capsule revisions using `<project-name>.v<revision>.awp.md`, for example `awp.v2.awp.md` or `project.v2026-09-04.awp.md`. The filename is a human-facing locator; it is not the AWP protocol version and MUST NOT override the capsule metadata.
 
 A workstate using one of these representations MUST declare the Capsule module. It MUST mark Capsule required when no alternative declared representation makes the required Core and module state accessible without Capsule processing.
 
-## 2. Embedded discovery
+## 2. Project discovery
 
-A single-file Markdown capsule is the portable discovery unit. It MUST carry the metadata needed to interpret itself; a companion `.awp.json` pointer is neither required nor part of the portable capsule.
+A single-file Markdown capsule is the canonical project workstate document. It MUST carry the metadata needed to interpret itself and be named by the project discovery document. The discovery document and capsule MUST identify the same governing specification and current workstate.
 
-The front matter of a self-contained capsule MUST include `format: single-file-capsule` and `discovery: self`. The file supplied by a host, user, or agent is the current workstate; no `current_workstate` pointer or fallback file list is needed. The capsule's `specification` metadata identifies the exact specification artifact governing the workstate.
+The front matter of a project capsule MUST include `format: single-file-capsule` and `discovery: project`. Its `specification` metadata identifies the exact specification artifact governing the workstate. A host MUST resolve the capsule through the project discovery document or a declared project entry point; an arbitrary supplied capsule path is not, by itself, a project or collaboration boundary.
 
-An AWP-aware project-entry implementation SHOULD accept an explicitly supplied capsule path. When no path is supplied, it MAY look for the conventional `<project-name>.awp.md` or `project.awp.md` in the project root. It MUST NOT silently choose among multiple candidate capsules. A filename is only a locator and MUST NOT be used to infer protocol compatibility. Discovering a declared URI MUST NOT trigger automatic network access.
+When no project entry point names the capsule, an implementation MAY look for the conventional `<project-name>.awp.md` or `project.awp.md` in the project root. It MUST NOT silently choose among multiple candidate capsules. A filename is only a locator and MUST NOT be used to infer protocol compatibility. Discovering a declared URI MUST NOT trigger automatic network access.
 
 Agent-specific instruction files such as `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md` are outside AWP. They MAY point directly to a capsule, but their presence is not required for AWP conformance.
 
 ## 3. Root briefing
 
-Every complete directory, Markdown capsule, or package MUST begin with or contain a root `WORK.md`-equivalent briefing. A human-facing reader SHOULD present it first.
+Every project capsule MUST begin with or contain a root `WORK.md`-equivalent briefing. A human-facing reader SHOULD present it first.
 
 The briefing MUST begin with metadata containing:
 
 - `awp_version`;
 - `specification`;
-- `format: single-file-capsule` and `discovery: self` for a self-contained Markdown capsule;
+- `format: single-file-capsule` and `discovery: project` for a project Markdown capsule;
 - `workstate_id`;
 - `frontier`;
 - current `checkpoint`, if one exists;
@@ -608,7 +600,7 @@ Generated content MUST occur inside exactly one marker pair:
 awp_version: 0.8.0
 specification: https://example.org/awp/0.8.0/AWP-0.8.0.bundle.md
 format: single-file-capsule
-discovery: self
+discovery: project
 workstate_id: urn:uuid:596ae918-e7da-4e6f-a226-b13f8b084727
 frontier:
   - evt:01K4M4VYB9
@@ -725,27 +717,11 @@ The boundary token MUST NOT occur in decoded section content. A writer detecting
 
 A reader MUST validate marker pairing, reject duplicate authoritative sections, verify each module section against a matching manifest declaration, reject malformed boundaries, and preserve unknown sections during lossless rewriting. It MUST NOT infer machine state from arbitrary Markdown headings or code examples outside marked sections.
 
-## 6. Package representation
+## 6. Archived representation directions
 
-A `.pws` package is ZIP-compatible and expands to the editable-directory logical layout. Proposed media type: `application/awp+zip`.
+Editable-directory packages, ZIP packages, JSON wire payloads, and standalone capsule exchange are archived design directions. They have no active AWP 0.8 conformance claim and MUST NOT be represented as a substitute for a project-scoped workstate or a COOP binding. A future version MAY define a transport or inter-project profile with its own discovery, authority, integrity, and lifecycle rules.
 
-Unpacking MUST preserve logical paths, bytes, IDs, module declarations, and references. Readers MUST reject absolute paths, parent traversal, duplicate normalized paths, case-folding collisions on case-insensitive targets, symlink escapes, and members exceeding configured size or decompression limits.
-
-Writers SHOULD place `WORK.md` and `manifest.json` before large members for preview efficiency. Physical member order has no semantic meaning.
-
-## 7. Wire representation
-
-JSON wire bindings may carry a manifest, snapshot, event sequence, delta, artifact announcement, module data, or retrieval request. Proposed media types are:
-
-```text
-application/awp+json
-application/awp-event+json
-application/awp-delta+json
-```
-
-The Capsule module defines payload representation, not transport authentication, delivery guarantees, or live synchronization.
-
-## 8. Module placement
+## 7. Module placement
 
 A module declaration may specify a `representation` object:
 
@@ -755,21 +731,21 @@ A module declaration may specify a `representation` object:
   "version": "0.5.0",
   "required": false,
   "representation": {
-    "kind": "package-path",
+    "kind": "project-path",
     "path": "modules/coordination/state.json"
   }
 }
 ```
 
-Standard representation kinds are `package-path`, `capsule-section`, `remote`, and `events-only`. A remote module location does not make the workstate self-contained and MUST disclose retrieval requirements. Secrets MUST NOT appear in locations.
+Standard representation kinds are `capsule-section`, `project-path`, `remote`, and `events-only`. A remote module location MUST disclose retrieval requirements. Secrets MUST NOT appear in locations.
 
 Module placement does not create a separate causal history. Module events always participate in the Core event graph.
 
-## 9. Conformance
+## 8. Conformance
 
-A Capsule reader MUST validate the representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures.
+A Capsule reader MUST validate the project representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures.
 
-A Capsule writer MUST create an unambiguous representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A self-contained Markdown writer MUST include its discovery mode and governing specification in the capsule metadata.
+A Capsule writer MUST create an unambiguous project representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A project Markdown writer MUST include its discovery mode and governing specification in the capsule metadata.
 
 ---
 
@@ -1235,7 +1211,7 @@ Deltas may travel through files, HTTP, A2A, MCP, message queues, repositories, o
 
 ## 9.1 Live-state and Capsule projection
 
-High-frequency coordination presence and heartbeat state is a live materialized view, not a substitute for the durable event graph. A synchronization transport SHOULD coalesce heartbeat renewal and MUST NOT require every heartbeat to advance the portable workstate frontier. Lifecycle facts that affect semantic continuation, including entry, release, expiry, conflict, and incomplete handoff, MAY be published as Coordination events.
+High-frequency coordination presence and heartbeat state is a live materialized view, not a substitute for the durable event graph. A synchronization transport SHOULD coalesce heartbeat renewal and MUST NOT require every heartbeat to advance the project workstate frontier. Lifecycle facts that affect semantic continuation, including entry, release, expiry, conflict, and incomplete handoff, MAY be published as Coordination events.
 
 Concurrent agents publish events or deltas rather than independently replacing one canonical Capsule. A Capsule projector MUST compare the Capsule's current frontier and generated digest with the base it read before replacement. If either differs, it MUST reload and reconcile through this module, retry from the new base, or report divergence. It MUST NOT silently overwrite the newer projection.
 
@@ -1463,7 +1439,7 @@ Coordination does not replace Git, A2A, MCP, a task scheduler, a distributed con
 2. **Semantic conflicts are first class.** A clean textual merge is not evidence of compatible behavior.
 3. **Claims have provenance.** Agent declarations, tool observations, verification results, and authority decisions are distinct.
 4. **Concurrency is preserved.** Timestamp order or file order does not silently resolve concurrent updates.
-5. **Offline use remains useful.** Portable files provide deterministic inspection and validation without a live service.
+5. **Project-local inspection remains useful.** Project files provide deterministic inspection and validation without a live service.
 6. **Enforcement is never implied.** Exclusivity exists only when a protected mutation path validates it.
 7. **Progress is bounded.** Negotiations, leases, retries, and waits have explicit termination or escalation paths.
 8. **The protocol is topology neutral.** Central managers, peers, human-agent teams, and single-agent re-entry use the same durable records.
@@ -1471,7 +1447,7 @@ Coordination does not replace Git, A2A, MCP, a task scheduler, a distributed con
 
 ## 3. Capability profiles and Cooperation Contract integration
 
-The module declaration advertises the Coordination capabilities actually implemented and, when Cooperation is active, the selected Cooperation Contract. Coordination capabilities describe component behavior; `COOP-1`, `COOP-2`, and `COOP-3` are the only cumulative project-level work-coordination conformance claims in AWP 0.8. Portable collaboration has no named Cooperation Contract, and optional consultation is configured independently of work coordination.
+The module declaration advertises the Coordination capabilities actually implemented and, when Cooperation is active, the selected Cooperation Contract. Coordination capabilities describe component behavior; `COOP-1`, `COOP-2`, and `COOP-3` are the only cumulative project-level work-coordination conformance claims in AWP 0.8. The active draft has no standalone or portable-collaboration tier, and optional consultation is configured independently of work coordination.
 
 ```json
 {
@@ -2741,7 +2717,7 @@ The repository's `tools/awp_projector.py` is an informative deterministic Coordi
 
 ## 27. Summary
 
-Coordination 0.5.0 supplies the durable records and executable mechanisms used by AWP Cooperation Contracts. Portable collaboration needs no Cooperation Contract, COOP-1 adds deterministic small-group conflict reduction without requiring a service, COOP-2 adds semantic awareness and integration assurance, and COOP-3 adds authenticated enforcement, fencing, and a scalable operating envelope. Consultation is a separately enabled optional Cooperation subprotocol.
+Coordination 0.5.0 supplies the durable records and executable mechanisms used by AWP Cooperation Contracts. COOP-1 adds deterministic small-group conflict reduction without requiring a service, COOP-2 adds semantic awareness and integration assurance, and COOP-3 adds authenticated enforcement, fencing, and a scalable operating envelope. Consultation is a separately enabled optional Cooperation subprotocol within a project.
 
 The essential invariant is:
 
@@ -2857,7 +2833,7 @@ Receivers SHOULD place newly imported workstates in local quarantine until they 
 
 - origin and transport context;
 - required modules and schemas;
-- package-path and size safety;
+- project-path and size safety;
 - declared and verified integrity;
 - classification and handling policy;
 - active instructions and executables;
@@ -3062,7 +3038,7 @@ Cooperation Contracts define what several human or software-agent participants c
 1. **work coordination** reduces incompatible concurrent work output through discovery, leases, intents, guarded scopes, compatibility decisions, checkpoints, and recovery; and
 2. **consultation** exchanges bounded analysis, critique, review, delegation, or synthesis without granting authority or reserving a work scope.
 
-`COOP-1`, `COOP-2`, and `COOP-3` are AWP 0.8's single cumulative **work-coordination** ladder. The Coordination module defines the durable records, capability bundles, and mechanisms used by those contracts; it does not define a competing conformance axis. There is no `COOP-0` contract. Ordinary portable AWP exchange—including capsules, handoffs, and Core `consultation` records—remains useful without selecting any Cooperation Contract and makes no active coordination guarantee.
+`COOP-1`, `COOP-2`, and `COOP-3` are AWP 0.8's single cumulative **work-coordination** ladder. The Coordination module defines the durable records, capability bundles, and mechanisms used by those contracts; it does not define a competing conformance axis. There is no `COOP-0` contract or separate portable-collaboration tier. The active draft is project-scoped: a project that does not select a COOP contract MAY maintain a workstate, but it MUST NOT claim cooperative coordination.
 
 `COOP-1` is the first named contract because it provides immediately useful conflict reduction for a small group while keeping material inter-agent decisions user-mediated. `COOP-2` adds semantic and integration coordination and permits explicitly authorized, budgeted inter-agent collaboration. `COOP-3` adds protected, scalable coordination. Consultation and managed collaboration are disabled unless the binding explicitly enables them.
 
@@ -3074,7 +3050,6 @@ The module capability `guarded-scope-coordination` means that the selected contr
 
 | Earlier draft behavior | AWP 0.8 location |
 |---|---|
-| Portable preservation, display, and asynchronous consultation | AWP baseline; no Cooperation Contract required |
 | Deterministic event validation, projection, and guarded physical work | `COOP-1` |
 | Semantic registry, scope analysis, and integration assurance | `COOP-2` |
 | Authenticated protected mutation, epochs, leases, fencing, and scalable operating envelope | `COOP-3` |
@@ -3097,15 +3072,13 @@ An unqualified conformant `COOP-1`, `COOP-2`, or `COOP-3` claim describes the co
 
 The machine-readable binding disclosure, subprotocol claims, loop policy, interaction, and result shapes are defined by `../../../schemas/awp-cooperation-0.1.schema.json`. Module-owned records MUST declare `module: urn:awp:cooperation`.
 
-## 3. Portable collaboration without a contract
+## 3. Project-scoped baseline and archived exchange
 
-Without a selected Cooperation Contract, participants MAY exchange capsules, handoffs, artifacts, Core `consultation` records, critiques, alternative perspectives, and synthesized conclusions. This supports deliberately using different models or people for independent points of view.
+The active draft does not define standalone capsule exchange, package exchange, wire-payload exchange, or cross-project collaboration. Those directions are archived for possible future profiles. A project without a selected Cooperation Contract MAY retain a local workstate under host policy, but it MUST NOT claim participant discovery, scope reservation, conflicting-mutation prevention, managed collaboration, or coordinated integration.
 
-A processor that receives recognized Cooperation or Coordination records without supporting their required semantics MUST preserve and expose them without implying that it validated their operational effect. Unknown fields MUST be preserved by a lossless processor.
+A processor that encounters recognized Cooperation or Coordination records without supporting their required semantics MUST preserve and expose them without implying that it validated their operational effect. Unknown fields MUST be preserved by a lossless processor.
 
-An uncontracted participant MUST NOT claim that participants discovered one another, reserved a scope, prevented a conflicting mutation, or incorporated a contemporaneous result unless a binding provides evidence for that claim. A participant MAY make a local change under host policy, but it MUST disclose that no active Cooperation Contract conflict protection was present.
-
-Core `consultation` records remain available for asynchronous advice seeking. They require no participant lease or shared ledger. A response MUST identify uncertainty and supporting evidence when available; advice MUST NOT be treated as authorization for an action.
+Core `consultation` records MAY support a bounded question or escalation inside a declared project. They do not create an independent collaboration level, require no participant lease by themselves, and MUST NOT be treated as authorization for an action. A response MUST identify uncertainty and supporting evidence when available.
 
 ## 4. COOP-1 — small-group conflict reduction
 
@@ -3238,7 +3211,7 @@ The profile MAY use A2A tasks, messages, artifacts, or data parts to carry typed
 
 The authoritative COOP-3 store and protected mutation gateway MUST enforce the actor/principal authorization, expected binding epoch and frontier or revision, protected scope, and current fencing token independently of A2A task state. The gateway MUST reject a stale, unauthenticated, or mismatched request even when A2A reports successful delivery. A binding MUST disclose A2A reachability, authentication failure, transport retry, and store or gateway availability separately; it MUST fail closed for protected mutation when any required enforcement check is unavailable.
 
-`coop3-a2a-v1` does not require A2A for portable AWP exchange, COOP-1, COOP-2, or another conformant COOP-3 transport. A local file or transactional-ledger binding remains a valid low-administration option where its declared reach and guarantees are sufficient. A2A use alone is not evidence of COOP-3 conformance.
+`coop3-a2a-v1` does not require A2A for COOP-1, COOP-2, or another conformant COOP-3 transport. A local file or transactional-ledger binding remains a valid low-administration option where its declared reach and guarantees are sufficient. A2A use alone is not evidence of COOP-3 conformance.
 
 The current AWP repository specifies `COOP-2` and `COOP-3` but does not provide complete implementations or conformance claims for either.
 
@@ -3609,127 +3582,127 @@ If the optional consultation subprotocol is enabled, the agent may separately in
     {
       "id": "AWP-FAMILY-002",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 49,
+      "line": 48,
       "statement": "Every AWP 0.8 manifest MUST contain a `modules` array. It MUST declare exactly one Core entry, and that entry MUST be required. The following is a module-declaration excerpt rather than a complete manifest:"
     },
     {
       "id": "AWP-FAMILY-003",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 83,
+      "line": 82,
       "statement": "A writer MUST declare every module whose records, events, or required processing rules affect the effective workstate. It MUST include compatible declarations for all direct dependencies. It MUST mark a module required only when ignoring that module would prevent the receiver from safely performing the declared continuation."
     },
     {
       "id": "AWP-FAMILY-004",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 85,
+      "line": 84,
       "statement": "If a module is required, every dependency needed to interpret it MUST also be required. If an optional module depends on another optional module, a receiver may ignore both while preserving their data."
     },
     {
       "id": "AWP-FAMILY-005",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 87,
+      "line": 86,
       "statement": "Core owns the unqualified Core record types and fields. A module defining a new record type MUST include a `module` field naming its module ID. A module extending a Core record MUST place its fields under that record's `modules` object, keyed by module ID. Module-owned event kinds use the common event envelope's required `module` field. These rules prevent independent subspecifications from claiming the same unqualified name."
     },
     {
       "id": "AWP-FAMILY-006",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 91,
+      "line": 90,
       "statement": "A reader that encounters an unknown optional module MAY continue using understood modules. It MUST preserve or explicitly disclose loss of the unknown data, and it MUST NOT infer semantics from unknown fields."
     },
     {
       "id": "AWP-FAMILY-007",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 93,
+      "line": 92,
       "statement": "A reader that encounters an unknown required module MUST NOT claim a complete interpretation or perform a continuation that could depend on it. It SHOULD still present the human briefing, validate understood envelopes, and report the unsupported module."
     },
     {
       "id": "AWP-FAMILY-008",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 128,
+      "line": 127,
       "statement": "The conventional project-named form is `<project-name>.awp.md`. Producers MAY retain versioned archival copies using `<project-name>.v<revision>.awp.md`, such as `project.v2.awp.md`. This filename revision is only a human-facing label; protocol and workstate identity remain defined by the capsule metadata."
     },
     {
       "id": "AWP-FAMILY-009",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 134,
-      "statement": "Every shared AWP workstate MUST identify the exact specification artifact that governs it. A self-contained capsule MUST carry an explicit `specification` reference in its own metadata. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate."
+      "line": 133,
+      "statement": "Every shared AWP project workstate MUST identify the exact specification artifact that governs it. A project capsule MUST carry an explicit `specification` reference in its own metadata. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate."
     },
     {
       "id": "AWP-FAMILY-010",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 136,
+      "line": 135,
       "statement": "A reader MUST interpret a workstate according to its declared specification and module versions. It MUST NOT silently substitute a newer, older, or otherwise different specification, infer compatibility from a filename, or treat a moving branch URL as version-pinned. If the declared specification is unavailable or unsupported, the reader MUST report that condition rather than guess."
     },
     {
       "id": "AWP-FAMILY-011",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 138,
+      "line": 137,
       "statement": "AWP `0.x` is exploratory. A new minor family or module release MAY make incompatible changes. A patch release MUST NOT introduce incompatible normative semantics. Explicit specification binding allows protocol development to proceed without requiring backward compatibility between exploratory minor releases. Implementations MAY support multiple versions or provide explicit migrations, but conformance to one version does not imply support for another."
     },
     {
       "id": "AWP-FAMILY-012",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 140,
+      "line": 139,
       "statement": "The family version and module versions remain independent. The family version identifies a tested set of module releases, and a later family release may reuse an unchanged module version. Writers that change protocol semantics MUST publish a new versioned specification artifact and update affected workstates deliberately. Implementations MUST determine support by the declared specification, module ID, and module version, not by comparing only `awp_version`."
     },
     {
       "id": "AWP-FAMILY-013",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 160,
+      "line": 159,
       "statement": "An implementation MUST satisfy the conformance requirements in each module for every role it claims. Supporting AWP Core alone is valid AWP conformance. It does not imply support for capsules, handoffs, synchronization, coordination, signatures, encryption, or adapters."
     },
     {
       "id": "AWP-FAMILY-014",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 164,
+      "line": 163,
       "statement": "Every module and binding MUST preserve these rules:"
     },
     {
       "id": "AWP-FAMILY-015",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 173,
+      "line": 172,
       "statement": "8. Optional modules MUST NOT redefine Core field meanings."
     },
     {
       "id": "AWP-FAMILY-016",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 181,
-      "statement": "The migration is intentionally incompatible: a 0.8 self-contained capsule identifies its exact governing specification and discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. A 0.6 project that used `.awp.json` remains a valid historical input, but a 0.8 single-file capsule does not require that companion file."
+      "line": 180,
+      "statement": "The migration is intentionally incompatible: a 0.8 project capsule identifies its exact governing specification and project discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. The project discovery document and the capsule MUST agree on the current workstate and governing specification."
     },
     {
       "id": "AWP-FAMILY-017",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 183,
-      "statement": "An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: self` to capsule metadata, update Capsule to `0.5.0`, and remove any redundant companion pointer from the portable package. Historical events remain unchanged."
+      "line": 182,
+      "statement": "An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: project` to capsule metadata, update Capsule to `0.5.0`, and create or update the project discovery document. Historical events remain unchanged."
     },
     {
       "id": "AWP-FAMILY-018",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 187,
+      "line": 186,
       "statement": "A specification family MAY distribute a generated **Agent Entry Core** beside a complete specification bundle. Its purpose is to give a model or other bounded-context participant the minimum cross-cutting rules needed to orient safely before it retrieves task-specific modules. It is a derived presentation artifact, not an additional source of normative semantics."
     },
     {
       "id": "AWP-FAMILY-019",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 189,
+      "line": 188,
       "statement": "An Agent Entry Core MUST identify its exact source bundle, source bundle SHA-256 digest, family version, generator identity, and the source documents and schemas that its task-routing guidance can name. A reader MUST verify the recorded digest against the available source bundle before relying on the profile. A profile whose bundle is unavailable or whose digest does not match is unavailable, not merely advisory; the reader MUST retrieve and use the complete governing specification or decline the continuation."
     },
     {
       "id": "AWP-FAMILY-020",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 191,
+      "line": 190,
       "statement": "The Entry Core MUST include the family invariants needed before any continuation, a statement that it cannot override the source specification, and mandatory expansion triggers. Those triggers MUST include an unknown or required module, a missing or unverifiable profile, an ambiguity or conflict, a requested semantic change spanning more than one routed module, and release, migration, or cross-module integration work. A receiver MAY apply stricter triggers under its own policy."
     },
     {
       "id": "AWP-FAMILY-021",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 193,
+      "line": 192,
       "statement": "Task-routing guidance in an Entry Core is non-normative performance guidance. It MUST name the source modules and schemas that a task class normally requires, including direct dependencies, but it MUST NOT claim that the listed material is sufficient in every circumstance or weaken a reader's obligation to obtain relevant normative state. When the profile and its governing source appear to disagree, the source governs and the reader MUST expand its reading rather than choose the profile."
     },
     {
       "id": "AWP-FAMILY-022",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 195,
+      "line": 194,
       "statement": "An implementation that claims Agent Entry Core support MUST generate or verify the profile as part of the same reproducible build that produces its source bundle. It MUST expose whether profile verification succeeded and which additional source documents it selected. A gateway MAY enforce selective access, but an instruction to a model alone is not evidence that the model did not read additional material."
     },
     {
@@ -3867,176 +3840,170 @@ If the optional consultation subprotocol is enabled, the agent may separately in
     {
       "id": "AWP-CAPSULE-001",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 24,
+      "line": 17,
       "statement": "For a project-named Markdown capsule, the default conventional filename is `<project-name>.awp.md`. When the project name is unavailable or ambiguous, producers SHOULD use `project.awp.md`. A producer MAY retain multiple capsule revisions using `<project-name>.v<revision>.awp.md`, for example `awp.v2.awp.md` or `project.v2026-09-04.awp.md`. The filename is a human-facing locator; it is not the AWP protocol version and MUST NOT override the capsule metadata."
     },
     {
       "id": "AWP-CAPSULE-002",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 26,
+      "line": 19,
       "statement": "A workstate using one of these representations MUST declare the Capsule module. It MUST mark Capsule required when no alternative declared representation makes the required Core and module state accessible without Capsule processing."
     },
     {
       "id": "AWP-CAPSULE-003",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 30,
-      "statement": "A single-file Markdown capsule is the portable discovery unit. It MUST carry the metadata needed to interpret itself; a companion `.awp.json` pointer is neither required nor part of the portable capsule."
+      "line": 23,
+      "statement": "A single-file Markdown capsule is the canonical project workstate document. It MUST carry the metadata needed to interpret itself and be named by the project discovery document. The discovery document and capsule MUST identify the same governing specification and current workstate."
     },
     {
       "id": "AWP-CAPSULE-004",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 32,
-      "statement": "The front matter of a self-contained capsule MUST include `format: single-file-capsule` and `discovery: self`. The file supplied by a host, user, or agent is the current workstate; no `current_workstate` pointer or fallback file list is needed. The capsule's `specification` metadata identifies the exact specification artifact governing the workstate."
+      "line": 25,
+      "statement": "The front matter of a project capsule MUST include `format: single-file-capsule` and `discovery: project`. Its `specification` metadata identifies the exact specification artifact governing the workstate. A host MUST resolve the capsule through the project discovery document or a declared project entry point; an arbitrary supplied capsule path is not, by itself, a project or collaboration boundary."
     },
     {
       "id": "AWP-CAPSULE-005",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 34,
-      "statement": "An AWP-aware project-entry implementation SHOULD accept an explicitly supplied capsule path. When no path is supplied, it MAY look for the conventional `<project-name>.awp.md` or `project.awp.md` in the project root. It MUST NOT silently choose among multiple candidate capsules. A filename is only a locator and MUST NOT be used to infer protocol compatibility. Discovering a declared URI MUST NOT trigger automatic network access."
+      "line": 27,
+      "statement": "When no project entry point names the capsule, an implementation MAY look for the conventional `<project-name>.awp.md` or `project.awp.md` in the project root. It MUST NOT silently choose among multiple candidate capsules. A filename is only a locator and MUST NOT be used to infer protocol compatibility. Discovering a declared URI MUST NOT trigger automatic network access."
     },
     {
       "id": "AWP-CAPSULE-006",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 36,
+      "line": 29,
       "statement": "Agent-specific instruction files such as `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md` are outside AWP. They MAY point directly to a capsule, but their presence is not required for AWP conformance."
     },
     {
       "id": "AWP-CAPSULE-007",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 40,
-      "statement": "Every complete directory, Markdown capsule, or package MUST begin with or contain a root `WORK.md`-equivalent briefing. A human-facing reader SHOULD present it first."
+      "line": 33,
+      "statement": "Every project capsule MUST begin with or contain a root `WORK.md`-equivalent briefing. A human-facing reader SHOULD present it first."
     },
     {
       "id": "AWP-CAPSULE-008",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 42,
+      "line": 35,
       "statement": "The briefing MUST begin with metadata containing:"
     },
     {
       "id": "AWP-CAPSULE-009",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 53,
+      "line": 46,
       "statement": "Generated content MUST occur inside exactly one marker pair:"
     },
     {
       "id": "AWP-CAPSULE-010",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 80,
+      "line": 73,
       "statement": "A participant MUST NOT replace another participant's authored capsule content in place. A revision to an existing record MUST increment its `revision` and SHOULD record the prior generated digest. A revised capsule SHOULD identify its predecessor by artifact digest or explicit supersession reference. Consistency edits following an accepted decision belong in a new revision or superseding capsule; recomputing `generated_digest` does not by itself establish authorship, authorization, or continuity with the prior artifact."
     },
     {
       "id": "AWP-CAPSULE-011",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 82,
+      "line": 75,
       "statement": "`specification` identifies the exact specification artifact that governs the workstate. It SHOULD be an immutable, version-pinned URI when the specification is hosted remotely, such as a tagged GitHub raw URL. It MUST NOT use a moving branch URL as though it were version-pinned. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate. A reader MUST NOT silently substitute another specification. An unavailable or unsupported declared specification makes the workstate `unverifiable` for protocol interpretation."
     },
     {
       "id": "AWP-CAPSULE-012",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 97,
+      "line": 90,
       "statement": "A host MAY read and validate the complete capsule without presenting every source byte to a human or model participant. A model-facing entry view SHOULD present the front matter and generated briefing first, then materialize only the active Resume, referenced Handoff and checkpoint, ordered `read_first` records, and compact descriptors for required artifacts. The source capsule remains authoritative; the entry view is a disposable projection and MUST identify its source capsule, source size, integrity state, and selection status."
     },
     {
       "id": "AWP-CAPSULE-013",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 99,
+      "line": 92,
       "statement": "A bounded entry view MUST report `complete` only when the active Resume, its explicitly selected records, referenced Handoff and checkpoint, and required artifact descriptors were resolved and verified according to the declared presentation profile. This status asserts structural completeness of the author-declared entry set, not that no other historical context can be relevant. If a byte or token budget cannot carry the declared entry set, the host MUST report `budget_exceeded` or `incomplete`, identify omitted or unresolved material, and stop or obtain more context according to receiver policy. It MUST NOT silently truncate required state or treat a generated briefing alone as complete semantic re-entry."
     },
     {
       "id": "AWP-CAPSULE-014",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 101,
+      "line": 94,
       "statement": "This two-stage presentation limits model context consumption, not validation. A Capsule reader claiming briefing-first presentation MUST still parse and validate the full representation, required modules, internal references, and integrity metadata before it reports the selected view as complete."
     },
     {
       "id": "AWP-CAPSULE-015",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 105,
+      "line": 98,
       "statement": "When a project maintains one current writable Capsule, its host SHOULD expose a canonical maintenance binding. The binding owns parsing, record projection, briefing rendering, artifact-integrity calculation, and serialization. An agent or model MAY submit semantic facts, a synchronization delta, or a checkpoint request, but MUST NOT be required to edit embedded JSON, calculate digests, or rewrite the canonical Capsule directly."
     },
     {
       "id": "AWP-CAPSULE-016",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 107,
+      "line": 100,
       "statement": "A checkpoint request for a canonical Capsule MUST carry an idempotency key, the expected whole-Capsule digest, the expected generated-region digest, the expected semantic frontier, the proposed semantic frontier, the checkpoint or no-change disposition, and the semantic handoff fields required by Handoff. The host MUST compare all expected values immediately before replacement. A mismatch MUST produce `stale_base` or an equivalent recoverable result; it MUST NOT use last-write-wins."
     },
     {
       "id": "AWP-CAPSULE-017",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 109,
+      "line": 102,
       "statement": "The host MUST serialize canonical replacement per workstate, write through a temporary file with flush and sync before atomic replacement, and return a receipt containing the prior and resulting whole-Capsule digests, generated-region digests, semantic frontier, checkpoint, and publication status. A no-change exit MUST return a verified receipt without rewriting identical bytes. A crash between replacement and durable publication MUST leave recoverable journal state and MUST NOT be reported as a confirmed checkpoint until recovery resolves it."
     },
     {
       "id": "AWP-CAPSULE-018",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 111,
+      "line": 104,
       "statement": "Artifact locations are not artifact identity. When bytes at a mutable location change, the writer MUST preserve the prior digest as historical evidence and create or reference a new artifact revision. It MUST NOT silently rewrite an old artifact claim to match new bytes. Routine entry MAY verify only active required artifacts; a full historical audit MUST be an explicit operation."
     },
     {
       "id": "AWP-CAPSULE-019",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 132,
+      "line": 125,
       "statement": "`WORK.md` and `manifest.json` are REQUIRED. `events.jsonl` is REQUIRED unless the manifest declares a snapshot-only representation. `snapshot.json`, `artifacts/`, `modules/`, and `views/` are optional."
     },
     {
       "id": "AWP-CAPSULE-020",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 134,
+      "line": 127,
       "statement": "Each `events.jsonl` line contains one complete JSON event. Module-specific events remain in this unified ledger. Module-owned auxiliary data MAY occupy separate files under `modules/`, but their manifest locations are authoritative; directory names are conventional only."
     },
     {
       "id": "AWP-CAPSULE-021",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 140,
+      "line": 133,
       "statement": "A `.awp.md` file begins with briefing metadata and human Markdown, followed by machine sections. Front matter MUST declare `capsule_boundary`, a lowercase hexadecimal token containing at least 128 bits of unpredictable entropy."
     },
     {
       "id": "AWP-CAPSULE-022",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 154,
+      "line": 147,
       "statement": "It may contain attributes of the form ` name=\"value\"` before ` -->`. Attribute names match `[a-z][a-z0-9_-]*`; values MUST NOT contain a quote, CR, LF, or `-->`."
     },
     {
       "id": "AWP-CAPSULE-023",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 173,
+      "line": 166,
       "statement": "The boundary token MUST NOT occur in decoded section content. A writer detecting a collision MUST generate a new boundary or encode the content using a binary-safe encoding such as base64. Binary artifacts MUST use base64 or a registered binary-safe encoding."
     },
     {
       "id": "AWP-CAPSULE-024",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 175,
+      "line": 168,
       "statement": "A reader MUST validate marker pairing, reject duplicate authoritative sections, verify each module section against a matching manifest declaration, reject malformed boundaries, and preserve unknown sections during lossless rewriting. It MUST NOT infer machine state from arbitrary Markdown headings or code examples outside marked sections."
     },
     {
       "id": "AWP-CAPSULE-025",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 181,
-      "statement": "Unpacking MUST preserve logical paths, bytes, IDs, module declarations, and references. Readers MUST reject absolute paths, parent traversal, duplicate normalized paths, case-folding collisions on case-insensitive targets, symlink escapes, and members exceeding configured size or decompression limits."
+      "line": 172,
+      "statement": "Editable-directory packages, ZIP packages, JSON wire payloads, and standalone capsule exchange are archived design directions. They have no active AWP 0.8 conformance claim and MUST NOT be represented as a substitute for a project-scoped workstate or a COOP binding. A future version MAY define a transport or inter-project profile with its own discovery, authority, integrity, and lifecycle rules."
     },
     {
       "id": "AWP-CAPSULE-026",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 183,
-      "statement": "Writers SHOULD place `WORK.md` and `manifest.json` before large members for preview efficiency. Physical member order has no semantic meaning."
+      "line": 190,
+      "statement": "Standard representation kinds are `capsule-section`, `project-path`, `remote`, and `events-only`. A remote module location MUST disclose retrieval requirements. Secrets MUST NOT appear in locations."
     },
     {
       "id": "AWP-CAPSULE-027",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 213,
-      "statement": "Standard representation kinds are `package-path`, `capsule-section`, `remote`, and `events-only`. A remote module location does not make the workstate self-contained and MUST disclose retrieval requirements. Secrets MUST NOT appear in locations."
+      "line": 196,
+      "statement": "A Capsule reader MUST validate the project representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures."
     },
     {
       "id": "AWP-CAPSULE-028",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 219,
-      "statement": "A Capsule reader MUST validate the representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures."
-    },
-    {
-      "id": "AWP-CAPSULE-029",
-      "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 221,
-      "statement": "A Capsule writer MUST create an unambiguous representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A self-contained Markdown writer MUST include its discovery mode and governing specification in the capsule metadata."
+      "line": 198,
+      "statement": "A Capsule writer MUST create an unambiguous project representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A project Markdown writer MUST include its discovery mode and governing specification in the capsule metadata."
     },
     {
       "id": "AWP-HANDOFF-001",
@@ -4300,7 +4267,7 @@ If the optional consultation subprotocol is enabled, the agent may separately in
       "id": "AWP-SYNC-011",
       "source": "spec/drafts/0.8.0/synchronization.md",
       "line": 118,
-      "statement": "High-frequency coordination presence and heartbeat state is a live materialized view, not a substitute for the durable event graph. A synchronization transport SHOULD coalesce heartbeat renewal and MUST NOT require every heartbeat to advance the portable workstate frontier. Lifecycle facts that affect semantic continuation, including entry, release, expiry, conflict, and incomplete handoff, MAY be published as Coordination events."
+      "statement": "High-frequency coordination presence and heartbeat state is a live materialized view, not a substitute for the durable event graph. A synchronization transport SHOULD coalesce heartbeat renewal and MUST NOT require every heartbeat to advance the project workstate frontier. Lifecycle facts that affect semantic continuation, including entry, release, expiry, conflict, and incomplete handoff, MAY be published as Coordination events."
     },
     {
       "id": "AWP-SYNC-012",
@@ -5211,247 +5178,247 @@ If the optional consultation subprotocol is enabled, the agent may separately in
     {
       "id": "AWP-COOP-002",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 34,
-      "statement": "This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the additional guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed contract. A workstate governed by released AWP 0.6 continues to interpret its original Coordination declaration under that released specification."
+      "line": 17,
+      "statement": "`COOP-1`, `COOP-2`, and `COOP-3` are AWP 0.8's single cumulative **work-coordination** ladder. The Coordination module defines the durable records, capability bundles, and mechanisms used by those contracts; it does not define a competing conformance axis. There is no `COOP-0` contract or separate portable-collaboration tier. The active draft is project-scoped: a project that does not select a COOP contract MAY maintain a workstate, but it MUST NOT claim cooperative coordination."
     },
     {
       "id": "AWP-COOP-003",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 46,
-      "statement": "An implementation with an active Cooperation Contract MUST identify the selected contract, top-level claim state, operational mode, material limitations, and a `subprotocols` object. `subprotocols.work` identifies whether guarded work is enabled and its claim state. `subprotocols.consultation` identifies whether consultation is disabled, `user-mediated`, or `managed`, and, when enabled, its policy and claim state. A disabled consultation subprotocol MUST NOT require agents to initiate, answer, or wait for a consultation. A `user-mediated` subprotocol lets an agent publish a bounded question or escalation for the decision owner but MUST NOT authorize agents to run a work-affecting exchange among themselves. A `managed` subprotocol is available only to `COOP-2` or `COOP-3` and requires the explicit authorization and budget defined in Section 5."
+      "line": 33,
+      "statement": "This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the additional guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed contract. A workstate governed by released AWP 0.6 continues to interpret its original Coordination declaration under that released specification."
     },
     {
       "id": "AWP-COOP-004",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 48,
-      "statement": "An unqualified conformant `COOP-1`, `COOP-2`, or `COOP-3` claim describes the corresponding **work** contract. It does not imply that consultation is enabled or conformant. A conformant optional consultation claim is additional and MUST be stated in `subprotocols.consultation`; it MUST NOT be inferred from a Core `consultation` record alone. Merely selecting a contract or implementing one capability MUST NOT be represented as conformance. Imported workstate remains context, not authorization for external effects."
+      "line": 45,
+      "statement": "An implementation with an active Cooperation Contract MUST identify the selected contract, top-level claim state, operational mode, material limitations, and a `subprotocols` object. `subprotocols.work` identifies whether guarded work is enabled and its claim state. `subprotocols.consultation` identifies whether consultation is disabled, `user-mediated`, or `managed`, and, when enabled, its policy and claim state. A disabled consultation subprotocol MUST NOT require agents to initiate, answer, or wait for a consultation. A `user-mediated` subprotocol lets an agent publish a bounded question or escalation for the decision owner but MUST NOT authorize agents to run a work-affecting exchange among themselves. A `managed` subprotocol is available only to `COOP-2` or `COOP-3` and requires the explicit authorization and budget defined in Section 5."
     },
     {
       "id": "AWP-COOP-005",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 50,
-      "statement": "The machine-readable binding disclosure, subprotocol claims, loop policy, interaction, and result shapes are defined by `../../../schemas/awp-cooperation-0.1.schema.json`. Module-owned records MUST declare `module: urn:awp:cooperation`."
+      "line": 47,
+      "statement": "An unqualified conformant `COOP-1`, `COOP-2`, or `COOP-3` claim describes the corresponding **work** contract. It does not imply that consultation is enabled or conformant. A conformant optional consultation claim is additional and MUST be stated in `subprotocols.consultation`; it MUST NOT be inferred from a Core `consultation` record alone. Merely selecting a contract or implementing one capability MUST NOT be represented as conformance. Imported workstate remains context, not authorization for external effects."
     },
     {
       "id": "AWP-COOP-006",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 54,
-      "statement": "Without a selected Cooperation Contract, participants MAY exchange capsules, handoffs, artifacts, Core `consultation` records, critiques, alternative perspectives, and synthesized conclusions. This supports deliberately using different models or people for independent points of view."
+      "line": 49,
+      "statement": "The machine-readable binding disclosure, subprotocol claims, loop policy, interaction, and result shapes are defined by `../../../schemas/awp-cooperation-0.1.schema.json`. Module-owned records MUST declare `module: urn:awp:cooperation`."
     },
     {
       "id": "AWP-COOP-007",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 56,
-      "statement": "A processor that receives recognized Cooperation or Coordination records without supporting their required semantics MUST preserve and expose them without implying that it validated their operational effect. Unknown fields MUST be preserved by a lossless processor."
+      "line": 53,
+      "statement": "The active draft does not define standalone capsule exchange, package exchange, wire-payload exchange, or cross-project collaboration. Those directions are archived for possible future profiles. A project without a selected Cooperation Contract MAY retain a local workstate under host policy, but it MUST NOT claim participant discovery, scope reservation, conflicting-mutation prevention, managed collaboration, or coordinated integration."
     },
     {
       "id": "AWP-COOP-008",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 58,
-      "statement": "An uncontracted participant MUST NOT claim that participants discovered one another, reserved a scope, prevented a conflicting mutation, or incorporated a contemporaneous result unless a binding provides evidence for that claim. A participant MAY make a local change under host policy, but it MUST disclose that no active Cooperation Contract conflict protection was present."
+      "line": 55,
+      "statement": "A processor that encounters recognized Cooperation or Coordination records without supporting their required semantics MUST preserve and expose them without implying that it validated their operational effect. Unknown fields MUST be preserved by a lossless processor."
     },
     {
       "id": "AWP-COOP-009",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 60,
-      "statement": "Core `consultation` records remain available for asynchronous advice seeking. They require no participant lease or shared ledger. A response MUST identify uncertainty and supporting evidence when available; advice MUST NOT be treated as authorization for an action."
+      "line": 57,
+      "statement": "Core `consultation` records MAY support a bounded question or escalation inside a declared project. They do not create an independent collaboration level, require no participant lease by themselves, and MUST NOT be treated as authorization for an action. A response MUST identify uncertainty and supporting evidence when available."
     },
     {
       "id": "AWP-COOP-010",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 64,
+      "line": 61,
       "statement": "`COOP-1` is the default contract for a small shared project group. It reduces collisions in guarded, explicitly comparable work without requiring agents to exchange reasoning beyond the structured coordination information needed to proceed or block. A material conflict, ambiguity, or request for a work-affecting decision is surfaced to the declared decision owner; it does not start an autonomous agent-to-agent loop. It is intended to be useful for more than two concurrent participants without making an unmeasured capacity claim, though Section 4.3 permits an explicitly bounded two-participant operating envelope. It MUST NOT require a separate database or continuously running service. A binding MAY use repository-local files, atomic filesystem operations, an embedded store, or another local mechanism, provided it preserves the requirements below."
     },
     {
       "id": "AWP-COOP-011",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 66,
+      "line": 63,
       "statement": "For every Coordination record or event used to make a work-coordination decision, the binding MUST perform `COOP-1` record-validity validation of workstate identity, event identity, ancestry, revisions, lifecycle transitions, pinned references, and typed precondition and verification bindings. It MUST exclude or block structurally stale or unverifiable input with a stable diagnostic. Projection MUST be independent of transport order, preserve concurrent non-commuting successors as contested, and return stable diagnostics for excluded or unverifiable input. A component MAY advertise a `deterministic-coordination-projector` capability, but that component alone MUST NOT claim `COOP-1`; the contract applies to the composed participant, binding, projector, checkpoint, and recovery behavior."
     },
     {
       "id": "AWP-COOP-012",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 68,
+      "line": 65,
       "statement": "A `COOP-1` participant lease is a bounded liveness record with exit coupling in the cooperation binding. It lets participating agents discover an active participant and recover when its renewal stops; release is permitted only after the linked work is terminal and a durable handoff receipt is available. It does not authenticate a principal, fence a source-control write, grant authority, or require its holder to participate in a consultation. A binding's guarded-mutation guarantee applies only to participants that use the binding and obey its returned decision. Protected mutation paths, authenticated principals, epochs, and fencing are `COOP-3` guarantees and MUST NOT be inferred from a `COOP-1` claim."
     },
     {
       "id": "AWP-COOP-013",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 72,
+      "line": 69,
       "statement": "Before guarded work, a `COOP-1` participant MUST:"
     },
     {
       "id": "AWP-COOP-014",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 80,
+      "line": 77,
       "statement": "The binding MUST make the announce-and-check operation atomic with respect to other `COOP-1` announce operations for the same guarded scopes. Compatible work MAY proceed concurrently. A known incompatible guarded mutation MUST return `blocked`, `waiting`, or an equivalent non-permitted outcome until participants record a partition, order, withdrawal, or escalation. A warning-only result is insufficient for a binding to claim the `COOP-1` guarded-mutation guarantee."
     },
     {
       "id": "AWP-COOP-015",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 82,
+      "line": 79,
       "statement": "A binding that cannot make announce-and-check atomic with respect to concurrent announcements for the same guarded scopes MUST NOT claim `COOP-1`; it MUST disclose operational mode `snapshot_only`, `degraded`, or `unavailable` as applicable."
     },
     {
       "id": "AWP-COOP-016",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 84,
+      "line": 81,
       "statement": "Before guarded work, participants MUST compare a stable binding identity containing the workstate identifier, repository-intrinsic project identifier, canonical store identifier, scope-model identifier and version, and binding epoch. The project identifier MUST derive from repository-intrinsic state and MUST NOT derive from a filesystem path or mount location. Any mismatched or unverifiable stable identity field MUST produce `blocked`."
     },
     {
       "id": "AWP-COOP-017",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 86,
+      "line": 83,
       "statement": "Operational reach and frontier are observations, not stable identity. Each observation MUST identify its observation time, reach, and current frontier. Frontier values MAY differ as the binding advances; a participant MUST refresh, reconcile an ancestor or newer frontier, and block on an unverifiable history gap rather than require byte equality with another participant's earlier frontier. Reach is `shared`, `worktree-local`, `configured-unverified`, `degraded`, `snapshot-only`, or `unavailable`. An explicit store path begins as `configured-unverified`; it becomes `shared` only after at least two declared work participants have each recorded a binding entry that names the same stable store identity. A binding MUST retain or return that handshake evidence. A participant MUST NOT merge records from different store identifiers into one work decision; it MUST select one declared binding or return `blocked`. A binding MUST disclose its atomicity mechanism and the storage or filesystem assumptions under which it is valid."
     },
     {
       "id": "AWP-COOP-018",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 88,
+      "line": 85,
       "statement": "A binding MUST normalize a path-like guarded scope to a repository-relative path, normalize separators and dot segments, and reject parent traversal outside the repository. Two path scopes overlap when they are equal or either is an ancestor of the other at a path-segment boundary. For every overlapping pair, the binding MUST apply a declared, versioned access-mode compatibility table. If either operation may mutate and the table does not explicitly permit the pair, the pair is incompatible. A scope kind without a declared comparison function is non-comparable; the binding MUST either conservatively block a guarded mutation or disclose that the scope is outside its guarded guarantee. \u201cKnown\u201d means visible in the same atomic decision from all active, non-expired intents within the binding's declared reach and frontier. Case-folding, Unicode normalization, and symbolic-link treatment MUST be declared by the scope model."
     },
     {
       "id": "AWP-COOP-019",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 90,
+      "line": 87,
       "statement": "`COOP-1` requires only declared physical or otherwise explicitly comparable scope. It MUST disclose that semantic conflicts outside its declared scope model can remain undetected. A clean source-control merge is not proof of compatibility."
     },
     {
       "id": "AWP-COOP-020",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 94,
+      "line": 91,
       "statement": "At a meaningful checkpoint and before exit, a participant MUST publish its actual scope, outcome, evidence references, unresolved work, and recommended next action through the selected binding. Actual scope is the participant's own assertion about work performed and its declared physical scopes; it is not an `observed_scope` record. An `observed_scope` record is analyzer-produced evidence under `COOP-2`, does not overwrite the participant's declaration, and may impose additional readiness consequences. The canonical capsule projection MUST identify the frontier it includes and its integrity digest. One logical publisher per workstate MUST serialize canonical capsule replacement using an expected capsule-frontier and digest comparison or an equivalent stale-writer exclusion rule. When a binding has a distinct event frontier, it MUST compare that expected event frontier independently; a legacy capsule frontier and a binding event frontier MUST NOT be assumed equal. A checkpoint receipt MUST identify the capsule path, whole-artifact digest, generated-region digest, and included frontier. A fresh-entry operation MUST report the capsule as `current`, `modified`, or `stale`; a binding MUST NOT permit guarded work while the canonical capsule is `modified` unless a host explicitly records an override outside the `COOP-1` claim."
     },
     {
       "id": "AWP-COOP-021",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 96,
+      "line": 93,
       "statement": "On exit, the participant MUST publish its final semantic handoff before releasing its lease. The binding MUST reject release while an intent linked to the lease remains nonterminal or unless a durable receipt identifies an already published handoff artifact and its integrity digest. Recording a planned output identifier before the artifact exists is not publication confirmation. If the capsule projection, terminal publication, or lease release cannot be confirmed, the participant MUST report a recoverable pending exit rather than claim completion. If a participant crashes, its lease MUST expire without requiring a capsule rewrite; the durable capsule remains the last confirmed semantic handoff."
     },
     {
       "id": "AWP-COOP-022",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 112,
+      "line": 109,
       "statement": "The claim MUST state the tested operating envelope. A claim with a maximum concurrent participant count of three or more MUST additionally show three or more compatible participants proceeding without false blocking. It MUST NOT infer a larger participant limit, cross-host reliability, semantic-conflict detection, or effectiveness from this minimum evidence."
     },
     {
       "id": "AWP-COOP-023",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 116,
+      "line": 113,
       "statement": "The work participant declares scope, access, evidence, and actual outcome; obeys blocked decisions; and supplies a concise rationale without private chain-of-thought. The work binding normalizes and compares scopes, owns transactions and leases, returns receipts, and enforces guarded-work lifecycle rules. A host enforces its own authority and side-effect policy; work metadata MUST NOT expand that authority."
     },
     {
       "id": "AWP-COOP-024",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 120,
+      "line": 117,
       "statement": "`subprotocols.consultation` is disabled unless explicitly enabled. Portable Core consultations may occur with no selected contract under Section 3. A `COOP-1` binding MAY enable only `user-mediated` consultation: agents may publish a bounded question, conflict, or escalation for the decision owner, but MUST NOT autonomously ask another agent to analyze, negotiate, delegate, or decide work whose outcome affects guarded work. Until the decision owner records a disposition, the affected work remains blocked, waiting, or explicitly outside the `COOP-1` guarantee."
     },
     {
       "id": "AWP-COOP-025",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 122,
+      "line": 119,
       "statement": "`COOP-2` and `COOP-3` MAY enable `managed` collaboration. This is the level at which agents may directly exchange richer context, critique an approach, reconcile semantic conflicts, prepare an integration plan, or delegate bounded analysis. A managed interaction is never implicit: before its first agent-to-agent request, the binding MUST record an authorization reference from the decision owner or authorized principal and a policy naming the permitted participants, purpose, subject or scopes, decision owner, maximum rounds, maximum participant responses, maximum tool calls, maximum context tokens per request, maximum output tokens per response, and maximum total output tokens. A binding MUST stop or return `inconclusive` or `escalated` when any limit is reached. Token values are declared budget ceilings; a binding that cannot measure a value MUST disclose that limit as unenforced and MUST NOT claim enforced managed-collaboration budgeting."
     },
     {
       "id": "AWP-COOP-026",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 126,
+      "line": 123,
       "statement": "When enabled, a cooperation interaction MUST identify:"
     },
     {
       "id": "AWP-COOP-027",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 135,
+      "line": 132,
       "statement": "A managed interaction MUST additionally identify its authorization reference and the policy budget consumption or an explicit measurement limitation. A `user-mediated` interaction MUST identify the decision owner and MUST NOT treat a responder's advice as a disposition or permission for guarded work."
     },
     {
       "id": "AWP-COOP-028",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 137,
+      "line": 134,
       "statement": "A consultation interaction MUST NOT silently authorize a guarded mutation or reserve a work scope. An accepted recommendation becomes actionable only when the decision owner records the resulting partition, order, intent, or other required project decision. A work lease MUST NOT be interpreted as consent to be interrupted for consultation, and a binding MUST NOT require a work lease as a precondition for initiating or responding to consultation."
     },
     {
       "id": "AWP-COOP-029",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 157,
+      "line": 154,
       "statement": "A round MUST add a new artifact, evidence item, explicit decision, or identified disagreement. The interaction MUST record that contribution as `progress.kind` with a reference to the new item. The `repeat_basis` MUST contain the purpose, canonical subject, context frontier, participant-set digest, and policy digest. `participant_set_digest` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of the lexicographically sorted array of participant identifier strings. `policy_digest` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of the complete effective policy object. `repeat_key` MUST equal `sha256:` followed by the SHA-256 digest of the RFC 8785 canonical JSON serialization of `repeat_basis`. A binding MUST reject an interaction whose supplied participant-set or policy digest does not match these calculations. A binding MUST deduplicate a repeated interaction with the same repeat key, or return the prior outcome, unless the repeat basis changed. On reaching a limit, it MUST return `inconclusive` or `escalated`; it MUST NOT start an unbounded optimization loop."
     },
     {
       "id": "AWP-COOP-030",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 159,
+      "line": 156,
       "statement": "Loop budgets are independent of participant-lease duration and work-operation retry policy. A project or binding MAY declare additional parameters, higher budgets, stricter cost limits, time limits, evaluator thresholds, model diversity requirements, or domain-specific stopping predicates. Unknown policy parameters MUST be preserved. A participant that does not understand a parameter marked required by the effective policy MUST NOT claim to enforce that policy and MUST request a compatible policy, delegate enforcement to the binding, or decline the interaction. Only the declared decision owner MAY continue an interaction after the effective budget is exhausted."
     },
     {
       "id": "AWP-COOP-031",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 167,
+      "line": 164,
       "statement": "`COOP-2` extends `COOP-1` work coordination with semantic awareness and integration assurance. It is also the first contract that may enable managed, directly inter-agent collaboration under Section 5's explicit authorization and budget. It MAY require a database, broker, registry, subscription system, or another service-backed binding, but neither a storage technology nor consultation alone supplies `COOP-2` semantics."
     },
     {
       "id": "AWP-COOP-032",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 169,
+      "line": 166,
       "statement": "A `COOP-2` binding MUST maintain a stable semantic registry; resolve comparable selectors against pinned state revisions; compare declared scope, observed scope, and relied-upon reads; preserve `unknown` when relation evidence is ambiguous; and require acknowledgement or blocking under the effective policy. It MUST bind interface contracts, typed preconditions, verification results, staleness, change-set readiness, and integration results so that a stale or unsatisfied dependency cannot silently become integration-ready."
     },
     {
       "id": "AWP-COOP-033",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 171,
+      "line": 168,
       "statement": "A `COOP-2` claim MUST declare its semantic-analysis coverage, selector and scope model, integration policy, tested participant count, and the failure behavior for unavailable or ambiguous semantic evidence. It MUST NOT infer protected external mutation, authentication, fencing, cross-host availability, or scalability from this claim."
     },
     {
       "id": "AWP-COOP-034",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 173,
+      "line": 170,
       "statement": "A registry, selector analyzer, verification evaluator, or integration-readiness evaluator alone MUST NOT claim `COOP-2`; the contract applies to the composed participant, binding, semantic registry, analyzer, readiness evaluator, checkpoint, and recovery behavior."
     },
     {
       "id": "AWP-COOP-035",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 177,
+      "line": 174,
       "statement": "`COOP-3` extends `COOP-2` with authenticated protected mutation and a declared scalable operating envelope. It MAY require a database, broker, sharded registry, protected mutation gateway, or another service-backed binding."
     },
     {
       "id": "AWP-COOP-036",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 179,
+      "line": 176,
       "statement": "For guarded mutation, a `COOP-3` binding MUST authenticate actors to principals and use protected optimistic-concurrency or lease operations with epochs and fencing tokens. It MUST reject stale owners at the protected mutation path; advisory metadata or an unprotected lock file is insufficient. Its policy MUST define retry bounds, lease duration, clock authority, deadlock and starvation behavior, cancellation consequences, and human or organizational arbitration."
     },
     {
       "id": "AWP-COOP-037",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 181,
+      "line": 178,
       "statement": "A `COOP-3` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, trust boundary, protected mutation paths, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST include fault evidence for stale-owner rejection, event loss or retention gaps, projector races, binding-identity disagreement, and recovery after interruption. It MUST NOT infer scale, availability, semantic accuracy, or enforcement from a storage technology alone."
     },
     {
       "id": "AWP-COOP-038",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 185,
+      "line": 182,
       "statement": "`coop3-a2a-v1` is a named optional COOP-3 binding profile for participants that communicate across runtimes, hosts, or organizational boundaries through the Agent2Agent (A2A) protocol. A2A is the profile's communications and execution control plane; it is not the authoritative coordination state or a substitute for protected mutation enforcement. An A2A task accepted, updated, completed, failed, cancelled, or resumed state MUST NOT by itself be interpreted as an AWP intent decision, lease grant, fenced mutation, checkpoint, integration result, or authority grant."
     },
     {
       "id": "AWP-COOP-039",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 187,
+      "line": 184,
       "statement": "A binding claiming `transport.profile: coop3-a2a-v1` MUST declare the supported A2A protocol version and interfaces, the authenticated mapping from A2A peer identity to AWP actor and accountable principal, its task-to-AWP-operation correlation and idempotency rule, its authoritative coordination-store identity, and its protected mutation gateway. It MUST carry an immutable AWP operation identifier and the relevant workstate and binding identity in every coordination request. The binding MUST durably record the resulting AWP event or return a stable rejection before it acknowledges the operation as accepted to a participant."
     },
     {
       "id": "AWP-COOP-040",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 189,
+      "line": 186,
       "statement": "The profile MAY use A2A tasks, messages, artifacts, or data parts to carry typed AWP coordination requests and receipts. At minimum it MUST support carrying a request and response for participant entry or renewal, guarded intent announcement, guarded decision or conflict result, checkpoint or handoff publication, and terminal completion or withdrawal. A retry, reconnect, duplicate delivery, or a task routed to another A2A endpoint MUST resolve through the same AWP operation identifier; it MUST return the prior receipt or a stable conflict or rejection, and MUST NOT create a second lease, intent, fencing generation, or protected mutation."
     },
     {
       "id": "AWP-COOP-041",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 191,
+      "line": 188,
       "statement": "The authoritative COOP-3 store and protected mutation gateway MUST enforce the actor/principal authorization, expected binding epoch and frontier or revision, protected scope, and current fencing token independently of A2A task state. The gateway MUST reject a stale, unauthenticated, or mismatched request even when A2A reports successful delivery. A binding MUST disclose A2A reachability, authentication failure, transport retry, and store or gateway availability separately; it MUST fail closed for protected mutation when any required enforcement check is unavailable."
     },
     {
       "id": "AWP-COOP-042",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 212,
+      "line": 209,
       "statement": "The checkpoint step SHOULD use the selected canonical workstate projector. A verified `no_change` receipt is sufficient when no semantic state changed; an incomplete or stale projection is not."
     }
   ]
@@ -5505,7 +5472,7 @@ If the optional consultation subprotocol is enabled, the agent may separately in
           "type": "object",
           "required": ["kind"],
           "properties": {
-            "kind": { "enum": ["package-path", "capsule-section", "remote", "events-only"] }
+            "kind": { "enum": ["project-path", "capsule-section", "remote", "events-only"] }
           },
           "additionalProperties": true
         },
@@ -6219,7 +6186,7 @@ If the optional consultation subprotocol is enabled, the agent may separately in
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:awp:schema:capsule:0.5.0",
   "title": "AWP Capsule 0.5 metadata",
-  "description": "Structural schema for the front matter of an AWP 0.8 self-contained Markdown capsule.",
+  "description": "Structural schema for the front matter of an AWP 0.8 project-scoped Markdown capsule.",
   "type": "object",
   "required": [
     "awp_version",
@@ -6236,7 +6203,7 @@ If the optional consultation subprotocol is enabled, the agent may separately in
     "awp_version": { "type": "string", "pattern": "^0\\.8\\.[0-9]+$" },
     "specification": { "type": "string", "minLength": 1, "pattern": "^\\S+$" },
     "format": { "const": "single-file-capsule" },
-    "discovery": { "const": "self" },
+    "discovery": { "const": "project" },
     "capsule_boundary": { "type": "string", "pattern": "^[0-9a-f]{32,}$" },
     "workstate_id": { "type": "string", "minLength": 1, "pattern": "^\\S+$" },
     "frontier": {

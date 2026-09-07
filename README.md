@@ -7,7 +7,7 @@ The **Agent Workshare Protocol (AWP)** is a project-level coordination system fo
 
 Without that shared picture, projects lose their memory at the end of a conversation. The files remain, but the reasons behind them disappear: what the team was trying to achieve, which alternatives were rejected, what has actually been checked, which assumptions have gone stale, and what the next person should do first. AWP lets participants declare intended work, identify where changes or assumptions may collide, preserve why a choice was made, and hand off a task in a form the next participant can use.
 
-Git remains the record of source changes. AWP works above it to coordinate the meaning of those changes: their purpose, dependencies, contracts, evidence, and authority to integrate them. A workstate can also move between sessions and systems when that continuity is useful, but portability supports the larger goal of keeping shared work understandable and controllable.
+Git remains the record of source changes. AWP works inside the project, above Git, to coordinate the meaning of those changes: their purpose, dependencies, contracts, evidence, and authority to integrate them. Standalone capsule exchange outside a project is intentionally deferred; the live draft focuses on keeping one project's shared work understandable and controllable.
 
 ## The goals
 
@@ -21,7 +21,7 @@ AWP has five practical goals:
 
 ## How AWP works
 
-The central object is a **workstate**: one coherent body of ongoing work. A workstate can be carried in a self-contained `.awp.md` capsule, a directory, a package, or a wire payload.
+The central object is a **workstate**: one coherent body of ongoing work inside a project. The project keeps it in a canonical `.awp.md` capsule alongside its discovery file, source, and other project materials.
 
 A capsule combines a human briefing with structured records for goals, constraints, decisions, claims, evidence, tasks, artifacts, checkpoints, and handoffs. Behind the readable view is an immutable event history. Snapshots and briefing text are generated views of that history, so a summary cannot silently replace the underlying record of what happened.
 
@@ -35,12 +35,11 @@ AWP lets a project choose how much coordination it wants. The levels accumulate 
 
 | Level | What it provides | How people stay in control |
 |---|---|---|
-| **Portable collaboration** | Capsules, handoffs, and asynchronous consultations | No active conflict-prevention guarantee; advice remains advice |
 | **COOP-1** | Small-group coordination around declared physical scopes, bounded leases, atomic announce-and-check, conflict decisions, and durable exit handoffs | Material work-affecting decisions are surfaced to the user or named decision owner; agents do not start autonomous collaboration loops |
 | **COOP-2** | Semantic scope awareness, dependency freshness, contracts, verification, and integration assurance | Direct agent collaboration is optional and requires recorded authorization, named participants, purpose, scope, and turn, tool, and token budgets |
 | **COOP-3** | Authenticated protected mutation, epochs, fencing, and a declared operating envelope for scale | Protected infrastructure enforces authority and rejects stale or unauthenticated operations |
 
-COOP-1 is intended to be useful for a small team without requiring a daemon or a large service. A local file or transactional ledger can provide the coordination record. COOP-2 may use richer services when semantic analysis is worth the cost. A2A is an optional communications and execution-control binding for the protected COOP-3 profile; it is not required for ordinary AWP, COOP-1, or COOP-2 use.
+COOP-1 is intended to be useful for a small team without requiring a daemon or a large service. A local file or transactional ledger can provide the coordination record. COOP-2 may use richer services when semantic analysis is worth the cost. A2A is an optional communications and execution-control binding for the protected COOP-3 profile; it is not required for COOP-1 or COOP-2 use. The current draft does not define a separate standalone-capsule or cross-project collaboration level.
 
 The [Cooperation Contracts specification](spec/drafts/0.8.0/cooperation-contracts.md) defines the claims, boundaries, and evidence required at each level. The [Coordination specification](spec/drafts/0.8.0/coordination.md) defines the records and mechanisms.
 

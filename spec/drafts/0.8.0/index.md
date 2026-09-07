@@ -11,20 +11,19 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **
 
 ## 1. Purpose
 
-AWP is a family of composable specifications for preserving, exchanging, inspecting, and resuming work performed by humans and software agents. Version 0.8.0 makes the governing specification and discovery metadata part of every self-contained shared workstate. It advances the family modules to explicit exploratory versions while retaining the Coordination design introduced in 0.6.0.
+AWP is a family of composable specifications for preserving, inspecting, resuming, and coordinating project work performed by humans and software agents. Version 0.8.0 makes the governing specification and discovery metadata part of every project-scoped shared workstate. It advances the family modules to explicit exploratory versions while retaining the Coordination design introduced in 0.6.0.
 
 The family has one required foundation, AWP Core. Every other subspecification is a module with its own identifier, version, dependencies, schema, and conformance claim. A module is a logical capability: it may occupy its own file in an editable workstate or be embedded in a single `.awp.md` capsule.
 
 ### 1.1 Target use cases
 
-AWP is intended for agents and users that already have their own working environments. It provides a common, portable format to:
+AWP is intended for agents and users that already have their own working environments. It provides a project-scoped coordination format to:
 
-1. Enable a user or agent to send another agent a project or problem description that preserves more durable semantic state than ordinary Markdown alone;
-2. Provide a new agent with a clear, shared project orientation before it inspects the wider repository;
-3. Allow an agent or user to return to a project and resume from a recorded checkpoint rather than reconstructing its state from scratch; and
-4. Enable multiple agents to discover active participants, monitor advisory presence, and negotiate interdependent changes to shared work products—including code, models, documents, physical designs, schedules, and other domain outputs—above the byte-level coordination provided by Git or comparable systems.
+1. Provide a new agent with a clear, shared project orientation before it inspects the wider repository;
+2. Allow an agent or user to return to a project and resume from a recorded checkpoint rather than reconstructing its state from scratch; and
+3. Enable multiple agents to discover active participants, monitor advisory presence, and negotiate interdependent changes to shared work products—including code, models, documents, physical designs, schedules, and other domain outputs—above the byte-level coordination provided by Git or comparable systems.
 
-AWP does not replace an agent runtime, source control, artifact storage, or an agent-specific startup convention. Its purpose is to provide portable semantic state and coordination information that those systems can consume.
+AWP does not replace an agent runtime, source control, artifact storage, or an agent-specific startup convention. Its purpose is to provide project semantic state and coordination information that those systems can consume. Standalone capsule exchange and cross-project collaboration are deferred from this draft.
 
 ## 2. Specification family
 
@@ -131,7 +130,7 @@ The manifest is authoritative for physical locations. Module-specific events par
 
 ## 6. Versioning and specification binding
 
-Every shared AWP workstate MUST identify the exact specification artifact that governs it. A self-contained capsule MUST carry an explicit `specification` reference in its own metadata. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate.
+Every shared AWP project workstate MUST identify the exact specification artifact that governs it. A project capsule MUST carry an explicit `specification` reference in its own metadata. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate.
 
 A reader MUST interpret a workstate according to its declared specification and module versions. It MUST NOT silently substitute a newer, older, or otherwise different specification, infer compatibility from a filename, or treat a moving branch URL as version-pinned. If the declared specification is unavailable or unsupported, the reader MUST report that condition rather than guess.
 
@@ -176,11 +175,11 @@ Every module and binding MUST preserve these rules:
 
 ## 9. Migration from 0.7.0
 
-AWP 0.8.0 preserves the 0.2 event envelope and the module identifiers from AWP 0.6.0. Core advances to `0.8.0`; the dependent modules advance to `0.5.0`. Embedded discovery is defined by Capsule 0.5.0 rather than by a companion project file.
+AWP 0.8.0 preserves the 0.2 event envelope and the module identifiers from AWP 0.6.0. Core advances to `0.8.0`; the dependent modules advance to `0.5.0`. Project discovery and the canonical project capsule are defined together by Capsule 0.5.0.
 
-The migration is intentionally incompatible: a 0.8 self-contained capsule identifies its exact governing specification and discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. A 0.6 project that used `.awp.json` remains a valid historical input, but a 0.8 single-file capsule does not require that companion file.
+The migration is intentionally incompatible: a 0.8 project capsule identifies its exact governing specification and project discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. The project discovery document and the capsule MUST agree on the current workstate and governing specification.
 
-An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: self` to capsule metadata, update Capsule to `0.5.0`, and remove any redundant companion pointer from the portable package. Historical events remain unchanged.
+An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: project` to capsule metadata, update Capsule to `0.5.0`, and create or update the project discovery document. Historical events remain unchanged.
 
 ## 10. Agent entry profiles
 

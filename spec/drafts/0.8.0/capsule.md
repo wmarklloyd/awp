@@ -10,40 +10,33 @@
 
 ## 1. Scope
 
-AWP Capsule defines human-readable and packaged representations of one logical workstate. It does not define the semantics of optional modules carried by those representations.
+AWP Capsule defines the human-readable, project-local representation of one logical workstate. It does not define the semantics of optional modules carried by that representation.
 
-The representations are:
-
-- editable directory: `name.workstate/`;
-- self-contained Markdown capsule: `name.awp.md`;
-- ZIP-compatible package: `name.pws`;
-- JSON wire payloads.
-
-Logical equivalence does not require identical bytes or file layout. The manifest maps logical data to physical locations.
+The active 0.8 direction uses one canonical Markdown capsule, `<project-name>.awp.md`, inside a declared project. The project discovery document identifies that capsule and its governing specification. Standalone capsule exchange, editable-directory packages, ZIP packages, and JSON wire payloads are archived directions; they are not active 0.8 collaboration or conformance profiles.
 
 For a project-named Markdown capsule, the default conventional filename is `<project-name>.awp.md`. When the project name is unavailable or ambiguous, producers SHOULD use `project.awp.md`. A producer MAY retain multiple capsule revisions using `<project-name>.v<revision>.awp.md`, for example `awp.v2.awp.md` or `project.v2026-09-04.awp.md`. The filename is a human-facing locator; it is not the AWP protocol version and MUST NOT override the capsule metadata.
 
 A workstate using one of these representations MUST declare the Capsule module. It MUST mark Capsule required when no alternative declared representation makes the required Core and module state accessible without Capsule processing.
 
-## 2. Embedded discovery
+## 2. Project discovery
 
-A single-file Markdown capsule is the portable discovery unit. It MUST carry the metadata needed to interpret itself; a companion `.awp.json` pointer is neither required nor part of the portable capsule.
+A single-file Markdown capsule is the canonical project workstate document. It MUST carry the metadata needed to interpret itself and be named by the project discovery document. The discovery document and capsule MUST identify the same governing specification and current workstate.
 
-The front matter of a self-contained capsule MUST include `format: single-file-capsule` and `discovery: self`. The file supplied by a host, user, or agent is the current workstate; no `current_workstate` pointer or fallback file list is needed. The capsule's `specification` metadata identifies the exact specification artifact governing the workstate.
+The front matter of a project capsule MUST include `format: single-file-capsule` and `discovery: project`. Its `specification` metadata identifies the exact specification artifact governing the workstate. A host MUST resolve the capsule through the project discovery document or a declared project entry point; an arbitrary supplied capsule path is not, by itself, a project or collaboration boundary.
 
-An AWP-aware project-entry implementation SHOULD accept an explicitly supplied capsule path. When no path is supplied, it MAY look for the conventional `<project-name>.awp.md` or `project.awp.md` in the project root. It MUST NOT silently choose among multiple candidate capsules. A filename is only a locator and MUST NOT be used to infer protocol compatibility. Discovering a declared URI MUST NOT trigger automatic network access.
+When no project entry point names the capsule, an implementation MAY look for the conventional `<project-name>.awp.md` or `project.awp.md` in the project root. It MUST NOT silently choose among multiple candidate capsules. A filename is only a locator and MUST NOT be used to infer protocol compatibility. Discovering a declared URI MUST NOT trigger automatic network access.
 
 Agent-specific instruction files such as `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md` are outside AWP. They MAY point directly to a capsule, but their presence is not required for AWP conformance.
 
 ## 3. Root briefing
 
-Every complete directory, Markdown capsule, or package MUST begin with or contain a root `WORK.md`-equivalent briefing. A human-facing reader SHOULD present it first.
+Every project capsule MUST begin with or contain a root `WORK.md`-equivalent briefing. A human-facing reader SHOULD present it first.
 
 The briefing MUST begin with metadata containing:
 
 - `awp_version`;
 - `specification`;
-- `format: single-file-capsule` and `discovery: self` for a self-contained Markdown capsule;
+- `format: single-file-capsule` and `discovery: project` for a project Markdown capsule;
 - `workstate_id`;
 - `frontier`;
 - current `checkpoint`, if one exists;
@@ -57,7 +50,7 @@ Generated content MUST occur inside exactly one marker pair:
 awp_version: 0.8.0
 specification: https://example.org/awp/0.8.0/AWP-0.8.0.bundle.md
 format: single-file-capsule
-discovery: self
+discovery: project
 workstate_id: urn:uuid:596ae918-e7da-4e6f-a226-b13f8b084727
 frontier:
   - evt:01K4M4VYB9
@@ -174,27 +167,11 @@ The boundary token MUST NOT occur in decoded section content. A writer detecting
 
 A reader MUST validate marker pairing, reject duplicate authoritative sections, verify each module section against a matching manifest declaration, reject malformed boundaries, and preserve unknown sections during lossless rewriting. It MUST NOT infer machine state from arbitrary Markdown headings or code examples outside marked sections.
 
-## 6. Package representation
+## 6. Archived representation directions
 
-A `.pws` package is ZIP-compatible and expands to the editable-directory logical layout. Proposed media type: `application/awp+zip`.
+Editable-directory packages, ZIP packages, JSON wire payloads, and standalone capsule exchange are archived design directions. They have no active AWP 0.8 conformance claim and MUST NOT be represented as a substitute for a project-scoped workstate or a COOP binding. A future version MAY define a transport or inter-project profile with its own discovery, authority, integrity, and lifecycle rules.
 
-Unpacking MUST preserve logical paths, bytes, IDs, module declarations, and references. Readers MUST reject absolute paths, parent traversal, duplicate normalized paths, case-folding collisions on case-insensitive targets, symlink escapes, and members exceeding configured size or decompression limits.
-
-Writers SHOULD place `WORK.md` and `manifest.json` before large members for preview efficiency. Physical member order has no semantic meaning.
-
-## 7. Wire representation
-
-JSON wire bindings may carry a manifest, snapshot, event sequence, delta, artifact announcement, module data, or retrieval request. Proposed media types are:
-
-```text
-application/awp+json
-application/awp-event+json
-application/awp-delta+json
-```
-
-The Capsule module defines payload representation, not transport authentication, delivery guarantees, or live synchronization.
-
-## 8. Module placement
+## 7. Module placement
 
 A module declaration may specify a `representation` object:
 
@@ -204,18 +181,18 @@ A module declaration may specify a `representation` object:
   "version": "0.5.0",
   "required": false,
   "representation": {
-    "kind": "package-path",
+    "kind": "project-path",
     "path": "modules/coordination/state.json"
   }
 }
 ```
 
-Standard representation kinds are `package-path`, `capsule-section`, `remote`, and `events-only`. A remote module location does not make the workstate self-contained and MUST disclose retrieval requirements. Secrets MUST NOT appear in locations.
+Standard representation kinds are `capsule-section`, `project-path`, `remote`, and `events-only`. A remote module location MUST disclose retrieval requirements. Secrets MUST NOT appear in locations.
 
 Module placement does not create a separate causal history. Module events always participate in the Core event graph.
 
-## 9. Conformance
+## 8. Conformance
 
-A Capsule reader MUST validate the representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures.
+A Capsule reader MUST validate the project representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures.
 
-A Capsule writer MUST create an unambiguous representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A self-contained Markdown writer MUST include its discovery mode and governing specification in the capsule metadata.
+A Capsule writer MUST create an unambiguous project representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A project Markdown writer MUST include its discovery mode and governing specification in the capsule metadata.

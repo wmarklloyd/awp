@@ -19,7 +19,7 @@ These questions are intentionally unresolved. A module must not imply that an op
 ## Capsule and artifact questions
 
 6. Should generated Markdown regions use a canonical Markdown subset in addition to normalized-byte hashing?
-7. Is `.pws` sufficiently collision-free and registrable as a package extension?
+7. Under what concrete use case, authority model, and lifecycle rules should the archived package and wire-representation directions be reconsidered?
 8. Which artifact retrieval profiles can express expiring access without placing credentials in workstate data?
 9. Which media types require mandatory sandboxing or sanitization profiles?
 

@@ -14,7 +14,7 @@ Cooperation Contracts define what several human or software-agent participants c
 1. **work coordination** reduces incompatible concurrent work output through discovery, leases, intents, guarded scopes, compatibility decisions, checkpoints, and recovery; and
 2. **consultation** exchanges bounded analysis, critique, review, delegation, or synthesis without granting authority or reserving a work scope.
 
-`COOP-1`, `COOP-2`, and `COOP-3` are AWP 0.8's single cumulative **work-coordination** ladder. The Coordination module defines the durable records, capability bundles, and mechanisms used by those contracts; it does not define a competing conformance axis. There is no `COOP-0` contract. Ordinary portable AWP exchange—including capsules, handoffs, and Core `consultation` records—remains useful without selecting any Cooperation Contract and makes no active coordination guarantee.
+`COOP-1`, `COOP-2`, and `COOP-3` are AWP 0.8's single cumulative **work-coordination** ladder. The Coordination module defines the durable records, capability bundles, and mechanisms used by those contracts; it does not define a competing conformance axis. There is no `COOP-0` contract or separate portable-collaboration tier. The active draft is project-scoped: a project that does not select a COOP contract MAY maintain a workstate, but it MUST NOT claim cooperative coordination.
 
 `COOP-1` is the first named contract because it provides immediately useful conflict reduction for a small group while keeping material inter-agent decisions user-mediated. `COOP-2` adds semantic and integration coordination and permits explicitly authorized, budgeted inter-agent collaboration. `COOP-3` adds protected, scalable coordination. Consultation and managed collaboration are disabled unless the binding explicitly enables them.
 
@@ -26,7 +26,6 @@ The module capability `guarded-scope-coordination` means that the selected contr
 
 | Earlier draft behavior | AWP 0.8 location |
 |---|---|
-| Portable preservation, display, and asynchronous consultation | AWP baseline; no Cooperation Contract required |
 | Deterministic event validation, projection, and guarded physical work | `COOP-1` |
 | Semantic registry, scope analysis, and integration assurance | `COOP-2` |
 | Authenticated protected mutation, epochs, leases, fencing, and scalable operating envelope | `COOP-3` |
@@ -49,15 +48,13 @@ An unqualified conformant `COOP-1`, `COOP-2`, or `COOP-3` claim describes the co
 
 The machine-readable binding disclosure, subprotocol claims, loop policy, interaction, and result shapes are defined by `../../../schemas/awp-cooperation-0.1.schema.json`. Module-owned records MUST declare `module: urn:awp:cooperation`.
 
-## 3. Portable collaboration without a contract
+## 3. Project-scoped baseline and archived exchange
 
-Without a selected Cooperation Contract, participants MAY exchange capsules, handoffs, artifacts, Core `consultation` records, critiques, alternative perspectives, and synthesized conclusions. This supports deliberately using different models or people for independent points of view.
+The active draft does not define standalone capsule exchange, package exchange, wire-payload exchange, or cross-project collaboration. Those directions are archived for possible future profiles. A project without a selected Cooperation Contract MAY retain a local workstate under host policy, but it MUST NOT claim participant discovery, scope reservation, conflicting-mutation prevention, managed collaboration, or coordinated integration.
 
-A processor that receives recognized Cooperation or Coordination records without supporting their required semantics MUST preserve and expose them without implying that it validated their operational effect. Unknown fields MUST be preserved by a lossless processor.
+A processor that encounters recognized Cooperation or Coordination records without supporting their required semantics MUST preserve and expose them without implying that it validated their operational effect. Unknown fields MUST be preserved by a lossless processor.
 
-An uncontracted participant MUST NOT claim that participants discovered one another, reserved a scope, prevented a conflicting mutation, or incorporated a contemporaneous result unless a binding provides evidence for that claim. A participant MAY make a local change under host policy, but it MUST disclose that no active Cooperation Contract conflict protection was present.
-
-Core `consultation` records remain available for asynchronous advice seeking. They require no participant lease or shared ledger. A response MUST identify uncertainty and supporting evidence when available; advice MUST NOT be treated as authorization for an action.
+Core `consultation` records MAY support a bounded question or escalation inside a declared project. They do not create an independent collaboration level, require no participant lease by themselves, and MUST NOT be treated as authorization for an action. A response MUST identify uncertainty and supporting evidence when available.
 
 ## 4. COOP-1 — small-group conflict reduction
 
@@ -190,7 +187,7 @@ The profile MAY use A2A tasks, messages, artifacts, or data parts to carry typed
 
 The authoritative COOP-3 store and protected mutation gateway MUST enforce the actor/principal authorization, expected binding epoch and frontier or revision, protected scope, and current fencing token independently of A2A task state. The gateway MUST reject a stale, unauthenticated, or mismatched request even when A2A reports successful delivery. A binding MUST disclose A2A reachability, authentication failure, transport retry, and store or gateway availability separately; it MUST fail closed for protected mutation when any required enforcement check is unavailable.
 
-`coop3-a2a-v1` does not require A2A for portable AWP exchange, COOP-1, COOP-2, or another conformant COOP-3 transport. A local file or transactional-ledger binding remains a valid low-administration option where its declared reach and guarantees are sufficient. A2A use alone is not evidence of COOP-3 conformance.
+`coop3-a2a-v1` does not require A2A for COOP-1, COOP-2, or another conformant COOP-3 transport. A local file or transactional-ledger binding remains a valid low-administration option where its declared reach and guarantees are sufficient. A2A use alone is not evidence of COOP-3 conformance.
 
 The current AWP repository specifies `COOP-2` and `COOP-3` but does not provide complete implementations or conformance claims for either.
 
