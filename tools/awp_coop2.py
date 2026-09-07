@@ -10,6 +10,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Sequence
@@ -18,6 +20,7 @@ from .awp_coordination import CoordinationError, CoordinationLedger, discover_wo
 
 
 PROFILE = "local-coop2-rendezvous-v1"
+DOORBELL_PROFILE = "local-filesystem-doorbell-v1"
 
 
 def now() -> str:
@@ -28,12 +31,86 @@ def canonical(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
+class LocalDoorbell:
+    """Atomic, content-free wake hint for a shared project filesystem.
+
+    The ledger is the authoritative transport.  This file only tells a watcher
+    that it should refresh that ledger; replacing it coalesces several events
+    without losing them because the recorded frontier is monotonic.
+    """
+
+    def __init__(self, project: Path) -> None:
+        self.path = project / ".awp-runtime" / "coop2-doorbell.json"
+
+    def publish(
+        self,
+        *,
+        project_id: str,
+        workstate_id: str,
+        binding_id: str,
+        event_id: str,
+        frontier: list[str],
+        interaction_id: str,
+        kind: str,
+    ) -> dict:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        signal = {
+            "profile": DOORBELL_PROFILE,
+            "project_id": project_id,
+            "workstate_id": workstate_id,
+            "binding_id": binding_id,
+            "event_id": event_id,
+            "frontier": frontier,
+            "interaction_id": interaction_id,
+            "kind": kind,
+            "signalled_at": now(),
+        }
+        handle, temporary_name = tempfile.mkstemp(
+            prefix=".coop2-doorbell.", suffix=".tmp", dir=self.path.parent
+        )
+        try:
+            with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as temporary:
+                json.dump(signal, temporary, sort_keys=True)
+                temporary.write("\n")
+                temporary.flush()
+                os.fsync(temporary.fileno())
+            os.replace(temporary_name, self.path)
+        except Exception:
+            try:
+                os.unlink(temporary_name)
+            except FileNotFoundError:
+                pass
+            raise
+        return signal | {"path": str(self.path)}
+
+    def status(self, *, project_id: str, workstate_id: str, binding_id: str) -> dict:
+        descriptor = {
+            "profile": DOORBELL_PROFILE,
+            "path": str(self.path),
+            "authoritative_binding": binding_id,
+            "correlation": "event_id-and-frontier",
+            "content": "none; watchers refresh the authoritative ledger",
+            "watcher_liveness": "not verified by this binding",
+        }
+        if not self.path.exists():
+            return descriptor | {"state": "idle"}
+        try:
+            signal = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            return descriptor | {"state": "unverifiable", "reason": str(error)}
+        expected = {"project_id": project_id, "workstate_id": workstate_id, "binding_id": binding_id}
+        if any(signal.get(key) != value for key, value in expected.items()):
+            return descriptor | {"state": "unverifiable", "reason": "signal identity does not match this binding"}
+        return descriptor | {"state": "current", "signal": signal}
+
+
 class Rendezvous:
     def __init__(self, project: Path, ledger_path: Path | None = None) -> None:
         self.project = find_project(project)
         self.workstate_id, _ = discover_workstate(self.project)
         self.project_id = stable_project_id(self.project)
         self.ledger = CoordinationLedger(ledger_path or self.project / ".awp-runtime" / "coop2-rendezvous.sqlite3")
+        self.doorbell = LocalDoorbell(self.project)
 
     def _events(self) -> list[dict]:
         return self.ledger.export_events(self.workstate_id)
@@ -63,9 +140,20 @@ class Rendezvous:
             event, _ = self.ledger._append(connection, workstate_id=self.workstate_id, actor=actor, kind=kind, payload=payload, occurred_at=now())
             return {"event_id": event["event_id"], "frontier": self.ledger._frontier(connection, self.workstate_id)}
 
+    def _signal(self, receipt: dict, interaction_id: str, kind: str) -> dict:
+        return self.doorbell.publish(
+            project_id=self.project_id,
+            workstate_id=self.workstate_id,
+            binding_id=self.ledger.binding_id(),
+            event_id=receipt["event_id"],
+            frontier=receipt["frontier"],
+            interaction_id=interaction_id,
+            kind=kind,
+        )
+
     def status(self) -> dict:
         reach, evidence = self._reach()
-        return {"profile": PROFILE, "project_id": self.project_id, "workstate_id": self.workstate_id, "binding_id": self.ledger.binding_id(), "reach": reach, "shared_reach_evidence": evidence, "delivery_mode": "polling", "limitations": ["experimental pilot", "polling does not wake or deliver work to an active session", "no semantic analyzer", "no authentication", "budget declaration is recorded but not host-enforced"]}
+        return {"profile": PROFILE, "project_id": self.project_id, "workstate_id": self.workstate_id, "binding_id": self.ledger.binding_id(), "reach": reach, "shared_reach_evidence": evidence, "delivery_mode": "signalled-poll", "doorbell": self.doorbell.status(project_id=self.project_id, workstate_id=self.workstate_id, binding_id=self.ledger.binding_id()), "limitations": ["experimental pilot", "a host-side shared-filesystem watcher is required to wake a session", "watcher liveness is not verified by this binding", "no semantic analyzer", "no authentication", "budget declaration is recorded but not host-enforced"]}
 
     def join(self, actor: str, capabilities: list[str]) -> dict:
         for event in reversed(self._events()):
@@ -98,7 +186,8 @@ class Rendezvous:
             if event["kind"] == "coop2.interaction.requested" and event["payload"]["interaction_id"] == interaction_id:
                 return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": event["event_id"]}}
         payload = {"interaction_id": interaction_id, "sender": actor, "recipient": recipient, "purpose": purpose, "subject": subject, "question": question, "decision_owner": decision_owner, "authorization": {"participants": sorted([actor, recipient]), "max_rounds": max_rounds, "max_tool_calls": max_tool_calls, "max_total_output_tokens": max_tokens, "delivery_window_seconds": delivery_window_seconds, "response_window_seconds": response_window_seconds, "clock_authority": self.ledger.binding_id()}, "status": "open"}
-        return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": self._append(actor, "coop2.interaction.requested", payload)}
+        receipt = self._append(actor, "coop2.interaction.requested", payload)
+        return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "doorbell": self._signal(receipt, interaction_id, "coop2.interaction.requested")}
 
     def observe(self, actor: str, interaction_id: str) -> dict:
         request = self._request_event(interaction_id)["payload"]
@@ -108,7 +197,8 @@ class Rendezvous:
         if prior:
             return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": prior["event_id"]}}
         frontier = self.ledger.refresh(self.workstate_id)["frontier"]
-        return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": self._append(actor, "coop2.interaction.observed", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": frontier, "disposition": "observed"})}
+        receipt = self._append(actor, "coop2.interaction.observed", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": frontier, "disposition": "observed"})
+        return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "doorbell": self._signal(receipt, interaction_id, "coop2.interaction.observed")}
 
     def accept(self, actor: str, interaction_id: str, response_window_seconds: int) -> dict:
         request = self._request_event(interaction_id)["payload"]
@@ -124,7 +214,8 @@ class Rendezvous:
         if prior:
             return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": prior["event_id"]}}
         deadline = (datetime.now(timezone.utc) + timedelta(seconds=response_window_seconds)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-        return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": self._append(actor, "coop2.interaction.accepted", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": self.ledger.refresh(self.workstate_id)["frontier"], "disposition": "accepted", "response_deadline": deadline})}
+        receipt = self._append(actor, "coop2.interaction.accepted", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": self.ledger.refresh(self.workstate_id)["frontier"], "disposition": "accepted", "response_deadline": deadline})
+        return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "doorbell": self._signal(receipt, interaction_id, "coop2.interaction.accepted")}
 
     def refuse(self, actor: str, interaction_id: str, reason: str) -> dict:
         request = self._request_event(interaction_id)["payload"]
@@ -132,7 +223,8 @@ class Rendezvous:
             raise CoordinationError("only the named recipient may refuse an interaction")
         if any(event["kind"] in {"coop2.interaction.accepted", "coop2.interaction.refused"} for event in self._interaction_events(interaction_id)):
             raise CoordinationError("interaction already has a delivery disposition")
-        return {"interaction_id": interaction_id, "publication": "confirmed", "receipt": self._append(actor, "coop2.interaction.refused", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": self.ledger.refresh(self.workstate_id)["frontier"], "disposition": "refused", "reason": reason})}
+        receipt = self._append(actor, "coop2.interaction.refused", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": self.ledger.refresh(self.workstate_id)["frontier"], "disposition": "refused", "reason": reason})
+        return {"interaction_id": interaction_id, "publication": "confirmed", "receipt": receipt, "doorbell": self._signal(receipt, interaction_id, "coop2.interaction.refused")}
 
     def inbox(self, actor: str) -> dict:
         answered = {event["payload"]["interaction_id"] for event in self._events() if event["kind"] == "coop2.interaction.responded"}
@@ -158,7 +250,8 @@ class Rendezvous:
             raise CoordinationError("response deadline has elapsed; the interaction is delivered_unanswered")
         if any(event["kind"] == "coop2.interaction.responded" and event["payload"]["interaction_id"] == interaction_id for event in self._events()):
             raise CoordinationError("interaction already has a response")
-        return {"interaction_id": interaction_id, "publication": "confirmed", "receipt": self._append(actor, "coop2.interaction.responded", {"interaction_id": interaction_id, "sender": actor, "recipient": request["sender"], "outcome": outcome, "response": response, "status": "closed"})}
+        receipt = self._append(actor, "coop2.interaction.responded", {"interaction_id": interaction_id, "sender": actor, "recipient": request["sender"], "outcome": outcome, "response": response, "status": "closed"})
+        return {"interaction_id": interaction_id, "publication": "confirmed", "receipt": receipt, "doorbell": self._signal(receipt, interaction_id, "coop2.interaction.responded")}
 
 
 def parser() -> argparse.ArgumentParser:
@@ -167,6 +260,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--ledger", type=Path)
     commands = result.add_subparsers(dest="command", required=True)
     commands.add_parser("status")
+    commands.add_parser("doorbell-status")
     join = commands.add_parser("join"); join.add_argument("--actor", required=True); join.add_argument("--capability", action="append", default=[])
     peers = commands.add_parser("peers"); peers.add_argument("--actor")
     send = commands.add_parser("send"); send.add_argument("--actor", required=True); send.add_argument("--to", required=True); send.add_argument("--purpose", choices=["review", "critique", "alternative", "delegation", "decision", "synthesis"], required=True); send.add_argument("--subject", required=True); send.add_argument("--question", required=True); send.add_argument("--decision-owner", required=True); send.add_argument("--max-rounds", type=int, default=1); send.add_argument("--max-tool-calls", type=int, default=4); send.add_argument("--max-tokens", type=int, default=1200); send.add_argument("--delivery-window-seconds", type=int, default=300); send.add_argument("--response-window-seconds", type=int, default=600)
@@ -183,6 +277,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         rendezvous = Rendezvous(args.project, args.ledger)
         if args.command == "status": result = rendezvous.status()
+        elif args.command == "doorbell-status": result = rendezvous.doorbell.status(project_id=rendezvous.project_id, workstate_id=rendezvous.workstate_id, binding_id=rendezvous.ledger.binding_id())
         elif args.command == "join": result = rendezvous.join(args.actor, args.capability)
         elif args.command == "peers": result = rendezvous.peers(args.actor)
         elif args.command == "send": result = rendezvous.send(args.actor, args.to, args.purpose, args.subject, args.question, args.decision_owner, args.max_rounds, args.max_tool_calls, args.max_tokens, args.delivery_window_seconds, args.response_window_seconds)

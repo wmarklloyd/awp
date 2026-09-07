@@ -245,7 +245,7 @@
         "publication": {"type": "string", "minLength": 1},
         "retrieval": {"type": "string", "minLength": 1},
         "idempotency": {"type": "string", "minLength": 1},
-        "delivery_mode": {"enum": ["host-dispatch", "subscription", "polling", "unavailable"]}
+        "delivery_mode": {"enum": ["host-dispatch", "subscription", "signalled-poll", "polling", "unavailable"]}
       },
       "additionalProperties": true
     },
