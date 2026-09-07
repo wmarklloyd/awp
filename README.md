@@ -3,11 +3,11 @@
 [![Validate specification](https://github.com/wmarklloyd/awp/actions/workflows/validate.yml/badge.svg)](https://github.com/wmarklloyd/awp/actions/workflows/validate.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-The **Agent Workshare Protocol (AWP)** is a project-level coordination system for teams of people and AI agents. It gives a project a shared, current picture of what it is trying to accomplish, what work is underway, who owns decisions, what evidence supports a change, and what must happen next—so parallel work can move forward with clear responsibility and controlled integration.
+The **Agent Workshare Protocol (AWP)** is a project-level communication and coordination system for AI agents—and for the people who direct or work alongside them. It gives agents a structured way to announce work, share relevant findings and evidence, ask bounded questions, report conflicts, and hand off responsibility, so every participant can act on a shared, current picture of the project.
 
-Without that shared picture, projects lose their memory at the end of a conversation. The files remain, but the reasons behind them disappear: what the team was trying to achieve, which alternatives were rejected, what has actually been checked, which assumptions have gone stale, and what the next person should do first. AWP lets participants declare intended work, identify where changes or assumptions may collide, preserve why a choice was made, and hand off a task in a form the next participant can use.
+One person can use AWP to direct several agents; a human team can use it with agents; and different agents can work together under one owner’s rules. Multiple agents do not imply multiple users. AWP makes the participants, their authority, their shared context, and the limits on their communication explicit.
 
-Git remains the record of source changes. AWP works inside the project, above Git, to coordinate the meaning of those changes: their purpose, dependencies, contracts, evidence, and authority to integrate them. Standalone capsule exchange outside a project is intentionally deferred; the live draft focuses on keeping one project's shared work understandable and controllable.
+Without that shared picture, projects lose their memory at the end of a conversation. The files remain, but the reasons behind them disappear: what the project was trying to achieve, which alternatives were rejected, what has actually been checked, which assumptions have gone stale, and what should happen next. AWP works alongside source-control systems such as Git, rather than depending on any one of them, to coordinate the purpose, dependencies, contracts, evidence, and authority behind changes. Standalone capsule exchange outside a project is intentionally deferred; the live draft focuses on keeping one project's shared work understandable and controllable.
 
 ## The goals
 
@@ -31,11 +31,11 @@ AWP records provenance and epistemic status directly. A report, an inference, an
 
 ## Cooperation levels
 
-AWP lets a project choose how much coordination it wants. The levels accumulate capability, but communication between agents is never enabled merely because a higher level exists.
+AWP lets a project choose how much agent communication and coordination it wants. The levels accumulate capability, but direct agent-to-agent communication is enabled only when the project explicitly authorizes it.
 
 | Level | What it provides | How people stay in control |
 |---|---|---|
-| **COOP-1** | Small-group coordination around declared physical scopes, bounded leases, atomic announce-and-check, conflict decisions, and durable exit handoffs | Material work-affecting decisions are surfaced to the user or named decision owner; agents do not start autonomous collaboration loops |
+| **COOP-1** | Small-group coordination through structured work announcements, declared physical scopes, bounded leases, atomic announce-and-check, conflict decisions, and durable exit handoffs | Material work-affecting decisions are surfaced to the user or named decision owner; agents do not start autonomous collaboration loops |
 | **COOP-2** | Semantic scope awareness, dependency freshness, contracts, verification, and integration assurance | Direct agent collaboration is optional and requires recorded authorization, named participants, purpose, scope, and turn, tool, and token budgets |
 | **COOP-3** | Authenticated protected mutation, epochs, fencing, and a declared operating envelope for scale | Protected infrastructure enforces authority and rejects stale or unauthenticated operations |
 
