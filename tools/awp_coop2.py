@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -81,28 +81,81 @@ class Rendezvous:
         participants = [{"actor": item["actor"], "capabilities": item["capabilities"], "availability": item["availability"], "event_id": item["event_id"]} for item in latest.values()]
         return {"binding": self.status(), "participants": sorted(participants, key=lambda item: item["actor"])}
 
-    def send(self, actor: str, recipient: str, purpose: str, subject: str, question: str, decision_owner: str, max_rounds: int, max_tool_calls: int, max_tokens: int) -> dict:
+    def _request_event(self, interaction_id: str) -> dict:
+        event = next((item for item in self._events() if item["kind"] == "coop2.interaction.requested" and item["payload"]["interaction_id"] == interaction_id), None)
+        if event is None:
+            raise CoordinationError("unknown interaction")
+        return event
+
+    def _interaction_events(self, interaction_id: str) -> list[dict]:
+        return [item for item in self._events() if item["payload"].get("interaction_id") == interaction_id]
+
+    def send(self, actor: str, recipient: str, purpose: str, subject: str, question: str, decision_owner: str, max_rounds: int, max_tool_calls: int, max_tokens: int, delivery_window_seconds: int, response_window_seconds: int) -> dict:
         if recipient not in {item["actor"] for item in self.peers()["participants"]}:
             raise CoordinationError("recipient is not registered in this project rendezvous")
         interaction_id = "interaction:" + hashlib.sha256(canonical([self.project_id, self.workstate_id, actor, recipient, purpose, subject, question]).encode()).hexdigest()[:24]
         for event in self._events():
             if event["kind"] == "coop2.interaction.requested" and event["payload"]["interaction_id"] == interaction_id:
                 return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": event["event_id"]}}
-        payload = {"interaction_id": interaction_id, "sender": actor, "recipient": recipient, "purpose": purpose, "subject": subject, "question": question, "decision_owner": decision_owner, "authorization": {"participants": sorted([actor, recipient]), "max_rounds": max_rounds, "max_tool_calls": max_tool_calls, "max_total_output_tokens": max_tokens}, "status": "open"}
+        payload = {"interaction_id": interaction_id, "sender": actor, "recipient": recipient, "purpose": purpose, "subject": subject, "question": question, "decision_owner": decision_owner, "authorization": {"participants": sorted([actor, recipient]), "max_rounds": max_rounds, "max_tool_calls": max_tool_calls, "max_total_output_tokens": max_tokens, "delivery_window_seconds": delivery_window_seconds, "response_window_seconds": response_window_seconds, "clock_authority": self.ledger.binding_id()}, "status": "open"}
         return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": self._append(actor, "coop2.interaction.requested", payload)}
+
+    def observe(self, actor: str, interaction_id: str) -> dict:
+        request = self._request_event(interaction_id)["payload"]
+        if request["recipient"] != actor:
+            raise CoordinationError("only the named recipient may observe an interaction")
+        prior = next((event for event in self._interaction_events(interaction_id) if event["kind"] == "coop2.interaction.observed" and event["actor"] == actor), None)
+        if prior:
+            return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": prior["event_id"]}}
+        frontier = self.ledger.refresh(self.workstate_id)["frontier"]
+        return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": self._append(actor, "coop2.interaction.observed", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": frontier, "disposition": "observed"})}
+
+    def accept(self, actor: str, interaction_id: str, response_window_seconds: int) -> dict:
+        request = self._request_event(interaction_id)["payload"]
+        if request["recipient"] != actor:
+            raise CoordinationError("only the named recipient may accept an interaction")
+        if not any(event["kind"] == "coop2.interaction.observed" and event["actor"] == actor for event in self._interaction_events(interaction_id)):
+            raise CoordinationError("observe the interaction before accepting it")
+        policy = request["authorization"]
+        allowed = int(policy.get("response_window_seconds", 600))
+        if response_window_seconds < 1 or response_window_seconds > allowed:
+            raise CoordinationError("response deadline exceeds the interaction policy")
+        prior = next((event for event in self._interaction_events(interaction_id) if event["kind"] == "coop2.interaction.accepted"), None)
+        if prior:
+            return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": prior["event_id"]}}
+        deadline = (datetime.now(timezone.utc) + timedelta(seconds=response_window_seconds)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": self._append(actor, "coop2.interaction.accepted", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": self.ledger.refresh(self.workstate_id)["frontier"], "disposition": "accepted", "response_deadline": deadline})}
+
+    def refuse(self, actor: str, interaction_id: str, reason: str) -> dict:
+        request = self._request_event(interaction_id)["payload"]
+        if request["recipient"] != actor:
+            raise CoordinationError("only the named recipient may refuse an interaction")
+        if any(event["kind"] in {"coop2.interaction.accepted", "coop2.interaction.refused"} for event in self._interaction_events(interaction_id)):
+            raise CoordinationError("interaction already has a delivery disposition")
+        return {"interaction_id": interaction_id, "publication": "confirmed", "receipt": self._append(actor, "coop2.interaction.refused", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": self.ledger.refresh(self.workstate_id)["frontier"], "disposition": "refused", "reason": reason})}
 
     def inbox(self, actor: str) -> dict:
         answered = {event["payload"]["interaction_id"] for event in self._events() if event["kind"] == "coop2.interaction.responded"}
-        requests = [event["payload"] | {"event_id": event["event_id"]} for event in self._events() if event["kind"] == "coop2.interaction.requested" and event["payload"]["recipient"] == actor and event["payload"]["interaction_id"] not in answered]
+        requests = []
+        for event in self._events():
+            if event["kind"] != "coop2.interaction.requested" or event["payload"]["recipient"] != actor or event["payload"]["interaction_id"] in answered:
+                continue
+            interaction_events = self._interaction_events(event["payload"]["interaction_id"])
+            delivery = next((item["kind"].rsplit(".", 1)[-1] for item in reversed(interaction_events) if item["kind"] in {"coop2.interaction.observed", "coop2.interaction.accepted", "coop2.interaction.refused"}), "published")
+            requests.append(event["payload"] | {"event_id": event["event_id"], "delivery_state": delivery})
         responses = [event["payload"] | {"event_id": event["event_id"]} for event in self._events() if event["kind"] == "coop2.interaction.responded" and event["payload"]["recipient"] == actor]
         return {"binding": self.status(), "inbox": requests, "responses": responses}
 
     def respond(self, actor: str, interaction_id: str, outcome: str, response: str) -> dict:
-        request = next((event["payload"] for event in self._events() if event["kind"] == "coop2.interaction.requested" and event["payload"]["interaction_id"] == interaction_id), None)
-        if request is None:
-            raise CoordinationError("unknown interaction")
+        request = self._request_event(interaction_id)["payload"]
         if request["recipient"] != actor:
             raise CoordinationError("only the named recipient may respond")
+        acceptance = next((event for event in self._interaction_events(interaction_id) if event["kind"] == "coop2.interaction.accepted" and event["actor"] == actor), None)
+        if acceptance is None:
+            raise CoordinationError("accept the interaction before responding")
+        deadline = datetime.fromisoformat(acceptance["payload"]["response_deadline"].replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) > deadline:
+            raise CoordinationError("response deadline has elapsed; the interaction is delivered_unanswered")
         if any(event["kind"] == "coop2.interaction.responded" and event["payload"]["interaction_id"] == interaction_id for event in self._events()):
             raise CoordinationError("interaction already has a response")
         return {"interaction_id": interaction_id, "publication": "confirmed", "receipt": self._append(actor, "coop2.interaction.responded", {"interaction_id": interaction_id, "sender": actor, "recipient": request["sender"], "outcome": outcome, "response": response, "status": "closed"})}
@@ -116,8 +169,11 @@ def parser() -> argparse.ArgumentParser:
     commands.add_parser("status")
     join = commands.add_parser("join"); join.add_argument("--actor", required=True); join.add_argument("--capability", action="append", default=[])
     peers = commands.add_parser("peers"); peers.add_argument("--actor")
-    send = commands.add_parser("send"); send.add_argument("--actor", required=True); send.add_argument("--to", required=True); send.add_argument("--purpose", choices=["review", "critique", "alternative", "delegation", "decision", "synthesis"], required=True); send.add_argument("--subject", required=True); send.add_argument("--question", required=True); send.add_argument("--decision-owner", required=True); send.add_argument("--max-rounds", type=int, default=1); send.add_argument("--max-tool-calls", type=int, default=4); send.add_argument("--max-tokens", type=int, default=1200)
+    send = commands.add_parser("send"); send.add_argument("--actor", required=True); send.add_argument("--to", required=True); send.add_argument("--purpose", choices=["review", "critique", "alternative", "delegation", "decision", "synthesis"], required=True); send.add_argument("--subject", required=True); send.add_argument("--question", required=True); send.add_argument("--decision-owner", required=True); send.add_argument("--max-rounds", type=int, default=1); send.add_argument("--max-tool-calls", type=int, default=4); send.add_argument("--max-tokens", type=int, default=1200); send.add_argument("--delivery-window-seconds", type=int, default=300); send.add_argument("--response-window-seconds", type=int, default=600)
     inbox = commands.add_parser("inbox"); inbox.add_argument("--actor", required=True)
+    observe = commands.add_parser("observe"); observe.add_argument("--actor", required=True); observe.add_argument("--interaction", required=True)
+    accept = commands.add_parser("accept"); accept.add_argument("--actor", required=True); accept.add_argument("--interaction", required=True); accept.add_argument("--response-window-seconds", type=int, default=600)
+    refuse = commands.add_parser("refuse"); refuse.add_argument("--actor", required=True); refuse.add_argument("--interaction", required=True); refuse.add_argument("--reason", required=True)
     respond = commands.add_parser("respond"); respond.add_argument("--actor", required=True); respond.add_argument("--interaction", required=True); respond.add_argument("--outcome", choices=["accepted", "revised", "inconclusive", "declined", "timed_out", "escalated"], required=True); respond.add_argument("--response", required=True)
     return result
 
@@ -129,8 +185,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "status": result = rendezvous.status()
         elif args.command == "join": result = rendezvous.join(args.actor, args.capability)
         elif args.command == "peers": result = rendezvous.peers(args.actor)
-        elif args.command == "send": result = rendezvous.send(args.actor, args.to, args.purpose, args.subject, args.question, args.decision_owner, args.max_rounds, args.max_tool_calls, args.max_tokens)
+        elif args.command == "send": result = rendezvous.send(args.actor, args.to, args.purpose, args.subject, args.question, args.decision_owner, args.max_rounds, args.max_tool_calls, args.max_tokens, args.delivery_window_seconds, args.response_window_seconds)
         elif args.command == "inbox": result = rendezvous.inbox(args.actor)
+        elif args.command == "observe": result = rendezvous.observe(args.actor, args.interaction)
+        elif args.command == "accept": result = rendezvous.accept(args.actor, args.interaction, args.response_window_seconds)
+        elif args.command == "refuse": result = rendezvous.refuse(args.actor, args.interaction, args.reason)
         else: result = rendezvous.respond(args.actor, args.interaction, args.outcome, args.response)
         print(json.dumps(result, indent=2, sort_keys=True)); return 0
     except (CoordinationError, OSError, ValueError) as error:
