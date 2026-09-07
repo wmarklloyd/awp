@@ -159,6 +159,14 @@ A conformant consultation claim requires a binding-owned interaction record, rep
 
 The consultation participant declares purpose, question, subject, evidence, progress, and outcome. The consultation binding computes repeat keys and digests, deduplicates requests, returns receipts, and enforces or delegates loop limits. The decision owner accepts or rejects recommendations, authorizes continuation after an exhausted budget, and resolves escalations. A host enforces its own authority and side-effect policy.
 
+### 5.1 Managed collaboration rendezvous
+
+When managed consultation is enabled, the binding MUST provide a project-scoped rendezvous. A participant MUST be able to register its actor identity, capabilities, current lease, and availability against the immutable tuple `(project_id, workstate_id, binding identity)`, and another authorized participant MUST be able to discover that registration and active interaction records through that tuple. Discovery MUST NOT depend on manually exchanging an artifact path, private prompt, or session-specific URL.
+
+The binding descriptor MUST identify participant discovery and interaction publication/retrieval separately from the current frontier. If the rendezvous cannot be read or verified, the binding MUST report `unavailable` or `unverifiable` and MUST NOT imply that an agent-to-agent channel exists. Managed communication MUST use durable interaction identifiers and receipts; registration, discovery, request, response, acknowledgement, timeout, and withdrawal MUST be idempotent and correlated to the same interaction and binding identity. A host MAY persist records for a model, but a model-generated message is not delivered until the binding returns a publication receipt.
+
+Initial authorization MUST name the participating actors (or a bounded participant set), decision owner, purpose, subject scope, and loop, tool, and token budgets. Discovery MUST NOT widen that authorization. A newly discovered participant is ineligible for work-affecting requests until covered by authorization and entered in the binding.
+
 ## 6. COOP-2 — semantic, integration, and managed collaboration
 
 `COOP-2` extends `COOP-1` work coordination with semantic awareness and integration assurance. It is also the first contract that may enable managed, directly inter-agent collaboration under Section 5's explicit authorization and budget. It MAY require a database, broker, registry, subscription system, or another service-backed binding, but neither a storage technology nor consultation alone supplies `COOP-2` semantics.
