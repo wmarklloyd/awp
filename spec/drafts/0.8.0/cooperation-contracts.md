@@ -167,6 +167,10 @@ The binding descriptor MUST identify participant discovery and interaction publi
 
 Initial authorization MUST name the participating actors (or a bounded participant set), decision owner, purpose, subject scope, and loop, tool, and token budgets. Discovery MUST NOT widen that authorization. A newly discovered participant is ineligible for work-affecting requests until covered by authorization and entered in the binding.
 
+#### 5.1.1 `local-coop2-rendezvous-v1` experimental pilot
+
+`local-coop2-rendezvous-v1` is an experimental project-local binding profile. It uses one shared transactional event ledger to publish participant entry, discover available peers, and publish or retrieve a bounded interaction request and response by durable interaction identifier. A participant uses the project and binding identity to find the ledger; it does not need an exchanged consultation-document path for a later request or reply. The profile records participant and budget declarations, repeat-safe entry and request publication, and receipts, but does not authenticate actors, enforce host budgets, provide semantic selector analysis, or claim complete COOP-2 conformance. A binding selecting this profile MUST disclose those limitations.
+
 ## 6. COOP-2 — semantic, integration, and managed collaboration
 
 `COOP-2` extends `COOP-1` work coordination with semantic awareness and integration assurance. It is also the first contract that may enable managed, directly inter-agent collaboration under Section 5's explicit authorization and budget. It MAY require a database, broker, registry, subscription system, or another service-backed binding, but neither a storage technology nor consultation alone supplies `COOP-2` semantics.
