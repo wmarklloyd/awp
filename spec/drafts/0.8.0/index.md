@@ -3,7 +3,6 @@
 **Status:** Working Draft  
 **Editor:** Mark Lloyd  
 **Updated:** 2026-09-03  
-**Target successor to:** AWP 0.6.0  
 **Canonical draft:** `https://github.com/wmarklloyd/awp/tree/main/spec/drafts/0.8.0`  
 **License:** GPL-3.0-only
 
@@ -11,7 +10,7 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **
 
 ## 1. Purpose
 
-AWP is a family of composable specifications for preserving, inspecting, resuming, and coordinating project work performed by humans and software agents. Version 0.8.0 makes the governing specification and discovery metadata part of every project-scoped shared workstate. It advances the family modules to explicit exploratory versions while retaining the Coordination design introduced in 0.6.0.
+AWP 0.8.0 is the operative project specification for preserving, inspecting, resuming, and coordinating work performed by humans and software agents. It makes the governing specification and discovery metadata part of every project-scoped shared workstate and incorporates the required event, capsule, handoff, synchronization, coordination, security, and adapter behavior in one coherent family.
 
 The family has one required foundation, AWP Core. Every other subspecification is a module with its own identifier, version, dependencies, schema, and conformance claim. A module is a logical capability: it may occupy its own file in an editable workstate or be embedded in a single `.awp.md` capsule.
 
@@ -173,13 +172,13 @@ Every module and binding MUST preserve these rules:
 9. A successful byte-level merge is not proof of semantic compatibility.
 10. Private chain-of-thought is not required; concise rationale and evidence are sufficient.
 
-## 9. Migration from 0.7.0
+## 9. Version transition
 
-AWP 0.8.0 preserves the 0.2 event envelope and the module identifiers from AWP 0.6.0. Core advances to `0.8.0`; the dependent modules advance to `0.5.0`. Project discovery and the canonical project capsule are defined together by Capsule 0.5.0.
+AWP 0.8.0 defines the `0.2` event envelope and the module identifiers used by this family. Core is `0.8.0`; dependent modules are `0.5.0`. Project discovery and the canonical project capsule are defined together by Capsule 0.5.0.
 
 The migration is intentionally incompatible: a 0.8 project capsule identifies its exact governing specification and project discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. The project discovery document and the capsule MUST agree on the current workstate and governing specification.
 
-An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: project` to capsule metadata, update Capsule to `0.5.0`, and create or update the project discovery document. Historical events remain unchanged.
+An upgrader from an earlier AWP workstate MUST add the governing `specification` and `discovery: project` to capsule metadata, update Capsule to `0.5.0`, and create or update the project discovery document. Historical events remain unchanged.
 
 ## 10. Agent entry profiles
 

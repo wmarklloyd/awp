@@ -15,7 +15,6 @@ Repository-relative links are preserved as source-location identifiers. When tho
 **Status:** Working Draft  
 **Editor:** Mark Lloyd  
 **Updated:** 2026-09-03  
-**Target successor to:** AWP 0.6.0  
 **Canonical draft:** `https://github.com/wmarklloyd/awp/tree/main/spec/drafts/0.8.0`  
 **License:** GPL-3.0-only
 
@@ -23,7 +22,7 @@ The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **
 
 ## 1. Purpose
 
-AWP is a family of composable specifications for preserving, inspecting, resuming, and coordinating project work performed by humans and software agents. Version 0.8.0 makes the governing specification and discovery metadata part of every project-scoped shared workstate. It advances the family modules to explicit exploratory versions while retaining the Coordination design introduced in 0.6.0.
+AWP 0.8.0 is the operative project specification for preserving, inspecting, resuming, and coordinating work performed by humans and software agents. It makes the governing specification and discovery metadata part of every project-scoped shared workstate and incorporates the required event, capsule, handoff, synchronization, coordination, security, and adapter behavior in one coherent family.
 
 The family has one required foundation, AWP Core. Every other subspecification is a module with its own identifier, version, dependencies, schema, and conformance claim. A module is a logical capability: it may occupy its own file in an editable workstate or be embedded in a single `.awp.md` capsule.
 
@@ -185,13 +184,13 @@ Every module and binding MUST preserve these rules:
 9. A successful byte-level merge is not proof of semantic compatibility.
 10. Private chain-of-thought is not required; concise rationale and evidence are sufficient.
 
-## 9. Migration from 0.7.0
+## 9. Version transition
 
-AWP 0.8.0 preserves the 0.2 event envelope and the module identifiers from AWP 0.6.0. Core advances to `0.8.0`; the dependent modules advance to `0.5.0`. Project discovery and the canonical project capsule are defined together by Capsule 0.5.0.
+AWP 0.8.0 defines the `0.2` event envelope and the module identifiers used by this family. Core is `0.8.0`; dependent modules are `0.5.0`. Project discovery and the canonical project capsule are defined together by Capsule 0.5.0.
 
 The migration is intentionally incompatible: a 0.8 project capsule identifies its exact governing specification and project discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. The project discovery document and the capsule MUST agree on the current workstate and governing specification.
 
-An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: project` to capsule metadata, update Capsule to `0.5.0`, and create or update the project discovery document. Historical events remain unchanged.
+An upgrader from an earlier AWP workstate MUST add the governing `specification` and `discovery: project` to capsule metadata, update Capsule to `0.5.0`, and create or update the project discovery document. Historical events remain unchanged.
 
 ## 10. Agent entry profiles
 
@@ -3042,7 +3041,7 @@ Cooperation Contracts define what several human or software-agent participants c
 
 `COOP-1` is the first named contract because it provides immediately useful conflict reduction for a small group while keeping material inter-agent decisions user-mediated. `COOP-2` adds semantic and integration coordination and permits explicitly authorized, budgeted inter-agent collaboration. `COOP-3` adds protected, scalable coordination. Consultation and managed collaboration are disabled unless the binding explicitly enables them.
 
-This document is an experimental profile specification. It does not change released AWP 0.6.0 semantics or make the current reference tools conformant to a contract they do not fully implement.
+This document is an experimental profile specification within the operative AWP 0.8.0 family. It does not make the current reference tools conformant to a contract they do not fully implement.
 
 The module capability `guarded-scope-coordination` means that the selected contract uses Coordination records or an equivalent binding to compare declared scopes and return guarded mutation decisions. It is required by every named COOP contract and activates this module's dependency on `urn:awp:coordination`.
 
@@ -3054,7 +3053,7 @@ The module capability `guarded-scope-coordination` means that the selected contr
 | Semantic registry, scope analysis, and integration assurance | `COOP-2` |
 | Authenticated protected mutation, epochs, leases, fencing, and scalable operating envelope | `COOP-3` |
 
-This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the additional guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed contract. A workstate governed by released AWP 0.6 continues to interpret its original Coordination declaration under that released specification.
+This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed contract. Historical workstates remain governed by the specification they explicitly declare.
 
 ## 2. Common terms and binding disclosure
 
@@ -3584,133 +3583,133 @@ If the optional consultation subprotocol is enabled, the agent may separately in
     {
       "id": "AWP-FAMILY-001",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 10,
+      "line": 9,
       "statement": "The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in BCP 14 when, and only when, they appear in all capitals."
     },
     {
       "id": "AWP-FAMILY-002",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 48,
+      "line": 47,
       "statement": "Every AWP 0.8 manifest MUST contain a `modules` array. It MUST declare exactly one Core entry, and that entry MUST be required. The following is a module-declaration excerpt rather than a complete manifest:"
     },
     {
       "id": "AWP-FAMILY-003",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 82,
+      "line": 81,
       "statement": "A writer MUST declare every module whose records, events, or required processing rules affect the effective workstate. It MUST include compatible declarations for all direct dependencies. It MUST mark a module required only when ignoring that module would prevent the receiver from safely performing the declared continuation."
     },
     {
       "id": "AWP-FAMILY-004",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 84,
+      "line": 83,
       "statement": "If a module is required, every dependency needed to interpret it MUST also be required. If an optional module depends on another optional module, a receiver may ignore both while preserving their data."
     },
     {
       "id": "AWP-FAMILY-005",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 86,
+      "line": 85,
       "statement": "Core owns the unqualified Core record types and fields. A module defining a new record type MUST include a `module` field naming its module ID. A module extending a Core record MUST place its fields under that record's `modules` object, keyed by module ID. Module-owned event kinds use the common event envelope's required `module` field. These rules prevent independent subspecifications from claiming the same unqualified name."
     },
     {
       "id": "AWP-FAMILY-006",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 90,
+      "line": 89,
       "statement": "A reader that encounters an unknown optional module MAY continue using understood modules. It MUST preserve or explicitly disclose loss of the unknown data, and it MUST NOT infer semantics from unknown fields."
     },
     {
       "id": "AWP-FAMILY-007",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 92,
+      "line": 91,
       "statement": "A reader that encounters an unknown required module MUST NOT claim a complete interpretation or perform a continuation that could depend on it. It SHOULD still present the human briefing, validate understood envelopes, and report the unsupported module."
     },
     {
       "id": "AWP-FAMILY-008",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 127,
+      "line": 126,
       "statement": "The conventional project-named form is `<project-name>.awp.md`. Producers MAY retain versioned archival copies using `<project-name>.v<revision>.awp.md`, such as `project.v2.awp.md`. This filename revision is only a human-facing label; protocol and workstate identity remain defined by the capsule metadata."
     },
     {
       "id": "AWP-FAMILY-009",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 133,
+      "line": 132,
       "statement": "Every shared AWP project workstate MUST identify the exact specification artifact that governs it. A project capsule MUST carry an explicit `specification` reference in its own metadata. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate."
     },
     {
       "id": "AWP-FAMILY-010",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 135,
+      "line": 134,
       "statement": "A reader MUST interpret a workstate according to its declared specification and module versions. It MUST NOT silently substitute a newer, older, or otherwise different specification, infer compatibility from a filename, or treat a moving branch URL as version-pinned. If the declared specification is unavailable or unsupported, the reader MUST report that condition rather than guess."
     },
     {
       "id": "AWP-FAMILY-011",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 137,
+      "line": 136,
       "statement": "AWP `0.x` is exploratory. A new minor family or module release MAY make incompatible changes. A patch release MUST NOT introduce incompatible normative semantics. Explicit specification binding allows protocol development to proceed without requiring backward compatibility between exploratory minor releases. Implementations MAY support multiple versions or provide explicit migrations, but conformance to one version does not imply support for another."
     },
     {
       "id": "AWP-FAMILY-012",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 139,
+      "line": 138,
       "statement": "The family version and module versions remain independent. The family version identifies a tested set of module releases, and a later family release may reuse an unchanged module version. Writers that change protocol semantics MUST publish a new versioned specification artifact and update affected workstates deliberately. Implementations MUST determine support by the declared specification, module ID, and module version, not by comparing only `awp_version`."
     },
     {
       "id": "AWP-FAMILY-013",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 159,
+      "line": 158,
       "statement": "An implementation MUST satisfy the conformance requirements in each module for every role it claims. Supporting AWP Core alone is valid AWP conformance. It does not imply support for capsules, handoffs, synchronization, coordination, signatures, encryption, or adapters."
     },
     {
       "id": "AWP-FAMILY-014",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 163,
+      "line": 162,
       "statement": "Every module and binding MUST preserve these rules:"
     },
     {
       "id": "AWP-FAMILY-015",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 172,
+      "line": 171,
       "statement": "8. Optional modules MUST NOT redefine Core field meanings."
     },
     {
       "id": "AWP-FAMILY-016",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 180,
+      "line": 179,
       "statement": "The migration is intentionally incompatible: a 0.8 project capsule identifies its exact governing specification and project discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. The project discovery document and the capsule MUST agree on the current workstate and governing specification."
     },
     {
       "id": "AWP-FAMILY-017",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 182,
-      "statement": "An upgrader from 0.7.0 MUST add the governing `specification` and `discovery: project` to capsule metadata, update Capsule to `0.5.0`, and create or update the project discovery document. Historical events remain unchanged."
+      "line": 181,
+      "statement": "An upgrader from an earlier AWP workstate MUST add the governing `specification` and `discovery: project` to capsule metadata, update Capsule to `0.5.0`, and create or update the project discovery document. Historical events remain unchanged."
     },
     {
       "id": "AWP-FAMILY-018",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 186,
+      "line": 185,
       "statement": "A specification family MAY distribute a generated **Agent Entry Core** beside a complete specification bundle. Its purpose is to give a model or other bounded-context participant the minimum cross-cutting rules needed to orient safely before it retrieves task-specific modules. It is a derived presentation artifact, not an additional source of normative semantics."
     },
     {
       "id": "AWP-FAMILY-019",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 188,
+      "line": 187,
       "statement": "An Agent Entry Core MUST identify its exact source bundle, source bundle SHA-256 digest, family version, generator identity, and the source documents and schemas that its task-routing guidance can name. A reader MUST verify the recorded digest against the available source bundle before relying on the profile. A profile whose bundle is unavailable or whose digest does not match is unavailable, not merely advisory; the reader MUST retrieve and use the complete governing specification or decline the continuation."
     },
     {
       "id": "AWP-FAMILY-020",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 190,
+      "line": 189,
       "statement": "The Entry Core MUST include the family invariants needed before any continuation, a statement that it cannot override the source specification, and mandatory expansion triggers. Those triggers MUST include an unknown or required module, a missing or unverifiable profile, an ambiguity or conflict, a requested semantic change spanning more than one routed module, and release, migration, or cross-module integration work. A receiver MAY apply stricter triggers under its own policy."
     },
     {
       "id": "AWP-FAMILY-021",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 192,
+      "line": 191,
       "statement": "Task-routing guidance in an Entry Core is non-normative performance guidance. It MUST name the source modules and schemas that a task class normally requires, including direct dependencies, but it MUST NOT claim that the listed material is sufficient in every circumstance or weaken a reader's obligation to obtain relevant normative state. When the profile and its governing source appear to disagree, the source governs and the reader MUST expand its reading rather than choose the profile."
     },
     {
       "id": "AWP-FAMILY-022",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 194,
+      "line": 193,
       "statement": "An implementation that claims Agent Entry Core support MUST generate or verify the profile as part of the same reproducible build that produces its source bundle. It MUST expose whether profile verification succeeded and which additional source documents it selected. A gateway MAY enforce selective access, but an instruction to a model alone is not evidence that the model did not read additional material."
     },
     {
@@ -5193,7 +5192,7 @@ If the optional consultation subprotocol is enabled, the agent may separately in
       "id": "AWP-COOP-003",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 33,
-      "statement": "This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the additional guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed contract. A workstate governed by released AWP 0.6 continues to interpret its original Coordination declaration under that released specification."
+      "statement": "This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed contract. Historical workstates remain governed by the specification they explicitly declare."
     },
     {
       "id": "AWP-COOP-004",

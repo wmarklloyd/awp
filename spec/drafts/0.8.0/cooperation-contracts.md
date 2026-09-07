@@ -18,7 +18,7 @@ Cooperation Contracts define what several human or software-agent participants c
 
 `COOP-1` is the first named contract because it provides immediately useful conflict reduction for a small group while keeping material inter-agent decisions user-mediated. `COOP-2` adds semantic and integration coordination and permits explicitly authorized, budgeted inter-agent collaboration. `COOP-3` adds protected, scalable coordination. Consultation and managed collaboration are disabled unless the binding explicitly enables them.
 
-This document is an experimental profile specification. It does not change released AWP 0.6.0 semantics or make the current reference tools conformant to a contract they do not fully implement.
+This document is an experimental profile specification within the operative AWP 0.8.0 family. It does not make the current reference tools conformant to a contract they do not fully implement.
 
 The module capability `guarded-scope-coordination` means that the selected contract uses Coordination records or an equivalent binding to compare declared scopes and return guarded mutation decisions. It is required by every named COOP contract and activates this module's dependency on `urn:awp:coordination`.
 
@@ -30,7 +30,7 @@ The module capability `guarded-scope-coordination` means that the selected contr
 | Semantic registry, scope analysis, and integration assurance | `COOP-2` |
 | Authenticated protected mutation, epochs, leases, fencing, and scalable operating envelope | `COOP-3` |
 
-This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the additional guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed contract. A workstate governed by released AWP 0.6 continues to interpret its original Coordination declaration under that released specification.
+This mapping is not an automatic conformance upgrade. An implementation MUST satisfy the guarded-work, checkpoint, recovery, operating-envelope, and evidence requirements of the claimed contract. Historical workstates remain governed by the specification they explicitly declare.
 
 ## 2. Common terms and binding disclosure
 
