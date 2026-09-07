@@ -24,7 +24,7 @@
     },
     "limitations": ["The fixture demonstrates record shape, not independent implementation evidence."]
   },
-  "policy": {"policy_id": "coop-consult-default-loop-v1", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "definition": {"policy_id": "coop-consult-default-loop-v1", "max_rounds": 2, "max_participant_responses": 3, "max_tool_calls": 8, "max_context_tokens_per_request": 12000, "max_output_tokens_per_response": 2000, "max_total_output_tokens": 6000, "progress_requirement": "new_artifact_evidence_decision_or_disagreement", "repeat_key_algorithm": "rfc8785-sha256-v1", "on_limit": "inconclusive_or_escalated", "continuation_authority": "decision_owner"}},
+  "policy": {"policy_id": "coop-consult-default-loop-v1", "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "definition": {"policy_id": "coop-consult-default-loop-v1", "max_rounds": 2, "max_participant_responses": 3, "max_tool_calls": 8, "max_context_tokens_per_request": 12000, "max_output_tokens_per_response": 2000, "max_total_output_tokens": 6000, "delivery_window_seconds": 300, "clock_authority": "binding:example", "progress_requirement": "new_artifact_evidence_decision_or_disagreement", "repeat_key_algorithm": "rfc8785-sha256-v1", "on_limit": "inconclusive_or_escalated", "continuation_authority": "decision_owner"}},
   "authorization_ref": "decision:owner-approved-review",
   "budget_consumption": {"context_tokens": 4500, "output_tokens": 900, "tool_calls": 2, "measurement_state": "measured"},
   "round": 1,
