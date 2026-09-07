@@ -3,9 +3,9 @@
 [![Validate specification](https://github.com/wmarklloyd/awp/actions/workflows/validate.yml/badge.svg)](https://github.com/wmarklloyd/awp/actions/workflows/validate.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-Most projects lose their memory at the end of a conversation. The files remain, but the reasons behind them disappear: what the team was trying to achieve, which alternatives were rejected, what has actually been checked, which assumptions have gone stale, and what the next person should do first. AWP gives the project a coordination layer that keeps this operational picture visible: its active goals, work in progress, decision owners, evidence, risks, and next actions.
+The **Agent Workshare Protocol (AWP)** is a project-level coordination system for teams of people and AI agents. It gives a project a shared, current picture of what it is trying to accomplish, what work is underway, who owns decisions, what evidence supports a change, and what must happen next—so parallel work can move forward with clear responsibility and controlled integration.
 
-The **Agent Workshare Protocol (AWP)** helps people and AI agents work on the same project without relying on chat history or source control alone to coordinate them. It lets participants declare intended work, identify where changes or assumptions may collide, preserve why a choice was made, and hand off a task in a form the next participant can use.
+Without that shared picture, projects lose their memory at the end of a conversation. The files remain, but the reasons behind them disappear: what the team was trying to achieve, which alternatives were rejected, what has actually been checked, which assumptions have gone stale, and what the next person should do first. AWP lets participants declare intended work, identify where changes or assumptions may collide, preserve why a choice was made, and hand off a task in a form the next participant can use.
 
 Git remains the record of source changes. AWP works above it to coordinate the meaning of those changes: their purpose, dependencies, contracts, evidence, and authority to integrate them. A workstate can also move between sessions and systems when that continuity is useful, but portability supports the larger goal of keeping shared work understandable and controllable.
 
