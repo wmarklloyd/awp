@@ -184,13 +184,43 @@ class CodexQueueWatcher:
             timeout=QUEUE_TIMEOUT_SECONDS,
         )
 
+    def _heartbeat(self) -> dict[str, Any] | None:
+        """Publish liveness so the binding can observe this watcher instead of assuming it."""
+        publish = getattr(self.rendezvous, "heartbeat", None)
+        if publish is None:
+            return None
+        try:
+            return publish(self.actor, PROFILE)
+        except Exception as error:  # liveness must never break delivery
+            return {"error": str(error)}
+
+    def _observe(self, event: dict[str, Any]) -> str | None:
+        """Publish the `observed` receipt at the moment a request is queued.
+
+        Delivery to the watcher is the earliest point the recipient host can
+        honestly say it has seen the request; recording it here keeps the ledger
+        from reporting 'nothing happened' while the session is already working.
+        """
+        if event["kind"] != "coop2.interaction.requested":
+            return None
+        observe = getattr(self.rendezvous, "observe", None)
+        if observe is None:
+            return None
+        try:
+            receipt = observe(self.actor, event["payload"]["interaction_id"])
+        except Exception as error:  # read-only fallback or ledger contention: report, do not fail the queue
+            return f"observe-failed: {error}"
+        return receipt.get("receipt", {}).get("event_id")
+
     def step(self) -> dict[str, Any]:
         with self._claim_lock():
             state = self._state()
             events = self.rendezvous._events()
+            heartbeat = self._heartbeat()
             initializing = not state.get("initialized", False)
             queued: list[str] = []
             failed: list[str] = []
+            observed: dict[str, str] = {}
             for event in self.pending_events(events, state):
                 try:
                     self.queue(event)
@@ -202,6 +232,9 @@ class CodexQueueWatcher:
                     atomic_json(self.state_path, state)
                     break
                 queued.append(event["event_id"])
+                observed_receipt = self._observe(event)
+                if observed_receipt is not None:
+                    observed[event["event_id"]] = observed_receipt
                 state["notified_events"] = bounded_event_ids(
                     [*state.get("notified_events", []), event["event_id"]]
                 )
@@ -221,7 +254,10 @@ class CodexQueueWatcher:
                 )
                 state["initialized"] = True
                 atomic_json(self.state_path, state)
-            return {"profile": PROFILE, "queued_events": queued, "failed_events": failed, "state_path": str(self.state_path)}
+            result = {"profile": PROFILE, "queued_events": queued, "failed_events": failed, "observed_receipts": observed, "state_path": str(self.state_path)}
+            if heartbeat is not None:
+                result["heartbeat"] = {key: heartbeat[key] for key in ("last_seen", "path", "error") if key in heartbeat}
+            return result
 
 
 def parser() -> argparse.ArgumentParser:

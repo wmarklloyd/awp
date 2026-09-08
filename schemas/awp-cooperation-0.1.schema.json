@@ -48,8 +48,21 @@
                 "required": ["actor", "watcher_liveness"],
                 "properties": {
                   "actor": {"$ref": "#/$defs/id"},
-                  "watcher_liveness": {"enum": ["active", "none", "unverified"]},
+                  "watcher_liveness": {"enum": ["active", "stale", "none", "unverified"]},
                   "profile": {"type": "string", "minLength": 1}
+                },
+                "additionalProperties": true
+              }
+            },
+            "signal_reach": {
+              "type": "object",
+              "description": "per ordered sender->recipient pair; mailbox reach does not imply signal reach",
+              "additionalProperties": {
+                "type": "object",
+                "required": ["signal_reach"],
+                "properties": {
+                  "signal_reach": {"enum": ["reachable", "degraded", "entry-recovery-only"]},
+                  "recipient_watcher": {"enum": ["active", "stale", "none", "unverified"]}
                 },
                 "additionalProperties": true
               }

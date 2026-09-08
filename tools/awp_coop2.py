@@ -148,6 +148,86 @@ class GitRefDoorbell:
         }
 
 
+HEARTBEAT_PROFILE = "local-filesystem-heartbeat-v1"
+HEARTBEAT_TTL_SECONDS = 90
+OBSERVATION_MODES = ("watcher", "on-entry-only")
+
+
+def _parse_time(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _actor_slug(actor: str) -> str:
+    return "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in actor)
+
+
+class Heartbeat:
+    """Per-actor watcher liveness, observed rather than asserted.
+
+    A watcher atomically replaces its own heartbeat file on every poll.  The
+    binding derives ``active`` / ``stale`` / ``none`` per actor from the file's
+    ``last_seen`` and never from a participant's own claim.  Like the doorbell,
+    the file serves only participants on the same filesystem; that reach is
+    disclosed, not hidden.
+    """
+
+    def __init__(self, project: Path) -> None:
+        self.directory = project / ".awp-runtime"
+
+    def path(self, actor: str) -> Path:
+        return self.directory / f"coop2-heartbeat-{_actor_slug(actor)}.json"
+
+    def publish(self, *, actor: str, profile: str, project_id: str, workstate_id: str, binding_id: str, frontier: list[str]) -> dict:
+        self.directory.mkdir(parents=True, exist_ok=True)
+        signal = {
+            "profile": HEARTBEAT_PROFILE,
+            "actor": actor,
+            "watcher_profile": profile,
+            "project_id": project_id,
+            "workstate_id": workstate_id,
+            "binding_id": binding_id,
+            "frontier": frontier,
+            "last_seen": now(),
+        }
+        target = self.path(actor)
+        handle, temporary_name = tempfile.mkstemp(prefix=f".{target.name}.", suffix=".tmp", dir=self.directory)
+        try:
+            with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as temporary:
+                json.dump(signal, temporary, sort_keys=True)
+                temporary.write("\n")
+                temporary.flush()
+                os.fsync(temporary.fileno())
+            os.replace(temporary_name, target)
+        except Exception:
+            try:
+                os.unlink(temporary_name)
+            except FileNotFoundError:
+                pass
+            raise
+        return signal | {"path": str(target)}
+
+    def read(self, actor: str, *, binding_id: str, ttl_seconds: int = HEARTBEAT_TTL_SECONDS) -> dict:
+        target = self.path(actor)
+        if not target.exists():
+            return {"watcher_liveness": "none"}
+        try:
+            signal = json.loads(target.read_text(encoding="utf-8"))
+            last_seen = _parse_time(signal["last_seen"])
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            return {"watcher_liveness": "unverified", "reason": str(error)}
+        if signal.get("binding_id") != binding_id:
+            return {"watcher_liveness": "unverified", "reason": "heartbeat identity does not match this binding"}
+        age = (datetime.now(timezone.utc) - last_seen).total_seconds()
+        liveness = "active" if age <= ttl_seconds else "stale"
+        return {
+            "watcher_liveness": liveness,
+            "profile": signal.get("watcher_profile"),
+            "last_seen": signal.get("last_seen"),
+            "age_seconds": int(age),
+            "frontier": signal.get("frontier", []),
+        }
+
+
 class Rendezvous:
     def __init__(self, project: Path, ledger_path: Path | None = None) -> None:
         self.project = find_project(project)
@@ -164,6 +244,7 @@ class Rendezvous:
             self.ledger.fallback_reason = str(error)
         self.doorbell = LocalDoorbell(self.project)
         self.git_ref_doorbell = GitRefDoorbell(self.project)
+        self.heartbeats = Heartbeat(self.project)
 
     def _events(self) -> list[dict]:
         return self.ledger.export_events(self.workstate_id)
@@ -208,9 +289,88 @@ class Rendezvous:
             "git_ref": self.git_ref_doorbell.publish(receipt["event_id"]),
         }
 
+    def heartbeat(self, actor: str, profile: str) -> dict:
+        """Publish this actor's watcher heartbeat (called by watchers on every poll)."""
+        frontier = self.ledger.refresh(self.workstate_id)["frontier"] if not getattr(self.ledger, "read_only", False) else []
+        return self.heartbeats.publish(
+            actor=actor,
+            profile=profile,
+            project_id=self.project_id,
+            workstate_id=self.workstate_id,
+            binding_id=self.ledger.binding_id(),
+            frontier=frontier,
+        )
+
+    def participant_watchers(self) -> list[dict]:
+        """Per-actor watcher liveness derived from heartbeats, never from self-report."""
+        binding_id = self.ledger.binding_id()
+        result = []
+        for actor, registration in sorted(self._registrations().items()):
+            observed = self.heartbeats.read(actor, binding_id=binding_id)
+            result.append(
+                {
+                    "actor": actor,
+                    "declared_observation": registration.get("observation", "on-entry-only"),
+                    **observed,
+                }
+            )
+        return result
+
+    def signal_reach(self, watchers: list[dict] | None = None) -> dict:
+        """Reachability per ordered pair.  Mailbox reach is shared; signal reach is not."""
+        watchers = watchers if watchers is not None else self.participant_watchers()
+        liveness = {item["actor"]: item["watcher_liveness"] for item in watchers}
+        matrix: dict[str, dict] = {}
+        for sender in liveness:
+            for recipient in liveness:
+                if sender == recipient:
+                    continue
+                state = liveness[recipient]
+                if state == "active":
+                    reach = "reachable"
+                elif state == "stale":
+                    reach = "degraded"
+                else:
+                    reach = "entry-recovery-only"
+                matrix[f"{sender}->{recipient}"] = {
+                    "signal_reach": reach,
+                    "recipient_watcher": state,
+                    "fallback": "entry-recovery check on the recipient's next project entry",
+                }
+        return matrix
+
     def status(self) -> dict:
         reach, evidence = self._reach()
-        result = {"profile": PROFILE, "project_id": self.project_id, "workstate_id": self.workstate_id, "binding_id": self.ledger.binding_id(), "reach": reach, "delivery_mode": "signalled-poll", "doorbell": self.doorbell.status(project_id=self.project_id, workstate_id=self.workstate_id, binding_id=self.ledger.binding_id()), "git_ref_doorbell": self.git_ref_doorbell.status(), "limitations": ["experimental pilot", "a host-side shared-filesystem watcher is required to wake a session", "watcher liveness is not verified by this binding", "no semantic analyzer", "no authentication", "budget declaration is recorded but not host-enforced"]}
+        watchers = self.participant_watchers()
+        matrix = self.signal_reach(watchers)
+        active = sorted(item["actor"] for item in watchers if item["watcher_liveness"] == "active")
+        liveness_summary = (
+            "derived from per-actor heartbeats; active: " + (", ".join(active) if active else "none")
+        )
+        doorbell = self.doorbell.status(project_id=self.project_id, workstate_id=self.workstate_id, binding_id=self.ledger.binding_id())
+        doorbell["watcher_liveness"] = liveness_summary
+        result = {
+            "profile": PROFILE,
+            "project_id": self.project_id,
+            "workstate_id": self.workstate_id,
+            "binding_id": self.ledger.binding_id(),
+            "reach": reach,
+            "mailbox_reach": reach,
+            "delivery_mode": "signalled-poll",
+            "doorbell": doorbell,
+            "git_ref_doorbell": self.git_ref_doorbell.status(),
+            "heartbeat": {"profile": HEARTBEAT_PROFILE, "ttl_seconds": HEARTBEAT_TTL_SECONDS, "directory": str(self.heartbeats.directory)},
+            "participant_watchers": watchers,
+            "signal_reach": matrix,
+            "limitations": [
+                "experimental pilot",
+                "a host-side shared-filesystem watcher is required to wake a session",
+                "heartbeats and doorbells serve only participants on this filesystem",
+                "no semantic analyzer",
+                "no authentication",
+                "budget declaration is recorded but not host-enforced",
+            ],
+        }
         if getattr(self.ledger, "read_only", False):
             result["operational_mode"] = "degraded"
             result["read_only_reason"] = getattr(self.ledger, "fallback_reason", "normal SQLite access unavailable")
@@ -220,18 +380,22 @@ class Rendezvous:
         result["shared_reach_evidence"] = evidence
         return result
 
-    def join(self, actor: str, capabilities: list[str]) -> dict:
+    def join(self, actor: str, capabilities: list[str], observation: str = "on-entry-only") -> dict:
+        if observation not in OBSERVATION_MODES:
+            raise CoordinationError(f"observation must be one of {', '.join(OBSERVATION_MODES)}")
         for event in reversed(self._events()):
             if event["kind"] == "coop2.participant.joined" and event["payload"]["actor"] == actor:
-                return {"participant": actor, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": event["event_id"]}, "binding": self.status()}
-        receipt = self._append(actor, "coop2.participant.joined", {"actor": actor, "project_id": self.project_id, "workstate_id": self.workstate_id, "binding_id": self.ledger.binding_id(), "capabilities": sorted(set(capabilities)), "availability": "available"})
+                if event["payload"].get("observation", "on-entry-only") == observation:
+                    return {"participant": actor, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": event["event_id"]}, "binding": self.status()}
+                break
+        receipt = self._append(actor, "coop2.participant.joined", {"actor": actor, "project_id": self.project_id, "workstate_id": self.workstate_id, "binding_id": self.ledger.binding_id(), "capabilities": sorted(set(capabilities)), "availability": "available", "observation": observation})
         return {"participant": actor, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "binding": self.status()}
 
     def peers(self, actor: str | None = None) -> dict:
         latest = self._registrations()
         if actor:
             latest.pop(actor, None)
-        participants = [{"actor": item["actor"], "capabilities": item["capabilities"], "availability": item["availability"], "event_id": item["event_id"]} for item in latest.values()]
+        participants = [{"actor": item["actor"], "capabilities": item["capabilities"], "availability": item["availability"], "observation": item.get("observation", "on-entry-only"), "event_id": item["event_id"]} for item in latest.values()]
         return {"binding": self.status(), "participants": sorted(participants, key=lambda item: item["actor"])}
 
     def _request_event(self, interaction_id: str) -> dict:
@@ -291,6 +455,33 @@ class Rendezvous:
         receipt = self._append(actor, "coop2.interaction.refused", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": self.ledger.refresh(self.workstate_id)["frontier"], "disposition": "refused", "reason": reason})
         return {"interaction_id": interaction_id, "publication": "confirmed", "receipt": receipt, "doorbell": self._signal(receipt, interaction_id, "coop2.interaction.refused")}
 
+    @staticmethod
+    def _lifecycle(request_event: dict, interaction_events: list[dict], delivery: str) -> dict:
+        """Derive the lifecycle state on read.  Windows are declared in the policy; this
+        applies them so an expired interaction is reported as such rather than 'pending'."""
+        policy = request_event["payload"].get("authorization", {})
+        current = datetime.now(timezone.utc)
+        published_at = _parse_time(request_event["occurred_at"])
+        if delivery == "refused":
+            return {"lifecycle_state": "refused", "timed_out": False}
+        if delivery == "accepted":
+            acceptance = next((item for item in interaction_events if item["kind"] == "coop2.interaction.accepted"), None)
+            deadline_text = acceptance["payload"].get("response_deadline") if acceptance else None
+            deadline = _parse_time(deadline_text) if deadline_text else published_at + timedelta(seconds=int(policy.get("response_window_seconds", 600)))
+            state, expired_state = "accepted", "delivered_unanswered"
+        elif delivery == "observed":
+            observed = next((item for item in interaction_events if item["kind"] == "coop2.interaction.observed"), None)
+            observed_at = _parse_time(observed["occurred_at"]) if observed else published_at
+            deadline = observed_at + timedelta(seconds=int(policy.get("response_window_seconds", 600)))
+            state, expired_state = "observed", "delivered_unanswered"
+        else:
+            deadline = published_at + timedelta(seconds=int(policy.get("delivery_window_seconds", 600)))
+            state, expired_state = "pending", "undelivered"
+        remaining = int((deadline - current).total_seconds())
+        if remaining < 0:
+            return {"lifecycle_state": expired_state, "timed_out": True, "deadline": deadline.replace(microsecond=0).isoformat().replace("+00:00", "Z"), "overdue_seconds": -remaining}
+        return {"lifecycle_state": state, "timed_out": False, "deadline": deadline.replace(microsecond=0).isoformat().replace("+00:00", "Z"), "seconds_remaining": remaining}
+
     def inbox(self, actor: str) -> dict:
         answered = {event["payload"]["interaction_id"] for event in self._events() if event["kind"] == "coop2.interaction.responded"}
         requests = []
@@ -299,7 +490,7 @@ class Rendezvous:
                 continue
             interaction_events = self._interaction_events(event["payload"]["interaction_id"])
             delivery = next((item["kind"].rsplit(".", 1)[-1] for item in reversed(interaction_events) if item["kind"] in {"coop2.interaction.observed", "coop2.interaction.accepted", "coop2.interaction.refused"}), "published")
-            requests.append(event["payload"] | {"event_id": event["event_id"], "delivery_state": delivery})
+            requests.append(event["payload"] | {"event_id": event["event_id"], "delivery_state": delivery, **self._lifecycle(event, interaction_events, delivery)})
         responses = [event["payload"] | {"event_id": event["event_id"]} for event in self._events() if event["kind"] == "coop2.interaction.responded" and event["payload"]["recipient"] == actor]
         return {"binding": self.status(), "inbox": requests, "responses": responses}
 
@@ -326,7 +517,8 @@ def parser() -> argparse.ArgumentParser:
     commands = result.add_subparsers(dest="command", required=True)
     commands.add_parser("status")
     commands.add_parser("doorbell-status")
-    join = commands.add_parser("join"); join.add_argument("--actor", required=True); join.add_argument("--capability", action="append", default=[])
+    join = commands.add_parser("join"); join.add_argument("--actor", required=True); join.add_argument("--capability", action="append", default=[]); join.add_argument("--observation", choices=list(OBSERVATION_MODES), default="on-entry-only", help="how this actor observes signals: a live watcher, or only on project entry")
+    heartbeat = commands.add_parser("heartbeat"); heartbeat.add_argument("--actor", required=True); heartbeat.add_argument("--profile", default="manual-heartbeat")
     peers = commands.add_parser("peers"); peers.add_argument("--actor")
     send = commands.add_parser("send"); send.add_argument("--actor", required=True); send.add_argument("--to", required=True); send.add_argument("--purpose", choices=["review", "critique", "alternative", "delegation", "decision", "synthesis"], required=True); send.add_argument("--subject", required=True); send.add_argument("--question", required=True); send.add_argument("--decision-owner", required=True); send.add_argument("--max-rounds", type=int, default=1); send.add_argument("--max-tool-calls", type=int, default=4); send.add_argument("--max-tokens", type=int, default=1200); send.add_argument("--delivery-window-seconds", type=int, default=300); send.add_argument("--response-window-seconds", type=int, default=600)
     inbox = commands.add_parser("inbox"); inbox.add_argument("--actor", required=True)
@@ -343,7 +535,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         rendezvous = Rendezvous(args.project, args.ledger)
         if args.command == "status": result = rendezvous.status()
         elif args.command == "doorbell-status": result = rendezvous.doorbell.status(project_id=rendezvous.project_id, workstate_id=rendezvous.workstate_id, binding_id=rendezvous.ledger.binding_id())
-        elif args.command == "join": result = rendezvous.join(args.actor, args.capability)
+        elif args.command == "join": result = rendezvous.join(args.actor, args.capability, args.observation)
+        elif args.command == "heartbeat": result = rendezvous.heartbeat(args.actor, args.profile)
         elif args.command == "peers": result = rendezvous.peers(args.actor)
         elif args.command == "send": result = rendezvous.send(args.actor, args.to, args.purpose, args.subject, args.question, args.decision_owner, args.max_rounds, args.max_tool_calls, args.max_tokens, args.delivery_window_seconds, args.response_window_seconds)
         elif args.command == "inbox": result = rendezvous.inbox(args.actor)
