@@ -250,9 +250,21 @@ class ReentryTests(unittest.TestCase):
         self.assertEqual(view["diagnostic"], "AWP-COORD-LEDGER-UNAVAILABLE")
 
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_resume_references_to_finished_work_are_reported(self) -> None:
+        view = self.module.build_reentry_view(ROOT / "awp.awp.md")
+        # The live capsule must not point a cold session at finished work.
+        self.assertEqual(view["selection"]["stale_resume_references"], [])
 
+    def test_a_completed_record_in_read_first_is_flagged(self) -> None:
+        import copy
+
+        view = self.module.build_reentry_view(ROOT / "awp.awp.md")
+        selected = copy.deepcopy(view["entry"]["read_first"])
+        self.assertTrue(selected, "capsule should select some read_first records")
+        selected[0]["status"] = "completed"
+        closed = {"completed", "superseded", "withdrawn", "closed", "resolved"}
+        flagged = sorted({r["id"] for r in selected if r.get("status") in closed})
+        self.assertEqual(flagged, [selected[0]["id"]])
 
 class EntrySliceTests(unittest.TestCase):
     """The generated entry slice is a convenience bound to a capsule revision."""
@@ -333,3 +345,6 @@ class EntrySliceTests(unittest.TestCase):
         self.assertNotEqual(before, after)
         self.assertEqual(after, receipt["entry_slice"]["capsule_digest"])
         self.assertEqual(self.module.read_entry_slice(project, capsule)["state"], "current")
+
+if __name__ == "__main__":
+    unittest.main()

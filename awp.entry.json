@@ -1,20 +1,20 @@
 {
-  "briefing": "# Coordination tier split\n\nPresence monitoring and scaling requirements moved from coordination.md into coordination-scale.md so the ordinary coordination read path no longer carries COOP-3 material, with a coordination-scale route for work that needs them. The stale-intent downgrade that shipped in e8e8c64 never fired and is fixed.\n\nNext action: Work task:capsule-artifact-manifest (owned by actor:codex). Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
+  "briefing": "# Resume references open work only\n\nffc3832 completed task:coordination-tier-split but left the resume naming it. Selective re-entry now reports resume references to completed or superseded records as selection.stale_resume_references, and the resume names the two open tasks instead.\n\nNext action: Work task:capsule-artifact-manifest and task:coordination-contract-dedupe, both owned by actor:codex. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
   "capsule": "awp.awp.md",
-  "capsule_digest": "sha256:541a2a888ca769f2a8f699d36edd33ef0f59f5e755784a76befe8937f56a2aea",
+  "capsule_digest": "sha256:a77637ed53079750b67f6a4f2c6fc1c2ba0eba4fbfafd89834c77ad30db58471",
   "entry": {
     "checkpoint": {
-      "created_at": "2026-09-08T17:45:10Z",
+      "created_at": "2026-09-08T17:53:52Z",
       "frontier": [
         "evt:ccd749a2-96f4-46a1-a872-c5fd73035b67"
       ],
-      "id": "checkpoint:deferred-review-items-recorded",
+      "id": "checkpoint:resume-references-open-work",
       "recommended_next_action": {
-        "action": "Work task:coordination-tier-split and task:capsule-artifact-manifest; keep using the verified 0.8 Agent Entry Core and the Python validation workflow.",
+        "action": "Work task:capsule-artifact-manifest and task:coordination-contract-dedupe, both owned by actor:codex. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
         "requires_authority": false
       },
       "resumption_level": "semantic",
-      "summary": "Accepted-but-deferred review items are durable task records, not prose in a superseded checkpoint.",
+      "summary": "Resume points at open work; re-entry reports references to finished work.",
       "type": "checkpoint"
     },
     "handoff": {
@@ -22,7 +22,7 @@
         "read_only",
         "local_write"
       ],
-      "checkpoint": "checkpoint:deferred-review-items-recorded",
+      "checkpoint": "checkpoint:resume-references-open-work",
       "completeness": "portable",
       "dependencies": [
         {
@@ -85,9 +85,9 @@
         "agent"
       ],
       "module": "urn:awp:handoff",
-      "requested_action": "Work task:coordination-tier-split and task:capsule-artifact-manifest, both accepted by actor:codex in interaction:409c879f2258ecd7e98bf36e. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
+      "requested_action": "Work task:capsule-artifact-manifest and task:coordination-contract-dedupe, both owned by actor:codex. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
       "resumption_level": "semantic",
-      "revision": 2,
+      "revision": 3,
       "type": "handoff"
     },
     "read_first": [
@@ -155,15 +155,15 @@
         "type": "task"
       },
       {
-        "id": "task:coordination-tier-split",
-        "status": "completed",
-        "title": "Split COOP-3 scale and presence material out of coordination.md (done: coordination-scale.md carries 25 statements; the section 3 dedupe against cooperation-contracts.md remains open as task:coordination-contract-dedupe)",
-        "type": "task"
-      },
-      {
         "id": "task:capsule-artifact-manifest",
         "status": "ready",
         "title": "Decide and implement the Capsule artifact-manifest split: 51 percent of the capsule is 106 artifact records and 44 are referenced by nothing; a format change now that 0.8.0 governs the capsule, so it needs a recorded format decision (accepted by actor:codex in interaction:409c879f2258ecd7e98bf36e)",
+        "type": "task"
+      },
+      {
+        "id": "task:coordination-contract-dedupe",
+        "status": "ready",
+        "title": "Dedupe coordination.md section 3 against cooperation-contracts.md: 13 statements and 7.5 KB restate the COOP integration model that cooperation-contracts.md owns, and the boundary consultation traced term collisions (staleness, precondition, verification) to this duplication",
         "type": "task"
       }
     ],
@@ -334,7 +334,7 @@
         "read_only",
         "local_write"
       ],
-      "checkpoint": "checkpoint:deferred-review-items-recorded",
+      "checkpoint": "checkpoint:resume-references-open-work",
       "freshness_policy": "verify_before_continue",
       "handoff": "handoff:cooperation-contracts",
       "id": "resume:awp-project",
@@ -350,10 +350,10 @@
         "claim:unified-coop-ladder",
         "risk:coop1-completeness",
         "task:coop1-conformance",
-        "task:coordination-tier-split",
-        "task:capsule-artifact-manifest"
+        "task:capsule-artifact-manifest",
+        "task:coordination-contract-dedupe"
       ],
-      "recommended_next_action": "Work task:coordination-tier-split and task:capsule-artifact-manifest, both accepted by actor:codex in interaction:409c879f2258ecd7e98bf36e. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
+      "recommended_next_action": "Work task:capsule-artifact-manifest and task:coordination-contract-dedupe, both owned by actor:codex. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
       "required_artifacts": [
         "artifact:spec-08-unified-coop",
         "artifact:cooperation-contracts-unified",
@@ -366,27 +366,28 @@
         "artifact:silo-schema",
         "artifact:silo-fixtures"
       ],
-      "revision": 2,
+      "revision": 3,
       "type": "resume"
     }
   },
-  "generated_at": "2026-09-08T17:51:37.949543Z",
-  "generated_digest": "sha256:bac3d3e40050fb5a7574dd74a92934ba95829a8474b005945ac83367a5cc7b07",
+  "generated_at": "2026-09-08T17:53:52.530853Z",
+  "generated_digest": "sha256:f358c6982cee31cb3e162032fb5f177f18c102e14a746fd00b231e92554992ff",
   "metadata": {
     "awp_version": "0.8.0",
-    "checkpoint": "checkpoint:coordination-tier-split",
-    "generated_at": "2026-09-08T17:51:37.864927Z",
-    "generated_digest": "sha256:bac3d3e40050fb5a7574dd74a92934ba95829a8474b005945ac83367a5cc7b07",
+    "checkpoint": "checkpoint:resume-references-open-work",
+    "generated_at": "2026-09-08T17:53:52.440491Z",
+    "generated_digest": "sha256:f358c6982cee31cb3e162032fb5f177f18c102e14a746fd00b231e92554992ff",
     "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
     "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
   },
   "profile": "capsule-entry-slice-v1",
   "selection": {
     "complete": true,
-    "indexed_record_count": 223,
+    "indexed_record_count": 224,
     "missing_record_ids": [],
     "required_artifact_failures": [],
     "selected_record_count": 10,
+    "stale_resume_references": [],
     "state": "complete"
   }
 }

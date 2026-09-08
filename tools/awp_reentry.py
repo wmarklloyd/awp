@@ -202,6 +202,18 @@ def build_reentry_view(capsule: Path, *, brief_only: bool = False) -> dict[str, 
         and not missing
         and not artifact_failures
     )
+    # A resume that still points at finished work sends the next session to the
+    # wrong place, and nothing else notices: the records exist, so the index and
+    # the digests are all satisfied.  Report it rather than silently orienting a
+    # cold session toward work that is already done.
+    closed_states = {"completed", "superseded", "withdrawn", "closed", "resolved"}
+    stale_references = sorted(
+        {
+            record["id"]
+            for record in selected
+            if isinstance(record, dict) and record.get("status") in closed_states
+        }
+    )
     view.update(
         manifest={
             "awp_version": manifest.get("awp_version"),
@@ -221,6 +233,7 @@ def build_reentry_view(capsule: Path, *, brief_only: bool = False) -> dict[str, 
             "complete": selection_complete,
             "missing_record_ids": missing,
             "required_artifact_failures": artifact_failures,
+            "stale_resume_references": stale_references,
             "indexed_record_count": len(index),
             "selected_record_count": len(selected),
         },
