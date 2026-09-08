@@ -349,3 +349,56 @@ class EntryRegistrationTests(RendezvousFixture):
         self.assertEqual(view["self"]["inbound_signal_reach"], {"actor:peer": "entry-recovery-only"})
         # and the peer, which does heartbeat, is reachable from me
         self.assertEqual(self.rendezvous.status()["signal_reach"]["actor:me->actor:peer"]["signal_reach"], "reachable")
+
+
+class LifecycleGuardTests(RendezvousFixture):
+    def send(self) -> str:
+        self.rendezvous.join("actor:sender", [])
+        self.rendezvous.join("actor:recipient", [])
+        return self.rendezvous.send(
+            "actor:sender", "actor:recipient", "review", "s", "q", "actor:recipient", 1, 4, 1200, 600, 600
+        )["interaction_id"]
+
+    def test_progress_asserting_outcomes_need_a_substantive_response(self) -> None:
+        from tools.awp_coop2 import CoordinationError
+
+        interaction = self.send()
+        self.rendezvous.observe("actor:recipient", interaction)
+        self.rendezvous.accept("actor:recipient", interaction, 600)
+        # The one-word reply that closed a real interaction earlier today.
+        with self.assertRaises(CoordinationError):
+            self.rendezvous.respond("actor:recipient", interaction, "accepted", "This")
+        with self.assertRaises(CoordinationError):
+            self.rendezvous.respond("actor:recipient", interaction, "accepted", "   ")
+        # An honest non-answer is still allowed; it just cannot claim progress.
+        self.assertEqual(
+            self.rendezvous.respond("actor:recipient", interaction, "inconclusive", "No capacity today.")["publication"],
+            "confirmed",
+        )
+
+    def test_sender_can_withdraw_and_the_inbox_clears(self) -> None:
+        interaction = self.send()
+        self.assertEqual(len(self.rendezvous.inbox("actor:recipient")["inbox"]), 1)
+        receipt = self.rendezvous.withdraw("actor:sender", interaction, "question is obsolete")
+        self.assertEqual(receipt["publication"], "confirmed")
+        self.assertEqual(self.rendezvous.inbox("actor:recipient")["inbox"], [])
+        self.assertFalse(receipt["deduplicated"])
+        self.assertTrue(self.rendezvous.withdraw("actor:sender", interaction, "again")["deduplicated"])
+
+    def test_only_the_sender_may_withdraw_and_never_after_a_response(self) -> None:
+        from tools.awp_coop2 import CoordinationError
+
+        interaction = self.send()
+        with self.assertRaises(CoordinationError):
+            self.rendezvous.withdraw("actor:recipient", interaction, "not mine to withdraw")
+        self.rendezvous.observe("actor:recipient", interaction)
+        self.rendezvous.accept("actor:recipient", interaction, 600)
+        self.rendezvous.respond("actor:recipient", interaction, "inconclusive", "answered")
+        with self.assertRaises(CoordinationError):
+            self.rendezvous.withdraw("actor:sender", interaction, "too late")
+
+    def test_binding_names_its_coordination_sibling(self) -> None:
+        siblings = self.rendezvous.status()["sibling_bindings"]
+        self.assertEqual(len(siblings), 1)
+        self.assertEqual(siblings[0]["module"], "urn:awp:coordination")
+        self.assertIn("discover_with", siblings[0])

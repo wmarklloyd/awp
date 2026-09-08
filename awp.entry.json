@@ -1,7 +1,7 @@
 {
-  "briefing": "# Capsule governed by the 0.8.0 draft\n\nAWP 0.6.0 is legacy and governs nothing. The project capsule and discovery document now declare the 0.8.0 working draft, add the required discovery: project field, and reference the 0.8 module versions and schemas, so the capsule satisfies the active Capsule schema it previously failed.\n\nNext action: Split the artifact digest manifest out of the capsule, prune unreferenced artifacts, and emit a model-facing entry slice.",
+  "briefing": "# Spec review phase 6: lifecycle guards\n\nA response that asserts progress must state what changed; a sender can withdraw its own obsolete request instead of forging recipient receipts; an intent whose holder is absent and whose base has drifted is reported stale and stops blocking present participants; and each coordination binding names its sibling so discovering one yields both.\n\nNext action: Split COOP-3 scale and presence material out of coordination.md, dedupe the contract text it shares with cooperation-contracts.md, and split the artifact digest manifest out of the capsule.",
   "capsule": "awp.awp.md",
-  "capsule_digest": "sha256:6681d183a7501bbe6bb9a2804b256ce296c69e55d6eb2ef9d08f957ca372c14c",
+  "capsule_digest": "sha256:bd6a8ddf906e0fa04163ab7146dc62a5b96b65db9f4defe7142327fc3c3b149c",
   "entry": {
     "checkpoint": {
       "created_at": "2026-09-07T16:39:00Z",
@@ -186,7 +186,7 @@
         "id": "artifact:cooperation-contracts-unified",
         "integrity": {
           "algorithm": "sha256",
-          "digest": "2bfc7e99bf2ef305b3d50f97e5c2679fb49dbbbbf3322ee1aa8a0750b9e268d3"
+          "digest": "f1ecedc4b9c3ba48d64a1f4f37f03ec0bca6ef9ee791fb6a6e0d8ef302424bf1"
         },
         "locations": [
           {
@@ -202,7 +202,7 @@
         "id": "artifact:coordination-coop-mechanisms",
         "integrity": {
           "algorithm": "sha256",
-          "digest": "f5bb24fb04753608e0dae387c0ffd9f0672e79f56d4cb82247bebf8d0d136c19"
+          "digest": "a9428800a08b611d27864495c7db3e169037218da07ef10776db27a094298c7f"
         },
         "locations": [
           {
@@ -210,7 +210,7 @@
             "path": "spec/drafts/0.8.0/coordination.md"
           }
         ],
-        "name": "Project-scoped COOP coordination mechanisms",
+        "name": "Coordination records and mechanisms",
         "status": "retrievable",
         "verification_state": "current"
       },
@@ -367,20 +367,20 @@
       "type": "resume"
     }
   },
-  "generated_at": "2026-09-08T16:55:33.047899Z",
-  "generated_digest": "sha256:35f8ffba422f9e2bad2697433f58662369ddea13a6dfaff1d613f2a3fd7d5c89",
+  "generated_at": "2026-09-08T17:00:29.389066Z",
+  "generated_digest": "sha256:d54fd54831aef353877902335f1018d562036f7bd45fffdd0a595ca95aaa6aac",
   "metadata": {
     "awp_version": "0.8.0",
-    "checkpoint": "checkpoint:capsule-governed-by-0-8-draft",
-    "generated_at": "2026-09-08T16:52:50.079487Z",
-    "generated_digest": "sha256:35f8ffba422f9e2bad2697433f58662369ddea13a6dfaff1d613f2a3fd7d5c89",
+    "checkpoint": "checkpoint:spec-review-phase-6-lifecycle-guards",
+    "generated_at": "2026-09-08T17:00:29.304335Z",
+    "generated_digest": "sha256:d54fd54831aef353877902335f1018d562036f7bd45fffdd0a595ca95aaa6aac",
     "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
     "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
   },
   "profile": "capsule-entry-slice-v1",
   "selection": {
     "complete": true,
-    "indexed_record_count": 216,
+    "indexed_record_count": 217,
     "missing_record_ids": [],
     "required_artifact_failures": [],
     "selected_record_count": 9,

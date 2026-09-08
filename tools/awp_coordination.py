@@ -887,8 +887,24 @@ class CoordinationLedger:
             overlaps = self._records(
                 connection, workstate_id, "overlap", {"open", "negotiating", "escalated"}
             )
-            blocking = [record for record in overlaps if record["policy_action"] == "block"]
             live_actors = sorted({lease["actor"] for lease in leases})
+            stale_intents = self._stale_intents(intents, leases, live_actors)
+            stale_ids = {item["intent"] for item in stale_intents}
+            for intent in intents:
+                if intent["id"] in stale_ids:
+                    intent["holder_state"] = "stale"
+            # An intent whose holder is gone and whose base has drifted no longer
+            # describes work in progress, so it must not hold scope against a
+            # present participant. The overlap stays visible; it stops blocking.
+            blocking = [
+                record
+                for record in overlaps
+                if record["policy_action"] == "block" and not self._only_stale_subjects(record, stale_ids)
+            ]
+            for record in overlaps:
+                if record["policy_action"] == "block" and self._only_stale_subjects(record, stale_ids):
+                    record["policy_action_effective"] = "warn"
+                    record["downgrade_reason"] = "every other party is a stale intent with no live lease"
             return {
                 "profile": PROFILE,
                 "mode": "ledger-backed-advisory",
@@ -904,8 +920,82 @@ class CoordinationLedger:
                     {lease["actor"] for lease in newly_expired} - set(live_actors)
                 ),
                 "lease_enforcement": "advisory",
+                "stale_intents": stale_intents,
                 "advisory_status": "block" if blocking else ("warn" if overlaps else "clear"),
             }
+
+    STALE_INTENT_COMMITS = 5
+
+    def _project_root(self) -> Path | None:
+        """Walk up from the ledger to the working tree that contains it.
+
+        The ledger normally lives under the Git common directory, but its path can
+        be overridden, so this is best effort: when no working tree is found the
+        caller simply performs no staleness detection, which downgrades nothing.
+        """
+        cached = getattr(self, "_cached_project_root", False)
+        if cached is not False:
+            return cached
+        root = None
+        for candidate in [self.path, *self.path.parents]:
+            if (candidate / ".git").exists() and candidate.is_dir():
+                root = candidate
+                break
+        self._cached_project_root = root
+        return root
+
+    def _stale_intents(self, intents: list[dict], leases: list[dict], live_actors: list[str]) -> list[dict]:
+        """Intents whose holder is not present and whose base revision has drifted.
+
+        A stale intent is still a real record and is still reported; it simply
+        stops counting as a blocking party, because an absent participant holding
+        scope on a base that HEAD has moved past is indistinguishable from
+        abandoned work and blocks everyone else indefinitely.
+        """
+        held = {intent["lease"] for intent in intents if intent.get("lease")}
+        live_leases = {lease["id"] for lease in leases if lease["id"] in held}
+        project = self._project_root()
+        if project is None:
+            return []
+        try:
+            head = f"git:{git_value(project, 'rev-parse', 'HEAD')}"
+            behind = {}
+            for intent in intents:
+                base = (intent.get("base") or {}).get("revision")
+                if not base or not head or base == head:
+                    continue
+                count = git_value(project, "rev-list", "--count", f"{base.removeprefix('git:')}..HEAD")
+                behind[intent["id"]] = int(count)
+        except (CoordinationError, OSError, ValueError):
+            return []
+        result = []
+        for intent in intents:
+            distance = behind.get(intent["id"])
+            if distance is None or distance < self.STALE_INTENT_COMMITS:
+                continue
+            if intent.get("lease") in live_leases or intent.get("created_by") in live_actors:
+                continue
+            result.append(
+                {
+                    "intent": intent["id"],
+                    "created_by": intent.get("created_by"),
+                    "base_revision": (intent.get("base") or {}).get("revision"),
+                    "commits_behind": distance,
+                    "holder_present": False,
+                    "reason": "base revision drifted and no live lease or participant holds it",
+                }
+            )
+        return result
+
+    @staticmethod
+    def _only_stale_subjects(overlap: dict, stale_ids: set[str]) -> bool:
+        parties = {
+            subject.split("@", 1)[0]
+            for subject in overlap.get("subjects", [])
+        }
+        owners = set(overlap.get("intents", []) or [])
+        candidates = owners or parties
+        return bool(candidates) and candidates <= stale_ids
 
     def interact_overlap(
         self,

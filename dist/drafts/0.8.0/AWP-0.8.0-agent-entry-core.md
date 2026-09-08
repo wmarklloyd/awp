@@ -3,7 +3,7 @@
 **Status:** Generated, non-normative bounded-context entry artifact  
 **Profile:** `agent-entry-core-v2`  
 **Source bundle:** `dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md`  
-**Source bundle SHA-256:** `cf1446a72cf83f2ff4e90fb1fc3b5d5ed0cfb088ea218e3de68e7c0cf861f837`
+**Source bundle SHA-256:** `746434c66814120ad8fb6737f9893be0c2d6237b0677b32d0262428b8b3ea4fe`
 
 This profile supports safe orientation, not complete interpretation. Its source bundle governs if any detail conflicts. Verify the digest before relying on this file.
 
@@ -60,7 +60,7 @@ Schemas on demand (digest in the route output):
 
 Coordination binding, COOP contract, leases, intents, or integration work.
 
-Read first: `python tools/awp_spec_entry.py --route coordination --statements` (249 statements, 101632 bytes).
+Read first: `python tools/awp_spec_entry.py --route coordination --statements` (250 statements, 102856 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -96,7 +96,7 @@ Schemas on demand (digest in the route output):
 
 Silo identity, hierarchy, pinned bases, governance, and adoption; expand coordination/security sources when those mechanisms are used.
 
-Read first: `python tools/awp_spec_entry.py --route silos --statements` (321 statements, 128868 bytes).
+Read first: `python tools/awp_spec_entry.py --route silos --statements` (322 statements, 130092 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -205,6 +205,6 @@ Schemas on demand (digest in the route output):
     }
   },
   "source_bundle": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
-  "source_bundle_sha256": "cf1446a72cf83f2ff4e90fb1fc3b5d5ed0cfb088ea218e3de68e7c0cf861f837"
+  "source_bundle_sha256": "746434c66814120ad8fb6737f9893be0c2d6237b0677b32d0262428b8b3ea4fe"
 }
 ```

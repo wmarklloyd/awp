@@ -346,6 +346,29 @@ class Rendezvous:
             "git_ref": self.git_ref_doorbell.publish(receipt["event_id"], retain_event_ids=recent),
         }
 
+    def _sibling_bindings(self) -> list[dict]:
+        """Name the COOP-1 coordination ledger alongside this COOP-2 rendezvous.
+
+        The two live in different places (the coordination ledger under the Git
+        common directory, this rendezvous under .awp-runtime), so an agent that
+        discovers one has no way to find the other. Each now names its sibling.
+        """
+        try:
+            from tools.awp_coordination import default_ledger
+
+            path = default_ledger(self.project)
+        except Exception:
+            return []
+        return [
+            {
+                "module": "urn:awp:coordination",
+                "role": "COOP-1 intents, scopes, overlaps, and participant leases",
+                "path": str(path),
+                "state": "present" if Path(path).is_file() else "absent",
+                "discover_with": "python tools/awp_coordination.py status",
+            }
+        ]
+
     def heartbeat(self, actor: str, profile: str) -> dict:
         """Publish this actor's watcher heartbeat (called by watchers on every poll)."""
         frontier = self.ledger.refresh(self.workstate_id)["frontier"] if not getattr(self.ledger, "read_only", False) else []
@@ -417,6 +440,7 @@ class Rendezvous:
             "doorbell": doorbell,
             "git_ref_doorbell": self.git_ref_doorbell.status(),
             "heartbeat": {"profile": HEARTBEAT_PROFILE, "ttl_seconds": HEARTBEAT_TTL_SECONDS, "directory": str(self.heartbeats.directory)},
+            "sibling_bindings": self._sibling_bindings(),
             "participant_watchers": watchers,
             "signal_reach": matrix,
             "limitations": [
@@ -512,6 +536,26 @@ class Rendezvous:
         receipt = self._append(actor, "coop2.interaction.refused", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": self.ledger.refresh(self.workstate_id)["frontier"], "disposition": "refused", "reason": reason})
         return {"interaction_id": interaction_id, "publication": "confirmed", "receipt": receipt, "doorbell": self._signal(receipt, interaction_id, "coop2.interaction.refused")}
 
+    def withdraw(self, actor: str, interaction_id: str, reason: str) -> dict:
+        """Let the sender close its own interaction.
+
+        Closing was recipient-only: observe, accept, respond. A sender whose
+        question is obsolete had no way to retire it, and the only workaround was
+        to publish receipts as the recipient, which forges the very evidence the
+        delivery lifecycle exists to make trustworthy.
+        """
+        request = self._request_event(interaction_id)["payload"]
+        if request["sender"] != actor:
+            raise CoordinationError("only the sender may withdraw an interaction")
+        events = self._interaction_events(interaction_id)
+        if any(event["kind"] == "coop2.interaction.responded" for event in events):
+            raise CoordinationError("interaction already has a response")
+        prior = next((event for event in events if event["kind"] == "coop2.interaction.withdrawn"), None)
+        if prior:
+            return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": prior["event_id"]}}
+        receipt = self._append(actor, "coop2.interaction.withdrawn", {"interaction_id": interaction_id, "sender": actor, "recipient": request["recipient"], "reason": reason, "status": "closed"})
+        return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "doorbell": self._signal(receipt, interaction_id, "coop2.interaction.withdrawn")}
+
     @staticmethod
     def _lifecycle(request_event: dict, interaction_events: list[dict], delivery: str) -> dict:
         """Derive the lifecycle state on read.  Windows are declared in the policy; this
@@ -540,7 +584,11 @@ class Rendezvous:
         return {"lifecycle_state": state, "timed_out": False, "deadline": deadline.replace(microsecond=0).isoformat().replace("+00:00", "Z"), "seconds_remaining": remaining}
 
     def inbox(self, actor: str) -> dict:
-        answered = {event["payload"]["interaction_id"] for event in self._events() if event["kind"] == "coop2.interaction.responded"}
+        answered = {
+            event["payload"]["interaction_id"]
+            for event in self._events()
+            if event["kind"] in {"coop2.interaction.responded", "coop2.interaction.withdrawn"}
+        }
         requests = []
         for event in self._events():
             if event["kind"] != "coop2.interaction.requested" or event["payload"]["recipient"] != actor or event["payload"]["interaction_id"] in answered:
@@ -551,7 +599,28 @@ class Rendezvous:
         responses = [event["payload"] | {"event_id": event["event_id"]} for event in self._events() if event["kind"] == "coop2.interaction.responded" and event["payload"]["recipient"] == actor]
         return {"binding": self.status(), "inbox": requests, "responses": responses}
 
+    MIN_SUBSTANTIVE_RESPONSE = 40
+
+    @classmethod
+    def _validate_response(cls, outcome: str, response: str) -> None:
+        """A response closes an interaction, so it must carry something.
+
+        The interaction policy already declares
+        progress_requirement=new_artifact_evidence_decision_or_disagreement;
+        nothing enforced it, so a one-word fragment closed an interaction exactly
+        like a real answer. Outcomes that assert progress must show some.
+        """
+        text = (response or "").strip()
+        if not text:
+            raise CoordinationError("a response must not be empty")
+        if outcome in {"accepted", "revised"} and len(text) < cls.MIN_SUBSTANTIVE_RESPONSE:
+            raise CoordinationError(
+                f"outcome '{outcome}' asserts progress, so its response must state what changed "
+                f"(at least {cls.MIN_SUBSTANTIVE_RESPONSE} characters, or use 'inconclusive')"
+            )
+
     def respond(self, actor: str, interaction_id: str, outcome: str, response: str) -> dict:
+        self._validate_response(outcome, response)
         request = self._request_event(interaction_id)["payload"]
         if request["recipient"] != actor:
             raise CoordinationError("only the named recipient may respond")
@@ -581,6 +650,7 @@ def parser() -> argparse.ArgumentParser:
     inbox = commands.add_parser("inbox"); inbox.add_argument("--actor", required=True)
     observe = commands.add_parser("observe"); observe.add_argument("--actor", required=True); observe.add_argument("--interaction", required=True)
     accept = commands.add_parser("accept"); accept.add_argument("--actor", required=True); accept.add_argument("--interaction", required=True); accept.add_argument("--response-window-seconds", type=int, default=600)
+    withdraw = commands.add_parser("withdraw"); withdraw.add_argument("--actor", required=True); withdraw.add_argument("--interaction", required=True); withdraw.add_argument("--reason", required=True)
     refuse = commands.add_parser("refuse"); refuse.add_argument("--actor", required=True); refuse.add_argument("--interaction", required=True); refuse.add_argument("--reason", required=True)
     respond = commands.add_parser("respond"); respond.add_argument("--actor", required=True); respond.add_argument("--interaction", required=True); respond.add_argument("--outcome", choices=["accepted", "revised", "inconclusive", "declined", "timed_out", "escalated"], required=True); respond.add_argument("--response", required=True)
     return result
@@ -600,6 +670,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "observe": result = rendezvous.observe(args.actor, args.interaction)
         elif args.command == "accept": result = rendezvous.accept(args.actor, args.interaction, args.response_window_seconds)
         elif args.command == "refuse": result = rendezvous.refuse(args.actor, args.interaction, args.reason)
+        elif args.command == "withdraw": result = rendezvous.withdraw(args.actor, args.interaction, args.reason)
         else: result = rendezvous.respond(args.actor, args.interaction, args.outcome, args.response)
         print(json.dumps(result, indent=2, sort_keys=True)); return 0
     except (CoordinationError, OSError, ValueError) as error:
