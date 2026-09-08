@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import sqlite3
@@ -251,3 +252,84 @@ class ReentryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class EntrySliceTests(unittest.TestCase):
+    """The generated entry slice is a convenience bound to a capsule revision."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.module = load_reentry()
+        spec = importlib.util.spec_from_file_location(
+            "awp_workstate_slice_test", ROOT / "tools" / "awp_workstate.py"
+        )
+        workstate = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(ROOT))
+        try:
+            spec.loader.exec_module(workstate)
+        finally:
+            sys.path.pop(0)
+        cls.workstate = workstate
+
+    def project(self) -> tuple[tempfile.TemporaryDirectory, Path, Path]:
+        temporary = tempfile.TemporaryDirectory()
+        project = Path(temporary.name)
+        capsule = project / "awp.awp.md"
+        shutil.copy2(ROOT / "awp.awp.md", capsule)
+        return temporary, project, capsule
+
+    def test_slice_is_a_strict_subset_bound_to_the_capsule_digest(self) -> None:
+        temporary, project, capsule = self.project()
+        self.addCleanup(temporary.cleanup)
+        written = self.workstate.write_entry_slice(project, capsule)
+        document = json.loads((project / "awp.entry.json").read_text(encoding="utf-8"))
+        full = self.module.build_reentry_view(capsule)
+        self.assertEqual(document["capsule_digest"], written["capsule_digest"])
+        self.assertEqual(document["briefing"], full["briefing"])
+        self.assertEqual(document["entry"], full["entry"])
+        self.assertLess((project / "awp.entry.json").stat().st_size, capsule.stat().st_size // 4)
+
+    def test_current_slice_is_accepted(self) -> None:
+        temporary, project, capsule = self.project()
+        self.addCleanup(temporary.cleanup)
+        self.workstate.write_entry_slice(project, capsule)
+        result = self.module.read_entry_slice(project, capsule)
+        self.assertEqual(result["state"], "current")
+        self.assertEqual(result["entry"], self.module.build_reentry_view(capsule)["entry"])
+
+    def test_slice_for_another_capsule_revision_is_refused(self) -> None:
+        temporary, project, capsule = self.project()
+        self.addCleanup(temporary.cleanup)
+        self.workstate.write_entry_slice(project, capsule)
+        capsule.write_text(capsule.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+        result = self.module.read_entry_slice(project, capsule)
+        self.assertEqual(result["state"], "stale")
+        self.assertNotEqual(result["slice_capsule_digest"], result["capsule_digest"])
+
+    def test_absent_and_unreadable_slices_are_reported_not_guessed(self) -> None:
+        temporary, project, capsule = self.project()
+        self.addCleanup(temporary.cleanup)
+        self.assertIsNone(self.module.read_entry_slice(project, capsule))
+        (project / "awp.entry.json").write_text("{not json", encoding="utf-8")
+        self.assertEqual(self.module.read_entry_slice(project, capsule)["state"], "unusable")
+
+    def test_checkpoint_refreshes_the_slice(self) -> None:
+        temporary, project, capsule = self.project()
+        self.addCleanup(temporary.cleanup)
+        self.workstate.write_entry_slice(project, capsule)
+        before = json.loads((project / "awp.entry.json").read_text(encoding="utf-8"))["capsule_digest"]
+        request = self.workstate.fill_preconditions_from_current(
+            capsule,
+            {
+                "request_id": "request:slice-refresh",
+                "checkpoint": "checkpoint:slice-refresh",
+                "summary": "Refresh the slice.",
+                "next_action": "None.",
+            },
+        )
+        receipt = self.workstate.checkpoint(project, capsule, request)
+        self.assertEqual(receipt["status"], "complete")
+        after = json.loads((project / "awp.entry.json").read_text(encoding="utf-8"))["capsule_digest"]
+        self.assertNotEqual(before, after)
+        self.assertEqual(after, receipt["entry_slice"]["capsule_digest"])
+        self.assertEqual(self.module.read_entry_slice(project, capsule)["state"], "current")

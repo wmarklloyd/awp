@@ -36,7 +36,13 @@ from tools.awp_coordination import (
     generated_region_digest,
     operational_context,
 )
-from tools.awp_reentry import GENERATED, _artifact_projection, _record_index, _sections
+from tools.awp_reentry import (
+    GENERATED,
+    _artifact_projection,
+    _record_index,
+    _sections,
+    build_reentry_view,
+)
 
 
 PROFILE = "local-workstate-projector-v1"
@@ -409,10 +415,44 @@ def fill_preconditions_from_current(capsule: Path, request: dict[str, Any]) -> d
     return filled
 
 
+ENTRY_SLICE = "awp.entry.json"
+ENTRY_SLICE_PROFILE = "capsule-entry-slice-v1"
+
+
+def entry_slice(capsule: Path) -> dict[str, Any]:
+    """The model-facing subset of a validated capsule.
+
+    Selective re-entry already proves that a session needs a handful of records
+    out of hundreds.  This writes that subset beside the capsule so a reader
+    does not recompute it, and binds it to the capsule's whole-artifact digest
+    so a stale slice is detectable rather than quietly authoritative.
+    """
+    view = build_reentry_view(capsule)
+    return {
+        "profile": ENTRY_SLICE_PROFILE,
+        "capsule": capsule.name,
+        "capsule_digest": capsule_artifact_digest(capsule),
+        "generated_digest": view["integrity"].get("computed_digest"),
+        "generated_at": utc_timestamp(),
+        "metadata": view["metadata"],
+        "briefing": view["briefing"],
+        "selection": view["selection"],
+        "entry": view.get("entry", {}),
+    }
+
+
+def write_entry_slice(project: Path, capsule: Path) -> dict[str, Any]:
+    document = entry_slice(capsule)
+    target = project / ENTRY_SLICE
+    _atomic_write(target, (json.dumps(document, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode("utf-8"))
+    return {"path": target.relative_to(project).as_posix(), "bytes": target.stat().st_size, "capsule_digest": document["capsule_digest"]}
+
+
 def checkpoint(project: Path, capsule: Path, request: dict[str, Any]) -> dict[str, Any]:
     with _capsule_lock(project):
         proposed, receipt = _proposal(capsule, request)
         if receipt["status"] == "no_change":
+            receipt["entry_slice"] = write_entry_slice(project, capsule)
             return receipt
         journal_path = _journal_path(project)
         journal_path.parent.mkdir(parents=True, exist_ok=True)
@@ -431,6 +471,7 @@ def checkpoint(project: Path, capsule: Path, request: dict[str, Any]) -> dict[st
         journal_path.unlink(missing_ok=True)
         receipt["status"] = "complete"
         receipt["request_id"] = request.get("request_id")
+        receipt["entry_slice"] = write_entry_slice(project, capsule)
         return receipt
 
 
@@ -587,6 +628,7 @@ def parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("status")
     commands.add_parser("recover")
+    commands.add_parser("entry-slice")
     verify_command = commands.add_parser("verify")
     verify_command.add_argument("--full", action="store_true")
     checkpoint_command = commands.add_parser("checkpoint")
@@ -615,7 +657,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         project = find_project(args.project)
         capsule = args.capsule.resolve() if args.capsule else discover_workstate(project)[1]
-        if args.command == "status":
+        if args.command == "entry-slice":
+            result = write_entry_slice(project, capsule)
+        elif args.command == "status":
             result = status(project, capsule)
         elif args.command == "recover":
             result = recover(project, capsule)

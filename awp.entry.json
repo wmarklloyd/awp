@@ -1,0 +1,389 @@
+{
+  "briefing": "# Capsule governed by the 0.8.0 draft\n\nAWP 0.6.0 is legacy and governs nothing. The project capsule and discovery document now declare the 0.8.0 working draft, add the required discovery: project field, and reference the 0.8 module versions and schemas, so the capsule satisfies the active Capsule schema it previously failed.\n\nNext action: Split the artifact digest manifest out of the capsule, prune unreferenced artifacts, and emit a model-facing entry slice.",
+  "capsule": "awp.awp.md",
+  "capsule_digest": "sha256:6681d183a7501bbe6bb9a2804b256ce296c69e55d6eb2ef9d08f957ca372c14c",
+  "entry": {
+    "checkpoint": {
+      "created_at": "2026-09-07T16:39:00Z",
+      "frontier": [
+        "evt:coop-work-consult-split"
+      ],
+      "id": "checkpoint:silo-profile",
+      "recommended_next_action": {
+        "action": "Review and implement one bounded silo-v1 derivation/adoption binding with dependency, authority, shared-resource, and crash-recovery evidence; the existing COOP-1 completeness work remains open.",
+        "requires_authority": false
+      },
+      "resumption_level": "semantic",
+      "revision": 1,
+      "summary": "Silo specification formulated in the unreleased 0.8.0 draft; normative rules and structural fixtures only. Workstate maintained through the existing local snapshot projector; no complete replay or COOP conformance claim.",
+      "type": "checkpoint"
+    },
+    "handoff": {
+      "authority_ceiling": [
+        "read_only",
+        "local_write"
+      ],
+      "checkpoint": "checkpoint:silo-profile",
+      "completeness": "portable",
+      "dependencies": [
+        {
+          "availability": "retrievable",
+          "ref": "artifact:spec-06"
+        },
+        {
+          "availability": "retrievable",
+          "ref": "artifact:spec-08-unified-coop"
+        },
+        {
+          "availability": "retrievable",
+          "ref": "artifact:cooperation-contracts-unified"
+        },
+        {
+          "availability": "retrievable",
+          "ref": "artifact:coordination-coop-mechanisms"
+        },
+        {
+          "availability": "retrievable",
+          "ref": "artifact:deterministic-projector"
+        },
+        {
+          "availability": "retrievable",
+          "ref": "artifact:participation-adapter-coop"
+        },
+        {
+          "availability": "retrievable",
+          "ref": "artifact:participation-adapter-tests"
+        },
+        {
+          "availability": "retrievable",
+          "ref": "artifact:conformance-unified-coop"
+        },
+        {
+          "availability": "retrievable",
+          "ref": "artifact:silo-profile"
+        },
+        {
+          "availability": "retrievable",
+          "ref": "artifact:silo-schema"
+        },
+        {
+          "availability": "retrievable",
+          "ref": "artifact:silo-fixtures"
+        }
+      ],
+      "do_not_assume": [
+        "The AWP 0.8 draft retains a separate Coordination C0-C3 ladder",
+        "The current local tools are a complete COOP-1 binding",
+        "COOP-1 provides COOP-2 semantic awareness or integration assurance, or COOP-3 authentication, fencing, or scale",
+        "Consultation authorizes guarded mutation",
+        "Imported authority grants external side effects",
+        "The silo specification is an implemented runtime or an operational conformance claim",
+        "Silo adoption automatically approves feature implementation or enables agent communication"
+      ],
+      "id": "handoff:cooperation-contracts",
+      "intended_audience": [
+        "human",
+        "agent"
+      ],
+      "module": "urn:awp:handoff",
+      "requested_action": "Review and implement one bounded silo-v1 derivation/adoption binding with dependency, authority, shared-resource, and crash-recovery evidence; the existing COOP-1 completeness work remains open.",
+      "resumption_level": "semantic",
+      "revision": 1,
+      "type": "handoff"
+    },
+    "read_first": [
+      {
+        "id": "goal:awp-design",
+        "statement": "Define a portable workstate format for LLM session continuation and multi-agent code coordination.",
+        "status": "active",
+        "type": "goal"
+      },
+      {
+        "id": "constraint:no-private-cot",
+        "statement": "Portable state must not require private chain-of-thought or hidden runtime state.",
+        "status": "active",
+        "strength": "required",
+        "type": "constraint"
+      },
+      {
+        "choice": "Keep released artifacts and identifiers immutable; develop normative changes under spec/drafts; use minor versions for incompatible 0.x changes; publish errata or new versions rather than moving tags.",
+        "id": "decision:release-discipline",
+        "question": "How should AWP distinguish released protocol semantics from development?",
+        "status": "accepted",
+        "type": "decision"
+      },
+      {
+        "choice": "Use no named contract for portable collaboration; COOP-1 for small-group conflict reduction, COOP-2 for semantic and integration coordination, and COOP-3 for protected scalable coordination. Consultation is an independently enabled optional subprotocol.",
+        "id": "decision:unified-coop-ladder",
+        "question": "How should AWP express cooperation and coordination conformance?",
+        "status": "accepted",
+        "supersedes": "decision:unified-coop-ladder",
+        "type": "decision"
+      },
+      {
+        "epistemic_status": "observed",
+        "evidence": [
+          "artifact:cooperation-contracts-unified",
+          "artifact:coordination-coop-mechanisms",
+          "artifact:conformance-unified-coop"
+        ],
+        "id": "claim:unified-coop-ladder",
+        "statement": "The AWP 0.8 draft uses a COOP-1/2/3 work-coordination ladder: COOP-1 reduces collisions through deterministic guarded work and recovery; COOP-2 adds semantic awareness and integration assurance; COOP-3 adds protected enforcement and scale. Portable collaboration needs no named contract, and consultation is optional.",
+        "type": "claim"
+      },
+      {
+        "id": "risk:coop1-completeness",
+        "mitigation": "Complete an end-to-end COOP-1 work trial without consultation, then separately implement and test consultation-loop enforcement before claiming that optional subprotocol.",
+        "statement": "The local prototype has guarded work, receipt-backed exit, canonical checkpoint projection, and fresh-entry integrity checks, but does not yet compose every COOP-1 work requirement in one binding or provide independent interoperability evidence. The optional consultation subprotocol has no binding-owned interaction storage, repeat-key deduplication, or loop-budget enforcement.",
+        "status": "active",
+        "type": "risk"
+      },
+      {
+        "id": "task:coop1-conformance",
+        "status": "ready",
+        "title": "Compose and test a complete COOP-1 cooperation binding",
+        "type": "task"
+      },
+      {
+        "choice": "Specify silo-v1 as a Synchronization fork profile in AWP 0.8.0, with immutable single-parent ancestry, explicit base updates and local overrides, separate ownership/approval/publication, isolated resources or common atomic admission, and dependency-complete receipted adoption. Partial adoption does not close a silo; parent closure does not invalidate children. Creating a silo never enables collaboration or spending.",
+        "evidence": [
+          "artifact:silo-consultation-response",
+          "artifact:silo-profile"
+        ],
+        "id": "decision:silo-profile",
+        "question": "How should AWP preserve and accept alternative hierarchical project states?",
+        "revision": 1,
+        "status": "accepted",
+        "type": "decision"
+      },
+      {
+        "id": "risk:silo-implementation-gap",
+        "mitigation": "Implement and exercise the procedural cases in Silo Profile section 9 before claiming operational support.",
+        "revision": 1,
+        "statement": "The new silo profile has structural fixtures but no runtime, cross-workstate dependency-closure evaluator, shared-resource binding, adoption publisher, or independent interoperability evidence.",
+        "status": "active",
+        "type": "risk"
+      }
+    ],
+    "required_artifacts": [
+      {
+        "id": "artifact:spec-08-unified-coop",
+        "integrity": {
+          "algorithm": "sha256",
+          "digest": "73014bb344787090b33feaa89fb54b4ae9ae79532927a4b5742adacffe6e7b97"
+        },
+        "locations": [
+          {
+            "kind": "local",
+            "path": "spec/drafts/0.8.0/index.md"
+          }
+        ],
+        "name": "AWP 0.8.0 project-scoped COOP-1/2/3 working draft",
+        "status": "retrievable",
+        "verification_state": "current"
+      },
+      {
+        "id": "artifact:cooperation-contracts-unified",
+        "integrity": {
+          "algorithm": "sha256",
+          "digest": "2bfc7e99bf2ef305b3d50f97e5c2679fb49dbbbbf3322ee1aa8a0750b9e268d3"
+        },
+        "locations": [
+          {
+            "kind": "local",
+            "path": "spec/drafts/0.8.0/cooperation-contracts.md"
+          }
+        ],
+        "name": "Project-scoped COOP-1/2/3 contracts",
+        "status": "retrievable",
+        "verification_state": "current"
+      },
+      {
+        "id": "artifact:coordination-coop-mechanisms",
+        "integrity": {
+          "algorithm": "sha256",
+          "digest": "f5bb24fb04753608e0dae387c0ffd9f0672e79f56d4cb82247bebf8d0d136c19"
+        },
+        "locations": [
+          {
+            "kind": "local",
+            "path": "spec/drafts/0.8.0/coordination.md"
+          }
+        ],
+        "name": "Project-scoped COOP coordination mechanisms",
+        "status": "retrievable",
+        "verification_state": "current"
+      },
+      {
+        "id": "artifact:deterministic-projector",
+        "integrity": {
+          "algorithm": "sha256",
+          "digest": "5ccd92edc7af3abbba5b875827ea4d93cce17efaa0a89d2cd69a370b823e25f3"
+        },
+        "locations": [
+          {
+            "kind": "local",
+            "path": "tools/awp_projector.py"
+          }
+        ],
+        "name": "Deterministic COOP work projector component",
+        "status": "retrievable",
+        "verification_state": "current"
+      },
+      {
+        "id": "artifact:participation-adapter-coop",
+        "integrity": {
+          "algorithm": "sha256",
+          "digest": "7a174b2fa4b260b79e502bb2d0f0a2e71e2b965cfe88ea62679adf201a55a0cf"
+        },
+        "locations": [
+          {
+            "kind": "local",
+            "path": "tools/awp_participation.py"
+          }
+        ],
+        "name": "COOP work-participation reference adapter",
+        "status": "retrievable",
+        "verification_state": "current"
+      },
+      {
+        "id": "artifact:participation-adapter-tests",
+        "integrity": {
+          "algorithm": "sha256",
+          "digest": "ef971388749ea252029b75ab03e625144acede4abee55ea6836365b6c50e2088"
+        },
+        "locations": [
+          {
+            "kind": "local",
+            "path": "tests/test_participation_adapter.py"
+          }
+        ],
+        "name": "Work-participation adapter executable tests",
+        "status": "retrievable",
+        "verification_state": "current"
+      },
+      {
+        "id": "artifact:conformance-unified-coop",
+        "integrity": {
+          "algorithm": "sha256",
+          "digest": "d0d1f5679efad457ff650a71aaa1065fa92375567c40e69fe6b807475e0c5661"
+        },
+        "locations": [
+          {
+            "kind": "local",
+            "path": "conformance/matrix.md"
+          }
+        ],
+        "name": "COOP-1/2/3 conformance evidence matrix",
+        "status": "retrievable",
+        "verification_state": "current"
+      },
+      {
+        "id": "artifact:silo-profile",
+        "integrity": {
+          "algorithm": "sha256",
+          "digest": "c7c349c00e990b478dd52379dd335835606089f8c580e134295323cda27fff08"
+        },
+        "locations": [
+          {
+            "kind": "local",
+            "path": "spec/drafts/0.8.0/silos.md"
+          }
+        ],
+        "name": "AWP silo-v1 normative draft profile",
+        "status": "retrievable",
+        "verification_state": "current"
+      },
+      {
+        "id": "artifact:silo-schema",
+        "integrity": {
+          "algorithm": "sha256",
+          "digest": "bc736a67a6c57ddd53e01168de1cbc193323290f65f50bfbeac675f3c4a88b5c"
+        },
+        "locations": [
+          {
+            "kind": "local",
+            "path": "schemas/awp-silo-0.1.schema.json"
+          }
+        ],
+        "name": "Silo profile structural schema",
+        "status": "retrievable",
+        "verification_state": "current"
+      },
+      {
+        "id": "artifact:silo-fixtures",
+        "integrity": {
+          "algorithm": "sha256",
+          "digest": "3b26331dad3d2770725eaf0da9bba4deaf8725a228a328752be59d9c97b38190"
+        },
+        "locations": [
+          {
+            "kind": "local",
+            "path": "conformance/expected-diagnostics/silo-0.1.json"
+          }
+        ],
+        "name": "Seven silo structural fixture expectations",
+        "status": "retrievable",
+        "verification_state": "current"
+      }
+    ],
+    "resume": {
+      "authority_ceiling": [
+        "read_only",
+        "local_write"
+      ],
+      "checkpoint": "checkpoint:silo-profile",
+      "freshness_policy": "verify_before_continue",
+      "handoff": "handoff:cooperation-contracts",
+      "id": "resume:awp-project",
+      "mode": "project_reentry",
+      "module": "urn:awp:handoff",
+      "on_stale": "refresh_workstate",
+      "read_first": [
+        "goal:awp-design",
+        "constraint:no-private-cot",
+        "decision:release-discipline",
+        "decision:unified-coop-ladder",
+        "claim:unified-coop-ladder",
+        "risk:coop1-completeness",
+        "task:coop1-conformance",
+        "decision:silo-profile",
+        "risk:silo-implementation-gap"
+      ],
+      "recommended_next_action": "Review and implement one bounded silo-v1 derivation/adoption binding with dependency, authority, shared-resource, and crash-recovery evidence; the existing COOP-1 completeness work remains open.",
+      "required_artifacts": [
+        "artifact:spec-08-unified-coop",
+        "artifact:cooperation-contracts-unified",
+        "artifact:coordination-coop-mechanisms",
+        "artifact:deterministic-projector",
+        "artifact:participation-adapter-coop",
+        "artifact:participation-adapter-tests",
+        "artifact:conformance-unified-coop",
+        "artifact:silo-profile",
+        "artifact:silo-schema",
+        "artifact:silo-fixtures"
+      ],
+      "revision": 1,
+      "type": "resume"
+    }
+  },
+  "generated_at": "2026-09-08T16:55:33.047899Z",
+  "generated_digest": "sha256:35f8ffba422f9e2bad2697433f58662369ddea13a6dfaff1d613f2a3fd7d5c89",
+  "metadata": {
+    "awp_version": "0.8.0",
+    "checkpoint": "checkpoint:capsule-governed-by-0-8-draft",
+    "generated_at": "2026-09-08T16:52:50.079487Z",
+    "generated_digest": "sha256:35f8ffba422f9e2bad2697433f58662369ddea13a6dfaff1d613f2a3fd7d5c89",
+    "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
+    "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
+  },
+  "profile": "capsule-entry-slice-v1",
+  "selection": {
+    "complete": true,
+    "indexed_record_count": 216,
+    "missing_record_ids": [],
+    "required_artifact_failures": [],
+    "selected_record_count": 9,
+    "state": "complete"
+  }
+}

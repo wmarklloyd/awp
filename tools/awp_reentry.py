@@ -18,7 +18,12 @@ from typing import Any, Iterable, Sequence
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from tools.awp_coordination import CoordinationError, capsule_integrity, find_project
+from tools.awp_coordination import (
+    CoordinationError,
+    capsule_artifact_digest,
+    capsule_integrity,
+    find_project,
+)
 
 
 PROFILE = "selective-reentry-v1"
@@ -364,6 +369,34 @@ def coordination_entry_view(project: Path, actor: str, register_observation: str
         }
 
 
+ENTRY_SLICE = "awp.entry.json"
+
+
+def read_entry_slice(project: Path, capsule: Path) -> dict[str, Any] | None:
+    """Return a generated entry slice only when it provably describes this capsule.
+
+    The slice is a convenience, never an authority: it is accepted only if its
+    recorded capsule digest matches the capsule on disk right now. A missing,
+    unreadable, or stale slice returns None so the caller recomputes and says so.
+    """
+    path = project / ENTRY_SLICE
+    if not path.is_file():
+        return None
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return {"state": "unusable", "reason": str(error)}
+    actual = capsule_artifact_digest(capsule)
+    if document.get("capsule_digest") != actual:
+        return {
+            "state": "stale",
+            "reason": "slice was generated for a different capsule revision",
+            "slice_capsule_digest": document.get("capsule_digest"),
+            "capsule_digest": actual,
+        }
+    return {"state": "current", **document}
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", type=Path, default=Path.cwd())
@@ -376,6 +409,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="also publish this actor's observation mode to the rendezvous (explicit; the entry check itself stays read-only)",
     )
     parser.add_argument("--max-output-bytes", type=int, default=24_000)
+    parser.add_argument(
+        "--slice",
+        action="store_true",
+        help="read the generated awp.entry.json fast path; falls back to full computation and says so when it is missing or stale",
+    )
     return parser
 
 
@@ -388,7 +426,40 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             discovery = json.loads((project / ".awp.json").read_text(encoding="utf-8"))
             capsule = (project / discovery["current_workstate"]).resolve()
+        slice_state = None
+        if getattr(args, "slice", False) and not args.brief_only:
+            candidate = read_entry_slice(project, capsule)
+            if candidate is None:
+                slice_state = {"state": "absent", "reason": f"no {ENTRY_SLICE} beside the capsule"}
+            elif candidate.get("state") == "current":
+                view = {
+                    "profile": PROFILE,
+                    "source": {"path": capsule.as_posix(), "bytes": capsule.stat().st_size},
+                    "integrity": {"state": "current", "computed_digest": candidate.get("generated_digest")},
+                    "metadata": candidate["metadata"],
+                    "briefing": candidate["briefing"],
+                    "selection": candidate["selection"],
+                    "entry": candidate["entry"],
+                    "slice": {"state": "current", "generated_at": candidate.get("generated_at"), "capsule_digest": candidate["capsule_digest"]},
+                }
+                if not args.brief_only:
+                    view["coordination"] = (
+                        coordination_entry_view(project, args.actor, args.register_observation)
+                        if args.actor
+                        else {
+                            "state": "skipped",
+                            "diagnostic": "AWP-COORD-ACTOR-REQUIRED",
+                            "reason": "entry recovery requires the host-bound actor identity",
+                        }
+                    )
+                rendered, complete = bounded_json(view, args.max_output_bytes)
+                print(rendered, end="")
+                return 0 if complete else 2
+            else:
+                slice_state = candidate
         view = build_reentry_view(capsule, brief_only=args.brief_only)
+        if slice_state is not None:
+            view["slice"] = slice_state
         if not args.brief_only:
             view["coordination"] = (
                 coordination_entry_view(project, args.actor, args.register_observation)
