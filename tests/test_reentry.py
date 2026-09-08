@@ -211,6 +211,15 @@ class ReentryTests(unittest.TestCase):
         self.assertFalse(view["read_verified"])
         self.assertEqual(view["diagnostic"], "AWP-COORD-LEDGER-UNAVAILABLE")
 
+    def test_coordination_entry_view_catches_package_coordination_error(self) -> None:
+        from tools.awp_coordination import CoordinationError as PackageCoordinationError
+
+        with patch("tools.awp_coop2.Rendezvous", side_effect=PackageCoordinationError("git unavailable")):
+            view = self.module.coordination_entry_view(ROOT, "actor:codex")
+        self.assertEqual(view["state"], "unavailable")
+        self.assertFalse(view["read_verified"])
+        self.assertEqual(view["diagnostic"], "AWP-COORD-LEDGER-UNAVAILABLE")
+
 
 if __name__ == "__main__":
     unittest.main()

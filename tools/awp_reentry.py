@@ -16,7 +16,9 @@ import sys
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
-from awp_coordination import CoordinationError, capsule_integrity, find_project
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tools.awp_coordination import CoordinationError, capsule_integrity, find_project
 
 
 PROFILE = "selective-reentry-v1"
@@ -298,7 +300,7 @@ def coordination_entry_view(project: Path, actor: str) -> dict[str, Any]:
             "actor": actor,
             "binding": {
                 key: binding[key]
-                for key in ("binding_id", "profile", "project_id", "workstate_id", "reach", "delivery_mode")
+                for key in ("binding_id", "profile", "project_id", "workstate_id", "reach", "delivery_mode", "operational_mode", "read_only_reason")
                 if binding.get(key) is not None
             },
             "frontier": observation.get("frontier", []),

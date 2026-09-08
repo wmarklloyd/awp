@@ -10,7 +10,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sqlite3
 import os
+import subprocess
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -21,6 +23,7 @@ from .awp_coordination import CoordinationError, CoordinationLedger, discover_wo
 
 PROFILE = "local-coop2-rendezvous-v1"
 DOORBELL_PROFILE = "local-filesystem-doorbell-v1"
+GIT_REF_DOORBELL_PROFILE = "local-git-ref-doorbell-v1"
 
 
 def now() -> str:
@@ -104,13 +107,63 @@ class LocalDoorbell:
         return descriptor | {"state": "current", "signal": signal}
 
 
+class GitRefDoorbell:
+    """Local Git-ref wake hint correlated to an already-published ledger event."""
+
+    prefix = "refs/awp/signal/"
+
+    def __init__(self, project: Path) -> None:
+        self.project = project
+
+    @classmethod
+    def ref_name(cls, event_id: str) -> str:
+        # AWP event IDs contain ':', which Git ref components prohibit.
+        return cls.prefix + event_id.replace(":", "-")
+
+    def publish(self, event_id: str) -> dict:
+        ref = self.ref_name(event_id)
+        result = subprocess.run(
+            ["git", "update-ref", ref, "HEAD"],
+            cwd=self.project,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        descriptor = {
+            "profile": GIT_REF_DOORBELL_PROFILE,
+            "ref": ref,
+            "event_id": event_id,
+            "content": "event identifier in ref name; ref target is current HEAD",
+            "scope": "local-only; no remote push is attempted",
+        }
+        if result.returncode:
+            return descriptor | {"state": "unavailable", "reason": result.stderr.strip()}
+        return descriptor | {"state": "current"}
+
+    def status(self) -> dict:
+        return {
+            "profile": GIT_REF_DOORBELL_PROFILE,
+            "namespace": self.prefix,
+            "scope": "local-only; no remote push is attempted",
+        }
+
+
 class Rendezvous:
     def __init__(self, project: Path, ledger_path: Path | None = None) -> None:
         self.project = find_project(project)
         self.workstate_id, _ = discover_workstate(self.project)
         self.project_id = stable_project_id(self.project)
-        self.ledger = CoordinationLedger(ledger_path or self.project / ".awp-runtime" / "coop2-rendezvous.sqlite3")
+        selected_ledger = ledger_path or self.project / ".awp-runtime" / "coop2-rendezvous.sqlite3"
+        try:
+            self.ledger = CoordinationLedger(selected_ledger)
+        except (OSError, sqlite3.Error) as error:
+            # Entry recovery must still read a durable store when the host
+            # cannot acquire SQLite's normal lock/journal sidecars.  The
+            # fallback is deliberately read-only: writes stay fail-closed.
+            self.ledger = CoordinationLedger(selected_ledger, read_only=True)
+            self.ledger.fallback_reason = str(error)
         self.doorbell = LocalDoorbell(self.project)
+        self.git_ref_doorbell = GitRefDoorbell(self.project)
 
     def _events(self) -> list[dict]:
         return self.ledger.export_events(self.workstate_id)
@@ -141,7 +194,7 @@ class Rendezvous:
             return {"event_id": event["event_id"], "frontier": self.ledger._frontier(connection, self.workstate_id)}
 
     def _signal(self, receipt: dict, interaction_id: str, kind: str) -> dict:
-        return self.doorbell.publish(
+        filesystem = self.doorbell.publish(
             project_id=self.project_id,
             workstate_id=self.workstate_id,
             binding_id=self.ledger.binding_id(),
@@ -150,10 +203,22 @@ class Rendezvous:
             interaction_id=interaction_id,
             kind=kind,
         )
+        return {
+            "filesystem": filesystem,
+            "git_ref": self.git_ref_doorbell.publish(receipt["event_id"]),
+        }
 
     def status(self) -> dict:
         reach, evidence = self._reach()
-        return {"profile": PROFILE, "project_id": self.project_id, "workstate_id": self.workstate_id, "binding_id": self.ledger.binding_id(), "reach": reach, "shared_reach_evidence": evidence, "delivery_mode": "signalled-poll", "doorbell": self.doorbell.status(project_id=self.project_id, workstate_id=self.workstate_id, binding_id=self.ledger.binding_id()), "limitations": ["experimental pilot", "a host-side shared-filesystem watcher is required to wake a session", "watcher liveness is not verified by this binding", "no semantic analyzer", "no authentication", "budget declaration is recorded but not host-enforced"]}
+        result = {"profile": PROFILE, "project_id": self.project_id, "workstate_id": self.workstate_id, "binding_id": self.ledger.binding_id(), "reach": reach, "delivery_mode": "signalled-poll", "doorbell": self.doorbell.status(project_id=self.project_id, workstate_id=self.workstate_id, binding_id=self.ledger.binding_id()), "git_ref_doorbell": self.git_ref_doorbell.status(), "limitations": ["experimental pilot", "a host-side shared-filesystem watcher is required to wake a session", "watcher liveness is not verified by this binding", "no semantic analyzer", "no authentication", "budget declaration is recorded but not host-enforced"]}
+        if getattr(self.ledger, "read_only", False):
+            result["operational_mode"] = "degraded"
+            result["read_only_reason"] = getattr(self.ledger, "fallback_reason", "normal SQLite access unavailable")
+            result["limitations"].append("read-only recovery fallback; publication is unavailable")
+        else:
+            result["operational_mode"] = "ledger_bound"
+        result["shared_reach_evidence"] = evidence
+        return result
 
     def join(self, actor: str, capabilities: list[str]) -> dict:
         for event in reversed(self._events()):

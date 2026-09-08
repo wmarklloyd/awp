@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
+import hashlib
 import json
 import os
 import shutil
@@ -20,11 +21,20 @@ import time
 from pathlib import Path
 from typing import Any, Sequence
 
-from .awp_coop2 import Rendezvous
+if __package__ in {None, ""}:
+    # Support `python awp_codex_wake.py` from the tools directory as well as
+    # package execution via `python -m tools.awp_codex_wake`.
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from tools.awp_coop2 import Rendezvous
+else:
+    from .awp_coop2 import Rendezvous
 
 
 PROFILE = "codex-local-queue-watcher-v1"
 QUEUE_TIMEOUT_SECONDS = 30
+MAX_NOTIFIED_EVENTS = 256
 
 
 def atomic_json(path: Path, value: dict[str, Any]) -> None:
@@ -43,6 +53,44 @@ def atomic_json(path: Path, value: dict[str, Any]) -> None:
         except FileNotFoundError:
             pass
         raise
+
+
+def _state_path_usable(path: Path) -> bool:
+    """Check that both a watcher cursor and its lock can be opened."""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        for candidate in (path, path.with_name(path.name + ".lock")):
+            existed = candidate.exists()
+            with candidate.open("a+b"):
+                pass
+            if not existed:
+                candidate.unlink()
+        return True
+    except OSError:
+        return False
+
+
+def default_state_path(project: Path) -> tuple[Path, bool]:
+    """Return a usable cursor location, preferring the project runtime path."""
+    preferred = project / ".awp-runtime" / "coop2-codex-watcher.json"
+    if _state_path_usable(preferred):
+        return preferred, False
+    digest = hashlib.sha256(str(project.resolve()).encode("utf-8")).hexdigest()[:12]
+    fallback = Path(tempfile.gettempdir()) / "awp" / f"coop2-codex-watcher-{digest}.json"
+    if not _state_path_usable(fallback):
+        raise OSError("no writable watcher state path is available")
+    return fallback, True
+
+
+def bounded_event_ids(values: list[str]) -> list[str]:
+    """Keep a bounded, order-preserving at-least-once notification cursor."""
+    unique_reversed: list[str] = []
+    seen: set[str] = set()
+    for value in reversed(values):
+        if value not in seen:
+            seen.add(value)
+            unique_reversed.append(value)
+    return list(reversed(unique_reversed))[-MAX_NOTIFIED_EVENTS:]
 
 
 class CodexQueueWatcher:
@@ -154,7 +202,9 @@ class CodexQueueWatcher:
                     atomic_json(self.state_path, state)
                     break
                 queued.append(event["event_id"])
-                state["notified_events"] = [*state.get("notified_events", []), event["event_id"]]
+                state["notified_events"] = bounded_event_ids(
+                    [*state.get("notified_events", []), event["event_id"]]
+                )
                 state["delivery_state"] = "available"
                 state.pop("last_error", None)
                 state.pop("last_failed_event", None)
@@ -166,9 +216,9 @@ class CodexQueueWatcher:
                     if event["kind"] == "coop2.interaction.responded"
                     and event["payload"].get("recipient") == self.actor
                 ]
-                state["notified_events"] = list(dict.fromkeys([
-                    *state.get("notified_events", []), *historical_responses
-                ]))
+                state["notified_events"] = bounded_event_ids(
+                    [*state.get("notified_events", []), *historical_responses]
+                )
                 state["initialized"] = True
                 atomic_json(self.state_path, state)
             return {"profile": PROFILE, "queued_events": queued, "failed_events": failed, "state_path": str(self.state_path)}
@@ -190,10 +240,14 @@ def parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = parser().parse_args(argv)
     rendezvous = Rendezvous(args.project, args.ledger)
-    state = args.state or rendezvous.project / ".awp-runtime" / "coop2-codex-watcher.json"
+    state, state_fallback = (
+        (args.state, False) if args.state else default_state_path(rendezvous.project)
+    )
     watcher = CodexQueueWatcher(rendezvous, args.actor, args.thread, args.remote, state)
     while True:
         result = watcher.step()
+        if state_fallback:
+            result["state_fallback"] = "temporary-user-runtime"
         if result["queued_events"] or args.once:
             print(json.dumps(result, sort_keys=True), flush=True)
         if args.once:

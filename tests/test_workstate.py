@@ -61,6 +61,43 @@ class WorkstateWriterTests(unittest.TestCase):
         self.assertEqual(result["status"], "no_change")
         self.assertEqual(capsule.read_bytes(), before)
 
+    def test_small_refresh_records_durable_event_without_rewriting_capsule(self) -> None:
+        temporary, project, capsule = self.copy_capsule()
+        self.addCleanup(temporary.cleanup)
+        before = capsule.read_bytes()
+        result = self.module.small_refresh(
+            project,
+            capsule,
+            {
+                "request_id": "refresh:test-small",
+                "event_id": "evt:test-small",
+                "checkpoint": "checkpoint:test-small",
+                "summary": "Updated one presentation asset.",
+                "next_action": "Verify the rendered asset at handoff.",
+                "evidence": ["tests:visual-check"],
+            },
+        )
+        self.assertEqual(result["status"], "recorded")
+        self.assertEqual(result["projection"], "deferred")
+        self.assertTrue(result["capsule_unchanged"])
+        self.assertEqual(capsule.read_bytes(), before)
+        log = project / self.module.REFRESH_LOG_NAME
+        self.assertEqual(len(log.read_text(encoding="utf-8").splitlines()), 1)
+        duplicate = self.module.small_refresh(
+            project,
+            capsule,
+            {
+                "request_id": "refresh:test-small",
+                "event_id": "evt:test-small",
+                "checkpoint": "checkpoint:test-small",
+                "summary": "Updated one presentation asset.",
+                "next_action": "Verify the rendered asset at handoff.",
+                "evidence": ["tests:visual-check"],
+            },
+        )
+        self.assertEqual(duplicate["status"], "deduplicated")
+        self.assertEqual(len(log.read_text(encoding="utf-8").splitlines()), 1)
+
     def test_status_names_semantic_frontier_separately(self) -> None:
         temporary, project, capsule = self.copy_capsule()
         self.addCleanup(temporary.cleanup)

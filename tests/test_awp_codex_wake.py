@@ -7,7 +7,13 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
 
-from tools.awp_codex_wake import CodexQueueWatcher, atomic_json
+from tools.awp_codex_wake import (
+    MAX_NOTIFIED_EVENTS,
+    CodexQueueWatcher,
+    atomic_json,
+    bounded_event_ids,
+    default_state_path,
+)
 
 
 class FakeRendezvous:
@@ -29,6 +35,25 @@ class CodexQueueWatcherTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temporary.cleanup()
+
+    def test_direct_script_invocation_loads_package_imports(self) -> None:
+        result = subprocess.run(
+            ["python", "awp_codex_wake.py", "--help"],
+            cwd=Path(__file__).resolve().parents[1] / "tools",
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Codex app-server thread identifier", result.stdout)
+
+    def test_default_state_path_falls_back_when_project_runtime_is_unusable(self) -> None:
+        project = Path(self.temporary.name) / "project"
+        project.mkdir()
+        with patch("tools.awp_codex_wake._state_path_usable", side_effect=[False, True]):
+            state, fallback = default_state_path(project)
+        self.assertTrue(fallback)
+        self.assertEqual(state.parent, Path(tempfile.gettempdir()) / "awp")
 
     def test_only_recipient_events_are_queued_once(self) -> None:
         atomic_json(self.state, {"profile": "codex-local-queue-watcher-v1", "initialized": True, "notified_events": []})
@@ -90,6 +115,13 @@ class CodexQueueWatcherTests(unittest.TestCase):
         self.assertEqual(state["delivery_state"], "unavailable")
         self.assertEqual(state["last_failed_event"], "evt:request")
         self.assertNotIn("evt:request", state.get("notified_events", []))
+
+    def test_notification_cursor_is_bounded_and_keeps_recent_unique_ids(self) -> None:
+        identifiers = [f"evt:{index}" for index in range(MAX_NOTIFIED_EVENTS + 20)]
+        bounded = bounded_event_ids(["evt:0", *identifiers, "evt:20"])
+        self.assertEqual(len(bounded), MAX_NOTIFIED_EVENTS)
+        self.assertEqual(bounded[0], "evt:21")
+        self.assertEqual(bounded[-1], "evt:20")
 
 
 if __name__ == "__main__":

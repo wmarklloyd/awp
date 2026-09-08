@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
-from tools.awp_coop2 import DOORBELL_PROFILE, LocalDoorbell
+from tools.awp_coop2 import DOORBELL_PROFILE, GIT_REF_DOORBELL_PROFILE, GitRefDoorbell, LocalDoorbell
 
 
 class LocalDoorbellTests(unittest.TestCase):
@@ -49,6 +51,36 @@ class LocalDoorbellTests(unittest.TestCase):
             project_id="project:other", workstate_id="workstate:test", binding_id="binding:test"
         )
         self.assertEqual(mismatch["state"], "unverifiable")
+
+    def test_git_ref_doorbell_uses_a_local_ref_safe_event_name(self) -> None:
+        doorbell = GitRefDoorbell(self.project)
+        with patch("tools.awp_coop2.subprocess.run") as run:
+            run.return_value.returncode = 0
+            signal = doorbell.publish("evt:one")
+        self.assertEqual(signal["profile"], GIT_REF_DOORBELL_PROFILE)
+        self.assertEqual(signal["ref"], "refs/awp/signal/evt-one")
+        self.assertEqual(signal["state"], "current")
+        self.assertEqual(run.call_args.args[0], ["git", "update-ref", "refs/awp/signal/evt-one", "HEAD"])
+
+    def test_git_ref_doorbell_updates_a_local_git_namespace(self) -> None:
+        subprocess.run(["git", "init"], cwd=self.project, check=True, capture_output=True, text=True)
+        subprocess.run(
+            ["git", "-c", "user.name=AWP Test", "-c", "user.email=awp@example.test", "commit", "--allow-empty", "-m", "init"],
+            cwd=self.project,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        signal = GitRefDoorbell(self.project).publish("evt:local")
+        target = subprocess.run(
+            ["git", "rev-parse", "refs/awp/signal/evt-local"],
+            cwd=self.project,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        self.assertEqual(signal["state"], "current")
+        self.assertEqual(target, subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.project, check=True, capture_output=True, text=True).stdout.strip())
 
 
 if __name__ == "__main__":

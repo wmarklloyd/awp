@@ -274,16 +274,34 @@ def access_conflicts(left: str, right: str) -> bool:
 
 
 class CoordinationLedger:
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, *, read_only: bool = False):
         self.path = path.resolve()
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._initialize()
+        self.read_only = read_only
+        if read_only:
+            if not self.path.is_file():
+                raise CoordinationError(f"read-only ledger does not exist: {self.path}")
+            # Immutable mode never creates a lock, journal, or WAL sidecar.
+            # It is safe only when no WAL contains newer committed pages.
+            if self.path.with_name(self.path.name + "-wal").exists():
+                raise CoordinationError(
+                    "read-only ledger fallback is unsafe while a WAL sidecar exists"
+                )
+        else:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.path, timeout=10, isolation_level=None)
+        if self.read_only:
+            connection = sqlite3.connect(
+                f"file:{self.path.as_posix()}?immutable=1", uri=True,
+                isolation_level=None,
+            )
+        else:
+            connection = sqlite3.connect(self.path, timeout=10, isolation_level=None)
         connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA journal_mode = WAL")
-        connection.execute("PRAGMA busy_timeout = 10000")
+        if not self.read_only:
+            connection.execute("PRAGMA journal_mode = WAL")
+            connection.execute("PRAGMA busy_timeout = 10000")
         return connection
 
     def _initialize(self) -> None:
@@ -358,6 +376,8 @@ class CoordinationLedger:
 
     @contextmanager
     def _transaction(self) -> Iterator[sqlite3.Connection]:
+        if self.read_only:
+            raise CoordinationError("coordination ledger is available read-only")
         connection = self._connect()
         try:
             connection.execute("BEGIN IMMEDIATE")

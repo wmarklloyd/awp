@@ -43,6 +43,24 @@ class CoordinationLedgerTests(unittest.TestCase):
         reopened = CoordinationLedger(self.path)
         self.assertEqual(reopened.binding_id(), first)
 
+    def test_existing_ledger_can_be_opened_immutable_for_recovery_reads(self) -> None:
+        self.ledger.begin(
+            workstate_id="workstate:test",
+            project_id="git-root:test",
+            actor="actor:codex",
+            goal="goal:test",
+            summary="recovery test",
+            base_revision="git:test",
+            scopes=[("repository", ".")],
+            policy="warn",
+        )
+        recovered = CoordinationLedger(self.path, read_only=True)
+        self.assertEqual(recovered.binding_id(), self.ledger.binding_id())
+        self.assertEqual(len(recovered.export_events("workstate:test")), 2)
+        with self.assertRaises(CoordinationError):
+            with recovered._transaction():
+                pass
+
     def test_binding_identity_is_stable_and_frontier_is_an_observation(self) -> None:
         context = operational_context(ROOT, self.path)
         self.assertEqual(

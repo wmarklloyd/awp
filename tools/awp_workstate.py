@@ -41,6 +41,7 @@ SNAPSHOT_SECTION = re.compile(
     re.DOTALL,
 )
 JOURNAL_NAME = ".awp-runtime/workstate-projection.json"
+REFRESH_LOG_NAME = ".awp-runtime/workstate-refresh.jsonl"
 SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
 RECORD_BUCKETS = {
     "goal": "goals",
@@ -374,6 +375,82 @@ def checkpoint(project: Path, capsule: Path, request: dict[str, Any]) -> dict[st
         return receipt
 
 
+def small_refresh(project: Path, capsule: Path, request: dict[str, Any]) -> dict[str, Any]:
+    """Record a compact durable refresh without rewriting the Capsule.
+
+    This is the adoption fast path for code, presentation, and documentation
+    changes whose semantic state does not require a full snapshot projection.
+    The append-only journal is intentionally explicit about deferred
+    projection; it is not a substitute for a checkpoint at integration or
+    handoff.
+    """
+    text = capsule.read_text(encoding="utf-8").replace("\r\n", "\n")
+    current_capsule_digest = capsule_artifact_digest(capsule)
+    expected_capsule_digest = request.get("expected_capsule_digest")
+    if expected_capsule_digest is not None and expected_capsule_digest != current_capsule_digest:
+        raise CoordinationError("capsule whole-artifact digest is stale")
+    integrity = capsule_integrity(capsule)
+    if integrity.get("state") != "current":
+        raise CoordinationError("capsule generated-region digest is stale")
+    request_id = request.get("request_id")
+    event_id = request.get("event_id")
+    checkpoint_id = request.get("checkpoint")
+    if not all(isinstance(value, str) and value.strip() for value in (request_id, event_id, checkpoint_id)):
+        raise CoordinationError("refresh requires request_id, event_id, and checkpoint")
+    summary = request.get("summary")
+    next_action = request.get("next_action")
+    if not isinstance(summary, str) or not summary.strip() or not isinstance(next_action, str) or not next_action.strip():
+        raise CoordinationError("refresh requires concise summary and next_action")
+    evidence = request.get("evidence", [])
+    if not isinstance(evidence, list) or not all(isinstance(item, str) and item.strip() for item in evidence):
+        raise CoordinationError("refresh evidence must be an array of nonempty strings")
+    if len(summary.encode("utf-8")) > 2000 or len(next_action.encode("utf-8")) > 1000 or len(evidence) > 12:
+        raise CoordinationError("refresh content exceeds compact bounds")
+    log_path = project / REFRESH_LOG_NAME
+    with _capsule_lock(project):
+        existing: dict[str, Any] | None = None
+        if log_path.is_file():
+            for line in log_path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                item = json.loads(line)
+                if item.get("request_id") == request_id:
+                    existing = item
+                    break
+        if existing is not None:
+            if (
+                existing.get("event_id") != event_id
+                or existing.get("checkpoint") != checkpoint_id
+                or existing.get("summary") != summary
+                or existing.get("next_action") != next_action
+                or existing.get("evidence", []) != evidence
+            ):
+                raise CoordinationError("refresh request ID was reused with different content")
+            return existing | {"status": "deduplicated", "capsule_unchanged": True}
+        record = {
+            "profile": PROFILE,
+            "request_id": request_id,
+            "event_id": event_id,
+            "checkpoint": checkpoint_id,
+            "workstate_id": _front_matter_value(text, "workstate_id"),
+            "capsule": capsule.relative_to(project).as_posix(),
+            "capsule_digest": current_capsule_digest,
+            "generated_digest": integrity["computed_digest"],
+            "frontier": _frontier(text),
+            "summary": summary.strip(),
+            "next_action": next_action.strip(),
+            "evidence": evidence,
+            "projection": "deferred",
+            "recorded_at": request.get("recorded_at") or utc_timestamp(),
+        }
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("a", encoding="utf-8", newline="\n") as stream:
+            stream.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        return record | {"status": "recorded", "capsule_unchanged": True}
+
+
 def recover(project: Path, capsule: Path) -> dict[str, Any]:
     path = _journal_path(project)
     if not path.is_file():
@@ -455,6 +532,13 @@ def parser() -> argparse.ArgumentParser:
     verify_command.add_argument("--full", action="store_true")
     checkpoint_command = commands.add_parser("checkpoint")
     checkpoint_command.add_argument("--request", type=Path, required=True)
+    refresh_command = commands.add_parser("refresh")
+    refresh_command.add_argument("--event-id", required=True)
+    refresh_command.add_argument("--checkpoint", required=True)
+    refresh_command.add_argument("--summary", required=True)
+    refresh_command.add_argument("--next-action", required=True)
+    refresh_command.add_argument("--evidence", action="append", default=[])
+    refresh_command.add_argument("--request-id")
     return parser
 
 
@@ -469,6 +553,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = recover(project, capsule)
         elif args.command == "verify":
             result = verify(project, capsule, args.full)
+        elif args.command == "refresh":
+            expected = capsule_artifact_digest(capsule)
+            request = {
+                "request_id": args.request_id or f"refresh:{args.event_id}",
+                "event_id": args.event_id,
+                "checkpoint": args.checkpoint,
+                "summary": args.summary,
+                "next_action": args.next_action,
+                "evidence": args.evidence,
+                "expected_capsule_digest": expected,
+            }
+            result = small_refresh(project, capsule, request)
         else:
             request = json.loads(args.request.read_text(encoding="utf-8"))
             if not isinstance(request, dict):
