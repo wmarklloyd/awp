@@ -228,6 +228,77 @@ class WorkstateWriterTests(unittest.TestCase):
             self.module.checkpoint(project, capsule, request)
         self.assertEqual(capsule.read_bytes(), before)
 
+    def test_from_current_fills_missing_preconditions_and_checkpoints(self) -> None:
+        temporary, project, capsule = self.copy_capsule()
+        self.addCleanup(temporary.cleanup)
+        bare = {
+            "request_id": "request:test-from-current",
+            "checkpoint": "checkpoint:test-from-current",
+            "briefing": "# From current\n\nPreconditions derived by the tool.",
+        }
+        filled = self.module.fill_preconditions_from_current(capsule, bare)
+        self.assertEqual(filled["expected_capsule_digest"], self.module.capsule_artifact_digest(capsule))
+        self.assertEqual(
+            filled["expected_generated_digest"], self.module.capsule_integrity(capsule)["computed_digest"]
+        )
+        self.assertEqual(
+            filled["expected_frontier"], self.module._frontier(capsule.read_text(encoding="utf-8"))
+        )
+        self.assertEqual(filled["preconditions_source"], "from-current")
+        self.assertNotIn("expected_capsule_digest", bare)
+        result = self.module.checkpoint(project, capsule, filled)
+        self.assertEqual(result["status"], "complete")
+
+    def test_from_current_keeps_explicit_preconditions_as_guards(self) -> None:
+        temporary, project, capsule = self.copy_capsule()
+        self.addCleanup(temporary.cleanup)
+        stale = "sha256:" + "0" * 64
+        filled = self.module.fill_preconditions_from_current(
+            capsule, {"checkpoint": "checkpoint:test-guard", "expected_capsule_digest": stale, "mode": "no_change"}
+        )
+        self.assertEqual(filled["expected_capsule_digest"], stale)
+        with self.assertRaises(self.module.CoordinationError):
+            self.module.checkpoint(project, capsule, filled)
+
+    def test_briefing_is_derived_from_summary_and_next_action(self) -> None:
+        temporary, project, capsule = self.copy_capsule()
+        self.addCleanup(temporary.cleanup)
+        request = self.request(capsule)
+        del request["briefing"]
+        request["summary"] = "Derived briefings remove per-attempt prose."
+        request["next_action"] = "Ship phase two."
+        result = self.module.checkpoint(project, capsule, request)
+        self.assertEqual(result["status"], "complete")
+        text = capsule.read_text(encoding="utf-8")
+        self.assertIn("# Test workstate", text)
+        self.assertIn("Derived briefings remove per-attempt prose.", text)
+        self.assertIn("Next action: Ship phase two.", text)
+
+    def test_briefing_is_derived_from_checkpoint_record(self) -> None:
+        temporary, project, capsule = self.copy_capsule()
+        self.addCleanup(temporary.cleanup)
+        request = self.request(capsule, checkpoint="checkpoint:from-record")
+        del request["briefing"]
+        request["records"] = [
+            {
+                "id": "checkpoint:from-record",
+                "type": "checkpoint",
+                "summary": "Summary carried on the checkpoint record.",
+                "next_action": "Next from record.",
+            }
+        ]
+        result = self.module.checkpoint(project, capsule, request)
+        self.assertEqual(result["status"], "complete")
+        self.assertIn("Summary carried on the checkpoint record.", capsule.read_text(encoding="utf-8"))
+
+    def test_checkpoint_without_any_briefing_source_is_rejected(self) -> None:
+        temporary, project, capsule = self.copy_capsule()
+        self.addCleanup(temporary.cleanup)
+        request = self.request(capsule)
+        del request["briefing"]
+        with self.assertRaises(self.module.CoordinationError):
+            self.module.checkpoint(project, capsule, request)
+
     def test_recover_clears_journal_when_proposed_file_is_present(self) -> None:
         temporary, project, capsule = self.copy_capsule()
         self.addCleanup(temporary.cleanup)

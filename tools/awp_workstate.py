@@ -85,6 +85,33 @@ def _require_digest(value: Any, field: str) -> str:
     return value
 
 
+def _derived_briefing_fields(request: dict[str, Any]) -> dict[str, Any] | None:
+    """Derive briefing fields from the checkpoint itself so a request need not restate them.
+
+    Precedence: top-level ``summary``/``next_action`` (the same fields ``refresh``
+    accepts), then the ``summary``/``next_action`` of a checkpoint record carried in
+    ``records`` whose ``id`` matches ``checkpoint``.  Returns None when neither is
+    available so the caller can report a precise error.
+    """
+    checkpoint = request.get("checkpoint")
+    summary = request.get("summary")
+    next_action = request.get("next_action")
+    if not (isinstance(summary, str) and summary.strip() and isinstance(next_action, str) and next_action.strip()):
+        for record in request.get("records") or []:
+            if isinstance(record, dict) and record.get("type") == "checkpoint" and record.get("id") == checkpoint:
+                summary = summary if isinstance(summary, str) and summary.strip() else record.get("summary")
+                next_action = (
+                    next_action if isinstance(next_action, str) and next_action.strip() else record.get("next_action")
+                )
+                break
+    if not (isinstance(summary, str) and summary.strip() and isinstance(next_action, str) and next_action.strip()):
+        return None
+    title = request.get("title")
+    if not (isinstance(title, str) and title.strip()):
+        title = str(checkpoint or "Checkpoint").split(":", 1)[-1].replace("-", " ").strip().capitalize()
+    return {"title": title, "status": summary, "next_action": next_action}
+
+
 def _briefing_from_request(request: dict[str, Any]) -> str:
     supplied = request.get("briefing")
     if isinstance(supplied, str) and supplied.strip():
@@ -92,7 +119,11 @@ def _briefing_from_request(request: dict[str, Any]) -> str:
     else:
         fields = request.get("briefing_fields")
         if not isinstance(fields, dict):
-            raise CoordinationError("checkpoint requires briefing or briefing_fields")
+            fields = _derived_briefing_fields(request)
+        if not isinstance(fields, dict):
+            raise CoordinationError(
+                "checkpoint requires briefing, briefing_fields, or a summary and next_action to derive one"
+            )
         required = ("title", "status", "next_action")
         if any(not isinstance(fields.get(item), str) or not fields[item].strip() for item in required):
             raise CoordinationError("briefing_fields requires title, status, and next_action")
@@ -350,6 +381,28 @@ def _write_journal(path: Path, value: dict[str, Any]) -> None:
     _atomic_write(path, payload)
 
 
+def fill_preconditions_from_current(capsule: Path, request: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of ``request`` with missing precondition digests read from the capsule.
+
+    This removes the optimistic-lock round trip for the common case where the caller
+    is checkpointing the capsule it just read.  Any precondition the caller supplies
+    explicitly is left untouched and still enforced by ``_proposal``.
+    """
+    filled = dict(request)
+    if not filled.get("expected_capsule_digest"):
+        filled["expected_capsule_digest"] = capsule_artifact_digest(capsule)
+    if not filled.get("expected_generated_digest"):
+        integrity = capsule_integrity(capsule)
+        if integrity.get("state") != "current":
+            raise CoordinationError("cannot derive expected_generated_digest: capsule generated region is not current")
+        filled["expected_generated_digest"] = integrity["computed_digest"]
+    if filled.get("expected_frontier") is None:
+        text = capsule.read_text(encoding="utf-8").replace("\r\n", "\n")
+        filled["expected_frontier"] = _frontier(text)
+    filled.setdefault("preconditions_source", "from-current")
+    return filled
+
+
 def checkpoint(project: Path, capsule: Path, request: dict[str, Any]) -> dict[str, Any]:
     with _capsule_lock(project):
         proposed, receipt = _proposal(capsule, request)
@@ -532,6 +585,15 @@ def parser() -> argparse.ArgumentParser:
     verify_command.add_argument("--full", action="store_true")
     checkpoint_command = commands.add_parser("checkpoint")
     checkpoint_command.add_argument("--request", type=Path, required=True)
+    checkpoint_command.add_argument(
+        "--from-current",
+        action="store_true",
+        help=(
+            "fill expected_capsule_digest, expected_generated_digest, and expected_frontier "
+            "from the current capsule when the request omits them; values present in the "
+            "request are still enforced as guards"
+        ),
+    )
     refresh_command = commands.add_parser("refresh")
     refresh_command.add_argument("--event-id", required=True)
     refresh_command.add_argument("--checkpoint", required=True)
@@ -569,6 +631,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             request = json.loads(args.request.read_text(encoding="utf-8"))
             if not isinstance(request, dict):
                 raise CoordinationError("checkpoint request must be a JSON object")
+            if getattr(args, "from_current", False):
+                request = fill_preconditions_from_current(capsule, request)
             result = checkpoint(project, capsule, request)
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result.get("status", result.get("state")) not in {"incomplete", "diverged"} else 2
