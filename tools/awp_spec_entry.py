@@ -16,8 +16,16 @@ from typing import Any, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE = ROOT / "dist" / "drafts" / "0.8.0" / "AWP-0.8.0-draft.bundle.md"
+REGISTRY = ROOT / "spec" / "drafts" / "0.8.0" / "requirements.json"
 OUTPUT = ROOT / "dist" / "drafts" / "0.8.0" / "AWP-0.8.0-agent-entry-core.md"
-PROFILE_VERSION = "agent-entry-core-v1"
+PROFILE_VERSION = "agent-entry-core-v2"
+
+READ_PLAN = (
+    "Read the routed requirement statements first; they are the normative authority and cost a fraction "
+    "of the prose. Open a listed module only when a statement is ambiguous or you need its rationale. "
+    "Open a listed schema only when authoring or validating a record of that type; the schema digest "
+    "is enough for orientation."
+)
 
 ROUTES: dict[str, dict[str, Any]] = {
     "general": {
@@ -100,6 +108,96 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def registry_statements(documents: Sequence[str]) -> list[dict[str, str]]:
+    """The requirement statements that govern the given source modules, in registry order."""
+    if not REGISTRY.is_file():
+        raise FileNotFoundError(f"requirement registry is unavailable: {REGISTRY}")
+    wanted = set(documents)
+    data = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    return [
+        {"id": item["id"], "source": item["source"], "statement": item["statement"]}
+        for item in data.get("requirements", [])
+        if item.get("source") in wanted
+    ]
+
+
+def schema_digest(relative_path: str) -> dict[str, Any]:
+    """A compact orientation view of a JSON Schema: what record types it defines and
+    what each requires, without the constraints an author needs only when writing one."""
+    path = ROOT / relative_path
+    schema = json.loads(path.read_text(encoding="utf-8"))
+    definitions = {}
+    for name, definition in (schema.get("$defs") or {}).items():
+        if not isinstance(definition, dict):
+            continue
+        entry: dict[str, Any] = {}
+        if isinstance(definition.get("required"), list):
+            entry["required"] = definition["required"]
+        enums = {
+            key: value["enum"]
+            for key, value in (definition.get("properties") or {}).items()
+            if isinstance(value, dict) and isinstance(value.get("enum"), list)
+        }
+        if enums:
+            entry["enums"] = enums
+        constant = {
+            key: value["const"]
+            for key, value in (definition.get("properties") or {}).items()
+            if isinstance(value, dict) and "const" in value
+        }
+        if constant:
+            entry["const"] = constant
+        definitions[name] = entry
+    return {
+        "path": relative_path,
+        "sha256": sha256(path),
+        "bytes": path.stat().st_size,
+        "title": schema.get("title") or schema.get("$id"),
+        "top_level_required": schema.get("required", []),
+        "definitions": definitions,
+    }
+
+
+def route_view(name: str) -> dict[str, Any]:
+    route = ROUTES[name]
+    statements = registry_statements(route["documents"])
+    return {
+        "task_class": name,
+        "summary": route["summary"],
+        "read_plan": READ_PLAN,
+        "statement_count": len(statements),
+        "statement_bytes": sum(len(item["statement"]) for item in statements),
+        "statements": statements,
+        "schema_digests": [schema_digest(item) for item in route["schemas"]],
+        "modules_on_demand": route["documents"],
+        "schemas_on_demand": route["schemas"],
+    }
+
+
+def render_statements(name: str) -> str:
+    """Compact Markdown: one requirement per line, grouped by source module."""
+    view = route_view(name)
+    lines = [
+        f"# AWP 0.8.0 routed requirements — `{name}`",
+        "",
+        view["summary"],
+        "",
+        f"{view['statement_count']} statements, {view['statement_bytes']} bytes. {READ_PLAN}",
+    ]
+    current = None
+    for item in view["statements"]:
+        if item["source"] != current:
+            current = item["source"]
+            lines.extend(("", f"## {current}", ""))
+        lines.append(f"- **{item['id']}** {item['statement']}")
+    if view["schema_digests"]:
+        lines.extend(("", "## Schema digests (open the file only to author a record)", ""))
+        for digest in view["schema_digests"]:
+            names = ", ".join(sorted(digest["definitions"])) or "none"
+            lines.append(f"- `{digest['path']}` ({digest['bytes']} B, sha256 `{digest['sha256'][:16]}…`): {names}")
+    return "\n".join(lines) + "\n"
+
+
 def profile_data() -> dict[str, Any]:
     if not BUNDLE.is_file():
         raise FileNotFoundError(f"complete source bundle is unavailable: {BUNDLE}")
@@ -118,10 +216,14 @@ def render() -> str:
     data = profile_data()
     routes = []
     for name, route in data["routing"].items():
+        statements = registry_statements(route["documents"])
         documents = "\n".join(f"- `{item}`" for item in route["documents"])
         schemas = "\n".join(f"- `{item}`" for item in route["schemas"]) or "- None"
         routes.append(
-            f"### `{name}`\n\n{route['summary']}\n\nDocuments:\n{documents}\n\nSchemas:\n{schemas}"
+            f"### `{name}`\n\n{route['summary']}\n\n"
+            f"Read first: `python tools/awp_spec_entry.py --route {name} --statements` "
+            f"({len(statements)} statements, {sum(len(item['statement']) for item in statements)} bytes).\n\n"
+            f"Modules on demand:\n{documents}\n\nSchemas on demand (digest in the route output):\n{schemas}"
         )
     metadata = json.dumps(data, indent=2, sort_keys=True)
     return "\n".join(
@@ -150,6 +252,8 @@ def render() -> str:
             "## Task routing",
             "",
             "This is performance guidance only. It does not prove that the listed material is sufficient for a particular task.",
+            "",
+            READ_PLAN,
             "",
             "\n\n".join(routes),
             "",
@@ -191,6 +295,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     group.add_argument("--build", action="store_true")
     group.add_argument("--verify", action="store_true")
     group.add_argument("--route", choices=sorted(ROUTES))
+    parser.add_argument("--statements", action="store_true", help="with --route: print the routed requirement statements as compact Markdown instead of JSON")
     args = parser.parse_args(argv)
     if args.build:
         OUTPUT.parent.mkdir(parents=True, exist_ok=True)
@@ -198,7 +303,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps({"state": "built", "path": OUTPUT.relative_to(ROOT).as_posix()}))
         return 0
     if args.route:
-        print(json.dumps({"task_class": args.route, **ROUTES[args.route]}, indent=2))
+        if args.statements:
+            print(render_statements(args.route), end="")
+        else:
+            print(json.dumps(route_view(args.route), indent=2))
         return 0
     result = verify()
     print(json.dumps(result, indent=2))

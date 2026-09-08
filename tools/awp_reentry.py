@@ -233,6 +233,10 @@ def bounded_json(view: dict[str, Any], max_output_bytes: int) -> tuple[str, bool
         view["selection"]["complete"] = False
     # The measurement fields affect their own serialization size. Iterate to a
     # fixed point so output_bytes describes the bytes a participant receives.
+    # The iteration can enter a 2-cycle when the rounded ratio flips between
+    # "5.4" and "5.41" and shifts the size by one byte; that is a rounding tie,
+    # not a failure, so settle on the larger size rather than refusing entry.
+    seen: list[int] = []
     for _ in range(8):
         rendered = json.dumps(view, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
         required = len(rendered.encode("utf-8"))
@@ -242,10 +246,22 @@ def bounded_json(view: dict[str, Any], max_output_bytes: int) -> tuple[str, bool
             and view["selection"].get("source_to_output_ratio") == ratio
         ):
             break
+        if required in seen:
+            view["selection"]["measurement"] = "settled-on-rounding-tie"
+            # Two more passes with the marker present: the first absorbs the
+            # marker's width, the second confirms; take the larger if they tie.
+            widths = []
+            for _ in range(2):
+                rendered = json.dumps(view, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+                widths.append(len(rendered.encode("utf-8")))
+                view["selection"]["output_bytes"] = max(widths)
+                view["selection"]["source_to_output_ratio"] = round(view["source"]["bytes"] / max(widths), 2)
+            rendered = json.dumps(view, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+            required = len(rendered.encode("utf-8"))
+            break
+        seen.append(required)
         view["selection"]["output_bytes"] = required
         view["selection"]["source_to_output_ratio"] = ratio
-    else:
-        raise CoordinationError("re-entry output measurement did not converge")
     if max_output_bytes and required > max_output_bytes:
         refusal = {
             "profile": PROFILE,

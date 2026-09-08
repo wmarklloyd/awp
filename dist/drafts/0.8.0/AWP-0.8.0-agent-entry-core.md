@@ -1,9 +1,9 @@
 # AWP 0.8.0 Agent Entry Core
 
 **Status:** Generated, non-normative bounded-context entry artifact  
-**Profile:** `agent-entry-core-v1`  
+**Profile:** `agent-entry-core-v2`  
 **Source bundle:** `dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md`  
-**Source bundle SHA-256:** `de9402b67d8a8b97a369e06faf106ac164c83803b00bb9e774bced2ebef37d89`
+**Source bundle SHA-256:** `cf1446a72cf83f2ff4e90fb1fc3b5d5ed0cfb088ea218e3de68e7c0cf861f837`
 
 This profile supports safe orientation, not complete interpretation. Its source bundle governs if any detail conflicts. Verify the digest before relying on this file.
 
@@ -23,29 +23,35 @@ Read the complete source bundle when this profile is unavailable or its digest f
 
 This is performance guidance only. It does not prove that the listed material is sufficient for a particular task.
 
+Read the routed requirement statements first; they are the normative authority and cost a fraction of the prose. Open a listed module only when a statement is ambiguous or you need its rationale. Open a listed schema only when authoring or validating a record of that type; the schema digest is enough for orientation.
+
 ### `general`
 
 Ordinary project orientation with no proposed specification change.
 
-Documents:
+Read first: `python tools/awp_spec_entry.py --route general --statements` (44 statements, 12651 bytes).
+
+Modules on demand:
 - `spec/drafts/0.8.0/index.md`
 - `spec/drafts/0.8.0/core.md`
 
-Schemas:
+Schemas on demand (digest in the route output):
 - None
 
 ### `workstate`
 
 Capsule, discovery, handoff, checkpoint, or re-entry work.
 
-Documents:
+Read first: `python tools/awp_spec_entry.py --route workstate --statements` (105 statements, 30728 bytes).
+
+Modules on demand:
 - `spec/drafts/0.8.0/index.md`
 - `spec/drafts/0.8.0/core.md`
 - `spec/drafts/0.8.0/capsule.md`
 - `spec/drafts/0.8.0/handoff.md`
 - `spec/drafts/0.8.0/artifact.md`
 
-Schemas:
+Schemas on demand (digest in the route output):
 - `schemas/awp-core-0.8.schema.json`
 - `schemas/awp-capsule-0.5.schema.json`
 - `schemas/awp-discovery-0.2.schema.json`
@@ -54,7 +60,9 @@ Schemas:
 
 Coordination binding, COOP contract, leases, intents, or integration work.
 
-Documents:
+Read first: `python tools/awp_spec_entry.py --route coordination --statements` (249 statements, 101632 bytes).
+
+Modules on demand:
 - `spec/drafts/0.8.0/index.md`
 - `spec/drafts/0.8.0/core.md`
 - `spec/drafts/0.8.0/synchronization.md`
@@ -63,7 +71,7 @@ Documents:
 - `spec/drafts/0.8.0/capsule.md`
 - `spec/drafts/0.8.0/handoff.md`
 
-Schemas:
+Schemas on demand (digest in the route output):
 - `schemas/awp-core-0.8.schema.json`
 - `schemas/awp-coordination-0.5.schema.json`
 - `schemas/awp-cooperation-0.1.schema.json`
@@ -72,13 +80,15 @@ Schemas:
 
 Security guardrails, signatures, encryption, or authority controls.
 
-Documents:
+Read first: `python tools/awp_spec_entry.py --route security --statements` (78 statements, 20237 bytes).
+
+Modules on demand:
 - `spec/drafts/0.8.0/index.md`
 - `spec/drafts/0.8.0/core.md`
 - `spec/drafts/0.8.0/security.md`
 - `spec/drafts/0.8.0/artifact.md`
 
-Schemas:
+Schemas on demand (digest in the route output):
 - `schemas/awp-core-0.8.schema.json`
 - `schemas/awp-security-0.5.schema.json`
 
@@ -86,7 +96,9 @@ Schemas:
 
 Silo identity, hierarchy, pinned bases, governance, and adoption; expand coordination/security sources when those mechanisms are used.
 
-Documents:
+Read first: `python tools/awp_spec_entry.py --route silos --statements` (321 statements, 128868 bytes).
+
+Modules on demand:
 - `spec/drafts/0.8.0/index.md`
 - `spec/drafts/0.8.0/core.md`
 - `spec/drafts/0.8.0/synchronization.md`
@@ -98,7 +110,7 @@ Documents:
 - `spec/drafts/0.8.0/coordination.md`
 - `spec/drafts/0.8.0/handoff.md`
 
-Schemas:
+Schemas on demand (digest in the route output):
 - `schemas/awp-core-0.8.schema.json`
 - `schemas/awp-capsule-0.5.schema.json`
 - `schemas/awp-silo-0.1.schema.json`
@@ -113,7 +125,7 @@ Schemas:
   "family": "AWP",
   "family_version": "0.8.0",
   "generator": "tools/awp_spec_entry.py",
-  "profile": "agent-entry-core-v1",
+  "profile": "agent-entry-core-v2",
   "routing": {
     "coordination": {
       "documents": [
@@ -193,6 +205,6 @@ Schemas:
     }
   },
   "source_bundle": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
-  "source_bundle_sha256": "de9402b67d8a8b97a369e06faf106ac164c83803b00bb9e774bced2ebef37d89"
+  "source_bundle_sha256": "cf1446a72cf83f2ff4e90fb1fc3b5d5ed0cfb088ea218e3de68e7c0cf861f837"
 }
 ```

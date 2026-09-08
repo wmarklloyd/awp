@@ -154,6 +154,34 @@ class ReentryTests(unittest.TestCase):
         self.assertFalse(payload["selection"]["complete"])
         self.assertEqual(payload["selection"]["state"], "incomplete")
 
+    def test_measurement_settles_on_a_rounding_tie_instead_of_refusing(self) -> None:
+        # Construct a view whose rendered size sits exactly where round(ratio, 2)
+        # flips width by one character, producing a 2-cycle in the measurement.
+        view = self.module.build_reentry_view(ROOT / "awp.awp.md")
+        view["coordination"] = {"state": "available", "read_verified": True, "open_count": 0}
+        found = False
+        for pad in range(0, 400):
+            trial = json.loads(json.dumps(view))
+            trial["briefing"] = view["briefing"] + ("x" * pad)
+            trial["selection"].pop("output_bytes", None)
+            trial["selection"].pop("source_to_output_ratio", None)
+            sizes = []
+            for _ in range(4):
+                rendered = json.dumps(trial, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+                required = len(rendered.encode("utf-8"))
+                sizes.append(required)
+                trial["selection"]["output_bytes"] = required
+                trial["selection"]["source_to_output_ratio"] = round(trial["source"]["bytes"] / required, 2)
+            if len(set(sizes[-2:])) == 2 and sizes[-1] == sizes[-3]:
+                found = True
+                rendered, complete = self.module.bounded_json(trial, 1_000_000)
+                payload = json.loads(rendered)
+                self.assertEqual(payload["selection"]["measurement"], "settled-on-rounding-tie")
+                self.assertLessEqual(abs(payload["selection"]["output_bytes"] - len(rendered.encode("utf-8"))), 1)
+                self.assertTrue(complete)
+                break
+        self.assertTrue(found, "no rounding tie found within 400 bytes of padding; widen the search")
+
     def test_skipped_coordination_never_claims_complete(self) -> None:
         view = self.module.build_reentry_view(ROOT / "awp.awp.md")
         view["coordination"] = {
