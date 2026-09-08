@@ -321,6 +321,66 @@ class WorkstateWriterTests(unittest.TestCase):
         self.assertEqual(result["state"], "recovered")
         self.assertFalse(journal.exists())
 
+    def test_checkpoint_preserves_windows_paths_and_backslash_escapes(self) -> None:
+        # Regression: re.sub interprets backslash escapes in its replacement
+        # string, so a JSON-escaped Windows path collapsed to an invalid escape
+        # and a literal \1 or \g<0> was read as a group reference.
+        temporary, project, capsule = self.copy_capsule()
+        self.addCleanup(temporary.cleanup)
+        request = self.request(
+            capsule,
+            records=[
+                {
+                    "id": "artifact:windows-path-regression",
+                    "type": "artifact",
+                    "name": "Windows path regression",
+                    "modules": {
+                        "urn:awp:artifact": {
+                            "status": "retrievable",
+                            "locations": [
+                                {"kind": "local", "path": r"reference_watchfaces\explorer\face.json"}
+                            ],
+                            "integrity": {"algorithm": "sha256", "digest": "0" * 64},
+                        }
+                    },
+                    "note": r"literal backreference-lookalikes: \1 \g<0> \n \\ should survive verbatim",
+                }
+            ],
+        )
+        result = self.module.checkpoint(project, capsule, request)
+        self.assertEqual(result["status"], "complete")
+        rewritten = capsule.read_text(encoding="utf-8")
+        # The file itself must be readable JSON at that section, not merely
+        # produced without a Python exception.
+        integrity = self.module.capsule_integrity(capsule)
+        self.assertEqual(integrity["state"], "current")
+        # The capsule stores this note as a JSON string, so each literal
+        # backslash is doubled on disk; compare against that encoded form
+        # rather than the raw literal (json.dumps is the source of truth for
+        # what "correctly escaped" means here, independent of the tool under
+        # test).
+        self.assertIn(json.dumps(r"reference_watchfaces\explorer\face.json")[1:-1], rewritten)
+        self.assertIn(json.dumps(r"\1 \g<0> \n \\")[1:-1], rewritten)
+        # Round-trip through the actual re-entry parser (not just json.loads):
+        # confirm the on-disk escaped text decodes back to the exact original
+        # literal, not a corrupted or Python-repr'd backslash sequence.
+        # (`build_reentry_view` alone can't assert "complete" here: this
+        # capsule was copied alone into a temp dir, so the resume record's
+        # required_artifacts -- unrelated real repo files -- read as missing;
+        # that is a fixture limitation, not something this regression covers.)
+        entry = self.module.build_reentry_view(capsule)
+        self.assertEqual(entry["integrity"]["state"], "current")
+        sections = self.module._sections(rewritten)
+        record = self.module._record_index(sections["snapshot"])["artifact:windows-path-regression"]
+        self.assertEqual(
+            record["modules"]["urn:awp:artifact"]["locations"][0]["path"],
+            r"reference_watchfaces\explorer\face.json",
+        )
+        self.assertEqual(
+            record["note"],
+            r"literal backreference-lookalikes: \1 \g<0> \n \\ should survive verbatim",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

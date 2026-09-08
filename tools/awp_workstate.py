@@ -243,7 +243,16 @@ def _render_snapshot(snapshot: dict[str, Any]) -> str:
 
 
 def _replace_once(pattern: re.Pattern[str], text: str, replacement: str, label: str) -> str:
-    rewritten, count = pattern.subn(replacement, text, count=1)
+    """Replace one match with `replacement` taken literally.
+
+    The replacement carries generated capsule content, including the snapshot's
+    JSON. `re.sub` interprets escape sequences in a replacement string, so a
+    JSON-escaped backslash (a Windows path such as ``a\\b``) would collapse to a
+    single backslash and emit an invalid JSON escape, and a literal ``\1`` would
+    be read as a group reference. Substituting through a function bypasses that
+    processing entirely.
+    """
+    rewritten, count = pattern.subn(lambda _match: replacement, text, count=1)
     if count != 1:
         raise CoordinationError(f"capsule has no readable {label}")
     return rewritten

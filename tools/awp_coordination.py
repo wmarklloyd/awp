@@ -130,14 +130,16 @@ def replace_capsule_projection(
     actual_frontier = re.findall(r"(?m)^\s*-\s*(\S+)\s*$", frontier_match.group(0))
     if actual_frontier != list(expected_frontier):
         raise CoordinationError("capsule frontier is stale")
+    # Substituted through a function so backslashes in generated content are not
+    # read as replacement escapes; see _replace_once in awp_workstate.py.
     replacement_frontier = "frontier:\n" + "".join(f"  - {item}\n" for item in frontier)
-    rewritten, count = FRONTIER_BLOCK.subn(replacement_frontier, original, count=1)
+    rewritten, count = FRONTIER_BLOCK.subn(lambda _match: replacement_frontier, original, count=1)
     if count != 1:
         raise CoordinationError("could not replace capsule frontier")
-    rewritten, count = CHECKPOINT_FIELD.subn(f"checkpoint: {checkpoint_id}", rewritten, count=1)
+    rewritten, count = CHECKPOINT_FIELD.subn(lambda _match: f"checkpoint: {checkpoint_id}", rewritten, count=1)
     if count != 1:
         raise CoordinationError("capsule has no readable checkpoint")
-    rewritten, count = GENERATED_AT_FIELD.subn(f"generated_at: {generated_at}", rewritten, count=1)
+    rewritten, count = GENERATED_AT_FIELD.subn(lambda _match: f"generated_at: {generated_at}", rewritten, count=1)
     if count != 1:
         raise CoordinationError("capsule has no readable generated_at")
     # The generated region is unchanged, so its declared digest remains valid.
