@@ -1,7 +1,7 @@
 {
-  "briefing": "# Spec review phase 6: lifecycle guards\n\nA response that asserts progress must state what changed; a sender can withdraw its own obsolete request instead of forging recipient receipts; an intent whose holder is absent and whose base has drifted is reported stale and stops blocking present participants; and each coordination binding names its sibling so discovering one yields both.\n\nNext action: Split COOP-3 scale and presence material out of coordination.md, dedupe the contract text it shares with cooperation-contracts.md, and split the artifact digest manifest out of the capsule.",
+  "briefing": "# Refresh upstream artifact digests\n\nRefreshed the Capsule artifact manifest after incorporating the current 0.8 entry-routing, coordination, schema, and validation changes. No protocol semantics were changed by this maintenance checkpoint.\n\nNext action: Continue using the verified 0.8 Agent Entry Core and run the Python validation workflow on each material change.",
   "capsule": "awp.awp.md",
-  "capsule_digest": "sha256:bd6a8ddf906e0fa04163ab7146dc62a5b96b65db9f4defe7142327fc3c3b149c",
+  "capsule_digest": "sha256:6a48aecb82b84d02d5d2e6a08ad5f8a7dedade6b0966ec773aae06dfe930fee7",
   "entry": {
     "checkpoint": {
       "created_at": "2026-09-07T16:39:00Z",
@@ -367,13 +367,13 @@
       "type": "resume"
     }
   },
-  "generated_at": "2026-09-08T17:00:29.389066Z",
-  "generated_digest": "sha256:d54fd54831aef353877902335f1018d562036f7bd45fffdd0a595ca95aaa6aac",
+  "generated_at": "2026-09-08T17:32:38.443371Z",
+  "generated_digest": "sha256:dd590d7ae59452925005da69f1112f9628aa5201ef07b1757c95d49fc0d8bb6d",
   "metadata": {
     "awp_version": "0.8.0",
-    "checkpoint": "checkpoint:spec-review-phase-6-lifecycle-guards",
-    "generated_at": "2026-09-08T17:00:29.304335Z",
-    "generated_digest": "sha256:d54fd54831aef353877902335f1018d562036f7bd45fffdd0a595ca95aaa6aac",
+    "checkpoint": "checkpoint:refresh-upstream-artifact-digests",
+    "generated_at": "2026-09-08T17:32:38.428869Z",
+    "generated_digest": "sha256:dd590d7ae59452925005da69f1112f9628aa5201ef07b1757c95d49fc0d8bb6d",
     "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
     "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
   },
