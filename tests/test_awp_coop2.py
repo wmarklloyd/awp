@@ -273,3 +273,79 @@ class WatcherObservedOnQueueTests(unittest.TestCase):
         self.assertEqual(result["queued_events"], ["evt:req"])
         self.assertEqual(result["observed_receipts"], {})
         self.assertNotIn("heartbeat", result)
+
+
+class GitRefRetentionAndLockTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.project = Path(self.temporary.name)
+        import os
+        env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+        subprocess.run(["git", "init", "-q", "."], cwd=self.project, check=True, capture_output=True)
+        (self.project / "f").write_text("x", encoding="utf-8")
+        subprocess.run(["git", "add", "f"], cwd=self.project, check=True, capture_output=True)
+        subprocess.run(["git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "init"], cwd=self.project, check=True, capture_output=True, env=env)
+        self.doorbell = GitRefDoorbell(self.project)
+
+    def tearDown(self) -> None:
+        self.temporary.cleanup()
+
+    def test_namespace_is_pruned_to_retained_events(self) -> None:
+        for event in ("evt:a", "evt:b", "evt:c"):
+            self.assertEqual(self.doorbell.publish(event)["state"], "current")
+        self.assertEqual(len(self.doorbell.existing()), 3)
+        result = self.doorbell.publish("evt:d", retain_event_ids=["evt:c"])
+        self.assertEqual(result["state"], "current")
+        self.assertEqual(sorted(result["pruned"]), sorted([self.doorbell.ref_name("evt:a"), self.doorbell.ref_name("evt:b")]))
+        self.assertEqual(sorted(self.doorbell.existing()), sorted([self.doorbell.ref_name("evt:c"), self.doorbell.ref_name("evt:d")]))
+        self.assertEqual(self.doorbell.status()["ref_count"], 2)
+
+    def test_stale_lock_is_recovered_and_fresh_lock_is_respected(self) -> None:
+        import os
+        import time
+        from tools.awp_coop2 import STALE_LOCK_SECONDS
+
+        ref = self.doorbell.ref_name("evt:locked")
+        lock = self.project / ".git" / (ref + ".lock")
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        lock.write_text("", encoding="utf-8")
+        # A fresh lock belongs to someone; the doorbell must not steal it.
+        fresh = self.doorbell.publish("evt:locked")
+        self.assertEqual(fresh["state"], "unavailable")
+        self.assertNotIn("recovered_stale_lock", fresh)
+        # A stale lock is a leftover; the doorbell removes it and rings.
+        old = time.time() - STALE_LOCK_SECONDS - 5
+        os.utime(lock, (old, old))
+        recovered = self.doorbell.publish("evt:locked")
+        self.assertEqual(recovered["state"], "current", recovered)
+        self.assertEqual(recovered["recovered_stale_lock"], str(lock))
+        self.assertFalse(lock.exists())
+
+
+class EntryRegistrationTests(RendezvousFixture):
+    def test_entry_registers_observation_only_when_asked_and_reports_self(self) -> None:
+        import importlib.util
+        import sys
+
+        root = Path(__file__).resolve().parents[1]
+        spec = importlib.util.spec_from_file_location("reentry_for_test", root / "tools" / "awp_reentry.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(root / "tools"))
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.path.pop(0)
+        self.rendezvous.join("actor:peer", [], observation="watcher")
+        self.rendezvous.heartbeat("actor:peer", "test-watcher")
+        before = len(self.rendezvous._events())
+        view = module.coordination_entry_view(self.project, "actor:me")
+        self.assertEqual(view["state"], "available")
+        self.assertEqual(view["self"]["declared_observation"], "unregistered")
+        self.assertEqual(len(self.rendezvous._events()), before, "plain entry check must not publish")
+        view = module.coordination_entry_view(self.project, "actor:me", register_observation="on-entry-only")
+        self.assertEqual(view["self"]["registered"], "confirmed")
+        self.assertEqual(view["self"]["declared_observation"], "on-entry-only")
+        self.assertEqual(view["self"]["watcher_liveness"], "none")
+        self.assertEqual(view["self"]["inbound_signal_reach"], {"actor:peer": "entry-recovery-only"})
+        # and the peer, which does heartbeat, is reachable from me
+        self.assertEqual(self.rendezvous.status()["signal_reach"]["actor:me->actor:peer"]["signal_reach"], "reachable")

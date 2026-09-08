@@ -12,6 +12,7 @@ import hashlib
 import json
 import sqlite3
 import os
+import re
 import subprocess
 import tempfile
 from datetime import datetime, timedelta, timezone
@@ -107,8 +108,21 @@ class LocalDoorbell:
         return descriptor | {"state": "current", "signal": signal}
 
 
+MAX_SIGNAL_REFS = 32
+STALE_LOCK_SECONDS = 30
+_LOCK_PATH = re.compile(r"'([^']+\.lock)'")
+
+
 class GitRefDoorbell:
-    """Local Git-ref wake hint correlated to an already-published ledger event."""
+    """Local Git-ref wake hint correlated to an already-published ledger event.
+
+    Bounded: after each publication the namespace is pruned to the refs whose
+    event identifiers the caller still retains (the ledger's recent frontier
+    window), so it cannot grow without limit.  Lock-tolerant: a ref update that
+    fails on a stale ``.lock`` older than STALE_LOCK_SECONDS removes it and
+    retries once, because a doorbell that jams on a leftover lock is a doorbell
+    that silently stops ringing.
+    """
 
     prefix = "refs/awp/signal/"
 
@@ -120,15 +134,46 @@ class GitRefDoorbell:
         # AWP event IDs contain ':', which Git ref components prohibit.
         return cls.prefix + event_id.replace(":", "-")
 
-    def publish(self, event_id: str) -> dict:
+    def _git(self, *arguments: str) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", *arguments], cwd=self.project, check=False, capture_output=True, text=True)
+
+    def _recover_stale_lock(self, stderr: str) -> str | None:
+        match = _LOCK_PATH.search(stderr)
+        if not match:
+            return None
+        lock = Path(match.group(1))
+        if not lock.is_absolute():
+            lock = self.project / lock
+        try:
+            age = datetime.now(timezone.utc).timestamp() - lock.stat().st_mtime
+        except OSError:
+            return None
+        if age < STALE_LOCK_SECONDS:
+            return None
+        try:
+            lock.unlink()
+        except OSError:
+            return None
+        return str(lock)
+
+    def existing(self) -> list[str]:
+        result = self._git("for-each-ref", "--format=%(refname)", self.prefix)
+        if result.returncode:
+            return []
+        return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+    def prune(self, retain_event_ids: Sequence[str]) -> list[str]:
+        keep = {self.ref_name(event_id) for event_id in retain_event_ids}
+        pruned = []
+        for ref in self.existing():
+            if ref in keep:
+                continue
+            if self._git("update-ref", "-d", ref).returncode == 0:
+                pruned.append(ref)
+        return pruned
+
+    def publish(self, event_id: str, retain_event_ids: Sequence[str] | None = None) -> dict:
         ref = self.ref_name(event_id)
-        result = subprocess.run(
-            ["git", "update-ref", ref, "HEAD"],
-            cwd=self.project,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
         descriptor = {
             "profile": GIT_REF_DOORBELL_PROFILE,
             "ref": ref,
@@ -136,8 +181,16 @@ class GitRefDoorbell:
             "content": "event identifier in ref name; ref target is current HEAD",
             "scope": "local-only; no remote push is attempted",
         }
+        result = self._git("update-ref", ref, "HEAD")
+        if result.returncode:
+            recovered = self._recover_stale_lock(result.stderr)
+            if recovered:
+                descriptor["recovered_stale_lock"] = recovered
+                result = self._git("update-ref", ref, "HEAD")
         if result.returncode:
             return descriptor | {"state": "unavailable", "reason": result.stderr.strip()}
+        if retain_event_ids is not None:
+            descriptor["pruned"] = self.prune([*retain_event_ids, event_id])
         return descriptor | {"state": "current"}
 
     def status(self) -> dict:
@@ -145,6 +198,9 @@ class GitRefDoorbell:
             "profile": GIT_REF_DOORBELL_PROFILE,
             "namespace": self.prefix,
             "scope": "local-only; no remote push is attempted",
+            "retention": f"newest {MAX_SIGNAL_REFS} ledger events",
+            "ref_count": len(self.existing()),
+            "stale_lock_recovery_seconds": STALE_LOCK_SECONDS,
         }
 
 
@@ -284,9 +340,10 @@ class Rendezvous:
             interaction_id=interaction_id,
             kind=kind,
         )
+        recent = [event["event_id"] for event in self._events()[-MAX_SIGNAL_REFS:]]
         return {
             "filesystem": filesystem,
-            "git_ref": self.git_ref_doorbell.publish(receipt["event_id"]),
+            "git_ref": self.git_ref_doorbell.publish(receipt["event_id"], retain_event_ids=recent),
         }
 
     def heartbeat(self, actor: str, profile: str) -> dict:

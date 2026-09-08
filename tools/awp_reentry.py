@@ -268,7 +268,26 @@ def bounded_json(view: dict[str, Any], max_output_bytes: int) -> tuple[str, bool
     return rendered, bool(view["selection"].get("complete"))
 
 
-def coordination_entry_view(project: Path, actor: str) -> dict[str, Any]:
+def _self_observation(binding: dict[str, Any], actor: str, registration: dict[str, Any] | None) -> dict[str, Any]:
+    """What this actor's own doorbell looks like from the binding's side, compactly."""
+    mine = next((item for item in binding.get("participant_watchers", []) if item.get("actor") == actor), {})
+    inbound = {
+        pair.split("->", 1)[0]: value.get("signal_reach")
+        for pair, value in binding.get("signal_reach", {}).items()
+        if pair.endswith("->" + actor)
+    }
+    result = {
+        "declared_observation": mine.get("declared_observation", "unregistered"),
+        "watcher_liveness": mine.get("watcher_liveness", "none"),
+        "inbound_signal_reach": inbound,
+    }
+    if registration is not None:
+        result["registered"] = "confirmed" if registration.get("publication") == "confirmed" else "failed"
+        result["registration_deduplicated"] = bool(registration.get("deduplicated"))
+    return result
+
+
+def coordination_entry_view(project: Path, actor: str, register_observation: str | None = None) -> dict[str, Any]:
     """Read the durable COOP-2 mailbox and doorbell during project entry.
 
     This is intentionally a read-only safety net.  The doorbell watcher remains
@@ -282,6 +301,11 @@ def coordination_entry_view(project: Path, actor: str) -> dict[str, Any]:
         from tools.awp_coop2 import Rendezvous
 
         rendezvous = Rendezvous(project)
+        registration = None
+        if register_observation:
+            # Explicit publication requested by the entering session; the check
+            # itself stays read-only.  Joining is idempotent per declared mode.
+            registration = rendezvous.join(actor, [], observation=register_observation)
         inbox = rendezvous.inbox(actor)
         binding = inbox.get("binding", {})
         observation = binding.get("observation", {})
@@ -312,6 +336,7 @@ def coordination_entry_view(project: Path, actor: str) -> dict[str, Any]:
             "open_count": len(open_items),
             "open_items": open_items,
             "response_count": len(inbox.get("responses", [])),
+            "self": _self_observation(binding, actor, registration),
         }
     except (CoordinationError, OSError, ValueError, sqlite3.Error) as error:
         return {
@@ -329,6 +354,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--capsule", type=Path)
     parser.add_argument("--brief-only", action="store_true")
     parser.add_argument("--actor", help="actor identity for the bounded COOP-2 entry check")
+    parser.add_argument(
+        "--register-observation",
+        choices=["watcher", "on-entry-only"],
+        help="also publish this actor's observation mode to the rendezvous (explicit; the entry check itself stays read-only)",
+    )
     parser.add_argument("--max-output-bytes", type=int, default=24_000)
     return parser
 
@@ -345,7 +375,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         view = build_reentry_view(capsule, brief_only=args.brief_only)
         if not args.brief_only:
             view["coordination"] = (
-                coordination_entry_view(project, args.actor)
+                coordination_entry_view(project, args.actor, args.register_observation)
                 if args.actor
                 else {
                     "state": "skipped",
