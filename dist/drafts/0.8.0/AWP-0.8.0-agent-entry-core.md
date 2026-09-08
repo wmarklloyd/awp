@@ -3,7 +3,7 @@
 **Status:** Generated, non-normative bounded-context entry artifact  
 **Profile:** `agent-entry-core-v2`  
 **Source bundle:** `dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md`  
-**Source bundle SHA-256:** `746434c66814120ad8fb6737f9893be0c2d6237b0677b32d0262428b8b3ea4fe`
+**Source bundle SHA-256:** `73a9d40da6d552c4bf863a8e16dda73ac339ce18264af4de6946f863b34d23a2`
 
 This profile supports safe orientation, not complete interpretation. Its source bundle governs if any detail conflicts. Verify the digest before relying on this file.
 
@@ -60,7 +60,7 @@ Schemas on demand (digest in the route output):
 
 Coordination binding, COOP contract, leases, intents, or integration work.
 
-Read first: `python tools/awp_spec_entry.py --route coordination --statements` (250 statements, 102856 bytes).
+Read first: `python tools/awp_spec_entry.py --route coordination --statements` (226 statements, 94035 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -73,6 +73,23 @@ Modules on demand:
 
 Schemas on demand (digest in the route output):
 - `schemas/awp-core-0.8.schema.json`
+- `schemas/awp-coordination-0.5.schema.json`
+- `schemas/awp-cooperation-0.1.schema.json`
+
+### `coordination-scale`
+
+Presence monitoring, multi-host scale, or COOP-3 deployment work.
+
+Read first: `python tools/awp_spec_entry.py --route coordination-scale --statements` (189 statements, 83263 bytes).
+
+Modules on demand:
+- `spec/drafts/0.8.0/index.md`
+- `spec/drafts/0.8.0/core.md`
+- `spec/drafts/0.8.0/coordination.md`
+- `spec/drafts/0.8.0/coordination-scale.md`
+- `spec/drafts/0.8.0/cooperation-contracts.md`
+
+Schemas on demand (digest in the route output):
 - `schemas/awp-coordination-0.5.schema.json`
 - `schemas/awp-cooperation-0.1.schema.json`
 
@@ -96,7 +113,7 @@ Schemas on demand (digest in the route output):
 
 Silo identity, hierarchy, pinned bases, governance, and adoption; expand coordination/security sources when those mechanisms are used.
 
-Read first: `python tools/awp_spec_entry.py --route silos --statements` (322 statements, 130092 bytes).
+Read first: `python tools/awp_spec_entry.py --route silos --statements` (298 statements, 121271 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -143,6 +160,20 @@ Schemas on demand (digest in the route output):
         "schemas/awp-cooperation-0.1.schema.json"
       ],
       "summary": "Coordination binding, COOP contract, leases, intents, or integration work."
+    },
+    "coordination-scale": {
+      "documents": [
+        "spec/drafts/0.8.0/index.md",
+        "spec/drafts/0.8.0/core.md",
+        "spec/drafts/0.8.0/coordination.md",
+        "spec/drafts/0.8.0/coordination-scale.md",
+        "spec/drafts/0.8.0/cooperation-contracts.md"
+      ],
+      "schemas": [
+        "schemas/awp-coordination-0.5.schema.json",
+        "schemas/awp-cooperation-0.1.schema.json"
+      ],
+      "summary": "Presence monitoring, multi-host scale, or COOP-3 deployment work."
     },
     "general": {
       "documents": [
@@ -205,6 +236,6 @@ Schemas on demand (digest in the route output):
     }
   },
   "source_bundle": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
-  "source_bundle_sha256": "746434c66814120ad8fb6737f9893be0c2d6237b0677b32d0262428b8b3ea4fe"
+  "source_bundle_sha256": "73a9d40da6d552c4bf863a8e16dda73ac339ce18264af4de6946f863b34d23a2"
 }
 ```

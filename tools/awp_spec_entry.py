@@ -65,6 +65,20 @@ ROUTES: dict[str, dict[str, Any]] = {
             "schemas/awp-cooperation-0.1.schema.json",
         ],
     },
+    "coordination-scale": {
+        "summary": "Presence monitoring, multi-host scale, or COOP-3 deployment work.",
+        "documents": [
+            "spec/drafts/0.8.0/index.md",
+            "spec/drafts/0.8.0/core.md",
+            "spec/drafts/0.8.0/coordination.md",
+            "spec/drafts/0.8.0/coordination-scale.md",
+            "spec/drafts/0.8.0/cooperation-contracts.md",
+        ],
+        "schemas": [
+            "schemas/awp-coordination-0.5.schema.json",
+            "schemas/awp-cooperation-0.1.schema.json",
+        ],
+    },
     "security": {
         "summary": "Security guardrails, signatures, encryption, or authority controls.",
         "documents": [

@@ -19,6 +19,7 @@ MODULES = (
     "synchronization.md",
     "silos.md",
     "coordination.md",
+    "coordination-scale.md",
     "security.md",
     "adapters.md",
     "cooperation-contracts.md",

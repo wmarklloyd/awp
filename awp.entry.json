@@ -1,7 +1,7 @@
 {
-  "briefing": "# Resume and handoff point at current work\n\nThe resume and handoff records still named checkpoint:silo-profile with silo-era read_first, so selective re-entry gave every cold session silo-era orientation regardless of the COOP-2 and entry-routing work since. Both now name the current checkpoint, carry the two open review tasks in read_first, and state the current entry commands.\n\nNext action: Work task:coordination-tier-split and task:capsule-artifact-manifest, both accepted by actor:codex in interaction:409c879f2258ecd7e98bf36e. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
+  "briefing": "# Coordination tier split\n\nPresence monitoring and scaling requirements moved from coordination.md into coordination-scale.md so the ordinary coordination read path no longer carries COOP-3 material, with a coordination-scale route for work that needs them. The stale-intent downgrade that shipped in e8e8c64 never fired and is fixed.\n\nNext action: Work task:capsule-artifact-manifest (owned by actor:codex). Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
   "capsule": "awp.awp.md",
-  "capsule_digest": "sha256:143b0625b044ac03fdc4e5d9ea02a279c9df2f15fbcfb077611b28daf30bcbee",
+  "capsule_digest": "sha256:541a2a888ca769f2a8f699d36edd33ef0f59f5e755784a76befe8937f56a2aea",
   "entry": {
     "checkpoint": {
       "created_at": "2026-09-08T17:45:10Z",
@@ -156,8 +156,8 @@
       },
       {
         "id": "task:coordination-tier-split",
-        "status": "ready",
-        "title": "Split COOP-3 scale and presence material out of coordination.md and dedupe its section 3 against cooperation-contracts.md (sections 18.1 and 18.2 are 25 requirement statements and 8.9 KB carried by every COOP-1 read; accepted by actor:codex in interaction:409c879f2258ecd7e98bf36e)",
+        "status": "completed",
+        "title": "Split COOP-3 scale and presence material out of coordination.md (done: coordination-scale.md carries 25 statements; the section 3 dedupe against cooperation-contracts.md remains open as task:coordination-contract-dedupe)",
         "type": "task"
       },
       {
@@ -204,7 +204,7 @@
         "id": "artifact:coordination-coop-mechanisms",
         "integrity": {
           "algorithm": "sha256",
-          "digest": "a9428800a08b611d27864495c7db3e169037218da07ef10776db27a094298c7f"
+          "digest": "65342c17b9039711bcaae285127bc94d3a8dc10ecb6cee4adfb40664e1cde692"
         },
         "locations": [
           {
@@ -370,20 +370,20 @@
       "type": "resume"
     }
   },
-  "generated_at": "2026-09-08T17:45:59.322652Z",
-  "generated_digest": "sha256:fe61b0cf8e12ebed1aa5b809d82a20aa01fd2837b7ac7b5bec9d9d3ef0cdb55b",
+  "generated_at": "2026-09-08T17:51:37.949543Z",
+  "generated_digest": "sha256:bac3d3e40050fb5a7574dd74a92934ba95829a8474b005945ac83367a5cc7b07",
   "metadata": {
     "awp_version": "0.8.0",
-    "checkpoint": "checkpoint:deferred-review-items-recorded",
-    "generated_at": "2026-09-08T17:45:59.238662Z",
-    "generated_digest": "sha256:fe61b0cf8e12ebed1aa5b809d82a20aa01fd2837b7ac7b5bec9d9d3ef0cdb55b",
+    "checkpoint": "checkpoint:coordination-tier-split",
+    "generated_at": "2026-09-08T17:51:37.864927Z",
+    "generated_digest": "sha256:bac3d3e40050fb5a7574dd74a92934ba95829a8474b005945ac83367a5cc7b07",
     "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
     "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
   },
   "profile": "capsule-entry-slice-v1",
   "selection": {
     "complete": true,
-    "indexed_record_count": 220,
+    "indexed_record_count": 223,
     "missing_record_ids": [],
     "required_artifact_failures": [],
     "selected_record_count": 10,

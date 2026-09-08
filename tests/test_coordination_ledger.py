@@ -522,3 +522,41 @@ class CoordinationLedgerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StaleIntentDowngradeTests(unittest.TestCase):
+    """An abandoned intent is debris, not contention."""
+
+    def setUp(self) -> None:
+        self.ledger = CoordinationLedger(Path(tempfile.mkdtemp()) / "c.sqlite3")
+
+    def overlap(self, *subjects: str) -> dict:
+        return {"subjects": [f"{s}@1" for s in subjects], "policy_action": "block"}
+
+    def test_two_live_parties_still_block(self) -> None:
+        self.assertFalse(
+            self.ledger._only_stale_subjects(self.overlap("intent:a", "intent:b"), set())
+        )
+
+    def test_one_live_party_against_only_stale_parties_does_not_block(self) -> None:
+        # The requester's own intent is never stale, so requiring every subject
+        # to be stale made the downgrade unreachable.
+        self.assertTrue(
+            self.ledger._only_stale_subjects(self.overlap("intent:mine", "intent:gone"), {"intent:gone"})
+        )
+        self.assertTrue(
+            self.ledger._only_stale_subjects(
+                self.overlap("intent:mine", "intent:gone", "intent:also-gone"),
+                {"intent:gone", "intent:also-gone"},
+            )
+        )
+
+    def test_two_live_parties_among_stale_ones_still_block(self) -> None:
+        self.assertFalse(
+            self.ledger._only_stale_subjects(
+                self.overlap("intent:mine", "intent:yours", "intent:gone"), {"intent:gone"}
+            )
+        )
+
+    def test_a_single_subject_is_never_a_downgrade(self) -> None:
+        self.assertFalse(self.ledger._only_stale_subjects(self.overlap("intent:solo"), {"intent:solo"}))

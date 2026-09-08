@@ -989,13 +989,18 @@ class CoordinationLedger:
 
     @staticmethod
     def _only_stale_subjects(overlap: dict, stale_ids: set[str]) -> bool:
-        parties = {
-            subject.split("@", 1)[0]
-            for subject in overlap.get("subjects", [])
-        }
-        owners = set(overlap.get("intents", []) or [])
-        candidates = owners or parties
-        return bool(candidates) and candidates <= stale_ids
+        """True when no live contention remains: at most one party is not stale.
+
+        Contention requires two live claimants. An overlap whose only other
+        parties are abandoned intents is not a conflict, it is debris, so it
+        stops blocking. The requesting participant's own intent is of course
+        not stale, which is why this counts live parties rather than requiring
+        every subject to be stale.
+        """
+        subjects = {subject.split("@", 1)[0] for subject in overlap.get("subjects", [])}
+        if len(subjects) < 2:
+            return False
+        return len(subjects - stale_ids) <= 1
 
     def interact_overlap(
         self,

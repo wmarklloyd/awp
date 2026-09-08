@@ -19,6 +19,7 @@ SOURCES = {
     "SYNC": "synchronization.md",
     "SILO": "silos.md",
     "COORD": "coordination.md",
+    "COORDSCALE": "coordination-scale.md",
     "SECURITY": "security.md",
     "COOP": "cooperation-contracts.md",
 }
