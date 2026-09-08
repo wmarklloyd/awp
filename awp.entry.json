@@ -1,21 +1,20 @@
 {
-  "briefing": "# Refresh upstream artifact digests\n\nRefreshed the Capsule artifact manifest after incorporating the current 0.8 entry-routing, coordination, schema, and validation changes. No protocol semantics were changed by this maintenance checkpoint.\n\nNext action: Continue using the verified 0.8 Agent Entry Core and run the Python validation workflow on each material change.",
+  "briefing": "# Resume and handoff point at current work\n\nThe resume and handoff records still named checkpoint:silo-profile with silo-era read_first, so selective re-entry gave every cold session silo-era orientation regardless of the COOP-2 and entry-routing work since. Both now name the current checkpoint, carry the two open review tasks in read_first, and state the current entry commands.\n\nNext action: Work task:coordination-tier-split and task:capsule-artifact-manifest, both accepted by actor:codex in interaction:409c879f2258ecd7e98bf36e. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
   "capsule": "awp.awp.md",
-  "capsule_digest": "sha256:6a48aecb82b84d02d5d2e6a08ad5f8a7dedade6b0966ec773aae06dfe930fee7",
+  "capsule_digest": "sha256:143b0625b044ac03fdc4e5d9ea02a279c9df2f15fbcfb077611b28daf30bcbee",
   "entry": {
     "checkpoint": {
-      "created_at": "2026-09-07T16:39:00Z",
+      "created_at": "2026-09-08T17:45:10Z",
       "frontier": [
-        "evt:coop-work-consult-split"
+        "evt:ccd749a2-96f4-46a1-a872-c5fd73035b67"
       ],
-      "id": "checkpoint:silo-profile",
+      "id": "checkpoint:deferred-review-items-recorded",
       "recommended_next_action": {
-        "action": "Review and implement one bounded silo-v1 derivation/adoption binding with dependency, authority, shared-resource, and crash-recovery evidence; the existing COOP-1 completeness work remains open.",
+        "action": "Work task:coordination-tier-split and task:capsule-artifact-manifest; keep using the verified 0.8 Agent Entry Core and the Python validation workflow.",
         "requires_authority": false
       },
       "resumption_level": "semantic",
-      "revision": 1,
-      "summary": "Silo specification formulated in the unreleased 0.8.0 draft; normative rules and structural fixtures only. Workstate maintained through the existing local snapshot projector; no complete replay or COOP conformance claim.",
+      "summary": "Accepted-but-deferred review items are durable task records, not prose in a superseded checkpoint.",
       "type": "checkpoint"
     },
     "handoff": {
@@ -23,7 +22,7 @@
         "read_only",
         "local_write"
       ],
-      "checkpoint": "checkpoint:silo-profile",
+      "checkpoint": "checkpoint:deferred-review-items-recorded",
       "completeness": "portable",
       "dependencies": [
         {
@@ -77,8 +76,8 @@
         "COOP-1 provides COOP-2 semantic awareness or integration assurance, or COOP-3 authentication, fencing, or scale",
         "Consultation authorizes guarded mutation",
         "Imported authority grants external side effects",
-        "The silo specification is an implemented runtime or an operational conformance claim",
-        "Silo adoption automatically approves feature implementation or enables agent communication"
+        "A watcher declared at join is a live watcher; liveness is derived from heartbeats only",
+        "The entry slice is authoritative on its own; it is refused unless its capsule digest matches"
       ],
       "id": "handoff:cooperation-contracts",
       "intended_audience": [
@@ -86,9 +85,9 @@
         "agent"
       ],
       "module": "urn:awp:handoff",
-      "requested_action": "Review and implement one bounded silo-v1 derivation/adoption binding with dependency, authority, shared-resource, and crash-recovery evidence; the existing COOP-1 completeness work remains open.",
+      "requested_action": "Work task:coordination-tier-split and task:capsule-artifact-manifest, both accepted by actor:codex in interaction:409c879f2258ecd7e98bf36e. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
       "resumption_level": "semantic",
-      "revision": 1,
+      "revision": 2,
       "type": "handoff"
     },
     "read_first": [
@@ -121,6 +120,17 @@
         "type": "decision"
       },
       {
+        "choice": "The 0.8.0 working draft governs the capsule and discovery document. 0.6.0 is retained immutably as a historical release and migration reference only. Because 0.8.0 is unreleased and has no version-pinned remote artifact, both the capsule metadata and .awp.json bind to the repository-relative generated bundle, which capsule.md permits; both move to a tagged URL together when 0.8.0 is released.",
+        "evidence": [
+          "artifact:capsule-migration-tool"
+        ],
+        "id": "decision:capsule-0-8-governance",
+        "question": "Which specification governs the project capsule now that 0.6.0 is legacy?",
+        "revision": 1,
+        "status": "accepted",
+        "type": "decision"
+      },
+      {
         "epistemic_status": "observed",
         "evidence": [
           "artifact:cooperation-contracts-unified",
@@ -145,24 +155,16 @@
         "type": "task"
       },
       {
-        "choice": "Specify silo-v1 as a Synchronization fork profile in AWP 0.8.0, with immutable single-parent ancestry, explicit base updates and local overrides, separate ownership/approval/publication, isolated resources or common atomic admission, and dependency-complete receipted adoption. Partial adoption does not close a silo; parent closure does not invalidate children. Creating a silo never enables collaboration or spending.",
-        "evidence": [
-          "artifact:silo-consultation-response",
-          "artifact:silo-profile"
-        ],
-        "id": "decision:silo-profile",
-        "question": "How should AWP preserve and accept alternative hierarchical project states?",
-        "revision": 1,
-        "status": "accepted",
-        "type": "decision"
+        "id": "task:coordination-tier-split",
+        "status": "ready",
+        "title": "Split COOP-3 scale and presence material out of coordination.md and dedupe its section 3 against cooperation-contracts.md (sections 18.1 and 18.2 are 25 requirement statements and 8.9 KB carried by every COOP-1 read; accepted by actor:codex in interaction:409c879f2258ecd7e98bf36e)",
+        "type": "task"
       },
       {
-        "id": "risk:silo-implementation-gap",
-        "mitigation": "Implement and exercise the procedural cases in Silo Profile section 9 before claiming operational support.",
-        "revision": 1,
-        "statement": "The new silo profile has structural fixtures but no runtime, cross-workstate dependency-closure evaluator, shared-resource binding, adoption publisher, or independent interoperability evidence.",
-        "status": "active",
-        "type": "risk"
+        "id": "task:capsule-artifact-manifest",
+        "status": "ready",
+        "title": "Decide and implement the Capsule artifact-manifest split: 51 percent of the capsule is 106 artifact records and 44 are referenced by nothing; a format change now that 0.8.0 governs the capsule, so it needs a recorded format decision (accepted by actor:codex in interaction:409c879f2258ecd7e98bf36e)",
+        "type": "task"
       }
     ],
     "required_artifacts": [
@@ -332,7 +334,7 @@
         "read_only",
         "local_write"
       ],
-      "checkpoint": "checkpoint:silo-profile",
+      "checkpoint": "checkpoint:deferred-review-items-recorded",
       "freshness_policy": "verify_before_continue",
       "handoff": "handoff:cooperation-contracts",
       "id": "resume:awp-project",
@@ -344,13 +346,14 @@
         "constraint:no-private-cot",
         "decision:release-discipline",
         "decision:unified-coop-ladder",
+        "decision:capsule-0-8-governance",
         "claim:unified-coop-ladder",
         "risk:coop1-completeness",
         "task:coop1-conformance",
-        "decision:silo-profile",
-        "risk:silo-implementation-gap"
+        "task:coordination-tier-split",
+        "task:capsule-artifact-manifest"
       ],
-      "recommended_next_action": "Review and implement one bounded silo-v1 derivation/adoption binding with dependency, authority, shared-resource, and crash-recovery evidence; the existing COOP-1 completeness work remains open.",
+      "recommended_next_action": "Work task:coordination-tier-split and task:capsule-artifact-manifest, both accepted by actor:codex in interaction:409c879f2258ecd7e98bf36e. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
       "required_artifacts": [
         "artifact:spec-08-unified-coop",
         "artifact:cooperation-contracts-unified",
@@ -363,27 +366,27 @@
         "artifact:silo-schema",
         "artifact:silo-fixtures"
       ],
-      "revision": 1,
+      "revision": 2,
       "type": "resume"
     }
   },
-  "generated_at": "2026-09-08T17:32:38.443371Z",
-  "generated_digest": "sha256:dd590d7ae59452925005da69f1112f9628aa5201ef07b1757c95d49fc0d8bb6d",
+  "generated_at": "2026-09-08T17:45:59.322652Z",
+  "generated_digest": "sha256:fe61b0cf8e12ebed1aa5b809d82a20aa01fd2837b7ac7b5bec9d9d3ef0cdb55b",
   "metadata": {
     "awp_version": "0.8.0",
-    "checkpoint": "checkpoint:refresh-upstream-artifact-digests",
-    "generated_at": "2026-09-08T17:32:38.428869Z",
-    "generated_digest": "sha256:dd590d7ae59452925005da69f1112f9628aa5201ef07b1757c95d49fc0d8bb6d",
+    "checkpoint": "checkpoint:deferred-review-items-recorded",
+    "generated_at": "2026-09-08T17:45:59.238662Z",
+    "generated_digest": "sha256:fe61b0cf8e12ebed1aa5b809d82a20aa01fd2837b7ac7b5bec9d9d3ef0cdb55b",
     "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
     "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
   },
   "profile": "capsule-entry-slice-v1",
   "selection": {
     "complete": true,
-    "indexed_record_count": 217,
+    "indexed_record_count": 220,
     "missing_record_ids": [],
     "required_artifact_failures": [],
-    "selected_record_count": 9,
+    "selected_record_count": 10,
     "state": "complete"
   }
 }
