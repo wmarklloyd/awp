@@ -14,6 +14,10 @@ Normative changes are made only in a working-draft directory. Released specifica
 
 ## Validation
 
+The validation workflow is implemented in Python and does not require
+PowerShell. Use `python3` on Linux and macOS when `python` is not available;
+the commands below are otherwise shell-neutral.
+
 Install the pinned validation dependency and run the repository checks:
 
 ```bash

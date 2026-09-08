@@ -65,13 +65,13 @@ An external URL is a reference, not an automatic file include. Prefer the local 
 
 Run the current validator after specification, schema, capsule, or tooling changes:
 
-```powershell
+```bash
 python tools/validate_spec_0_6.py
 ```
 
 When changing source specification modules, regenerate and then validate the bundle:
 
-```powershell
+```bash
 python tools/build_spec_0_6_bundle.py
 python tools/validate_spec_0_6.py
 python tools/build_spec_0_7_bundle.py
