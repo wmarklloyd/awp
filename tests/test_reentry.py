@@ -132,13 +132,38 @@ class ReentryTests(unittest.TestCase):
         view = self.module.build_reentry_view(ROOT / "awp.awp.md")
         view["coordination"] = {
             "state": "available",
-            "inbox": [{"interaction_id": "interaction:critical"}],
+            "open_count": 1,
+            "open_items": [{"interaction_id": "interaction:critical"}],
         }
         rendered, complete = self.module.bounded_json(view, 1000)
         self.assertFalse(complete)
         payload = json.loads(rendered)
         self.assertEqual(payload["selection"]["state"], "budget_exceeded")
-        self.assertEqual(payload["coordination"]["inbox"][0]["interaction_id"], "interaction:critical")
+        self.assertEqual(payload["coordination"]["open_items"][0]["interaction_id"], "interaction:critical")
+
+    def test_unavailable_coordination_never_claims_complete(self) -> None:
+        view = self.module.build_reentry_view(ROOT / "awp.awp.md")
+        view["coordination"] = {
+            "state": "unavailable",
+            "read_verified": False,
+            "diagnostic": "AWP-COORD-LEDGER-UNAVAILABLE",
+        }
+        rendered, complete = self.module.bounded_json(view, 100_000)
+        payload = json.loads(rendered)
+        self.assertFalse(complete)
+        self.assertFalse(payload["selection"]["complete"])
+        self.assertEqual(payload["selection"]["state"], "incomplete")
+
+    def test_skipped_coordination_never_claims_complete(self) -> None:
+        view = self.module.build_reentry_view(ROOT / "awp.awp.md")
+        view["coordination"] = {
+            "state": "skipped",
+            "diagnostic": "AWP-COORD-ACTOR-REQUIRED",
+        }
+        rendered, complete = self.module.bounded_json(view, 100_000)
+        payload = json.loads(rendered)
+        self.assertFalse(complete)
+        self.assertFalse(payload["selection"]["complete"])
 
     def test_missing_actor_is_explicitly_disclosed(self) -> None:
         result = subprocess.run(
@@ -167,19 +192,23 @@ class ReentryTests(unittest.TestCase):
             rendezvous_type.return_value.inbox.return_value = inbox
             view = self.module.coordination_entry_view(ROOT, "actor:codex")
         self.assertEqual(view["state"], "available")
-        self.assertEqual(view["inbox"][0]["interaction_id"], "interaction:test")
+        self.assertTrue(view["read_verified"])
+        self.assertEqual(view["open_items"][0]["interaction_id"], "interaction:test")
+        self.assertNotIn("doorbell", view["binding"])
         rendezvous_type.return_value.inbox.assert_called_once_with("actor:codex")
 
     def test_coordination_entry_view_discloses_unavailable_binding(self) -> None:
         with patch("tools.awp_coop2.Rendezvous", side_effect=OSError("locked")):
             view = self.module.coordination_entry_view(ROOT, "actor:codex")
         self.assertEqual(view["state"], "unavailable")
+        self.assertFalse(view["read_verified"])
         self.assertEqual(view["diagnostic"], "AWP-COORD-LEDGER-UNAVAILABLE")
 
     def test_coordination_entry_view_discloses_sqlite_failure(self) -> None:
         with patch("tools.awp_coop2.Rendezvous", side_effect=sqlite3.OperationalError("locked")):
             view = self.module.coordination_entry_view(ROOT, "actor:codex")
         self.assertEqual(view["state"], "unavailable")
+        self.assertFalse(view["read_verified"])
         self.assertEqual(view["diagnostic"], "AWP-COORD-LEDGER-UNAVAILABLE")
 
 

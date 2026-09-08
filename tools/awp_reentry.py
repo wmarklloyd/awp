@@ -222,6 +222,13 @@ def build_reentry_view(capsule: Path, *, brief_only: bool = False) -> dict[str, 
 
 
 def bounded_json(view: dict[str, Any], max_output_bytes: int) -> tuple[str, bool]:
+    coordination = view.get("coordination")
+    if coordination is not None and coordination.get("state") != "available":
+        # An unread or unverifiable mailbox is never equivalent to an empty
+        # mailbox.  Keep the safety gate closed even when the failure makes the
+        # serialized view smaller.
+        view["selection"]["state"] = "incomplete"
+        view["selection"]["complete"] = False
     # The measurement fields affect their own serialization size. Iterate to a
     # fixed point so output_bytes describes the bytes a participant receives.
     for _ in range(8):
@@ -274,16 +281,40 @@ def coordination_entry_view(project: Path, actor: str) -> dict[str, Any]:
 
         rendezvous = Rendezvous(project)
         inbox = rendezvous.inbox(actor)
+        binding = inbox.get("binding", {})
+        observation = binding.get("observation", {})
+        doorbell = binding.get("doorbell", {})
+        open_items = [
+            {
+                key: item[key]
+                for key in ("interaction_id", "sender", "subject", "purpose", "decision_owner")
+                if item.get(key) is not None
+            }
+            for item in inbox.get("inbox", [])
+        ]
         return {
             "state": "available",
+            "read_verified": True,
             "actor": actor,
-            "binding": inbox["binding"],
-            "inbox": inbox["inbox"],
-            "responses": inbox["responses"],
+            "binding": {
+                key: binding[key]
+                for key in ("binding_id", "profile", "project_id", "workstate_id", "reach", "delivery_mode")
+                if binding.get(key) is not None
+            },
+            "frontier": observation.get("frontier", []),
+            "doorbell": {
+                key: doorbell[key]
+                for key in ("state", "event_id", "interaction_id", "kind")
+                if doorbell.get(key) is not None
+            },
+            "open_count": len(open_items),
+            "open_items": open_items,
+            "response_count": len(inbox.get("responses", [])),
         }
     except (CoordinationError, OSError, ValueError, sqlite3.Error) as error:
         return {
             "state": "unavailable",
+            "read_verified": False,
             "actor": actor,
             "diagnostic": "AWP-COORD-LEDGER-UNAVAILABLE",
             "reason": str(error),
