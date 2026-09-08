@@ -324,3 +324,70 @@ class WorkstateWriterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CapsuleMigrationTests(unittest.TestCase):
+    """The 0.6.0 -> 0.8.0 capsule metadata migration."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "awp_migrate_test", ROOT / "tools" / "migrate_capsule_0_6_to_0_8.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        sys.path.insert(0, str(ROOT))
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.path.pop(0)
+        cls.module = module
+
+    def test_repository_capsule_is_migrated_and_stays_migrated(self) -> None:
+        result = self.module.main(["--project", str(ROOT), "--check"])
+        self.assertEqual(result, 0, "the repository capsule should already declare 0.8.0")
+
+    def test_renderers_reproduce_every_section_byte_for_byte(self) -> None:
+        text = (ROOT / "awp.awp.md").read_text(encoding="utf-8")
+        self.assertEqual(self.module.check_render_fidelity(text), [])
+
+    def test_migration_rewrites_identity_metadata_only(self) -> None:
+        import json as json_module
+        import re
+
+        text = (ROOT / "awp.awp.md").read_text(encoding="utf-8")
+        legacy = text.replace("awp_version: 0.8.0", "awp_version: 0.6.0", 1)
+        legacy = legacy.replace("discovery: project\n", "", 1)
+        legacy = legacy.replace('"awp_version": "0.8.0"', '"awp_version": "0.6.0"')
+        before = json_module.loads(
+            re.search(
+                r'<!-- awp:(?:[^:\s]+:)?snapshot:start encoding="json" -->\n(.*?)\n<!-- awp:(?:[^:\s]+:)?snapshot:end -->',
+                legacy,
+                re.DOTALL,
+            ).group(1)
+        )
+        migrated, changes = self.module.migrate_front_matter(legacy)
+        migrated, section_changes = self.module.migrate_sections(
+            migrated, self.module.registry_modules(ROOT)
+        )
+        after = json_module.loads(
+            re.search(
+                r'<!-- awp:(?:[^:\s]+:)?snapshot:start encoding="json" -->\n(.*?)\n<!-- awp:(?:[^:\s]+:)?snapshot:end -->',
+                migrated,
+                re.DOTALL,
+            ).group(1)
+        )
+        self.assertIn("awp_version: 0.6.0 -> 0.8.0", changes)
+        self.assertIn("discovery: (absent) -> project", changes)
+        self.assertTrue(any("snapshot.awp_version" in item for item in section_changes))
+        # Semantic records are the projector's business, not the migration's.
+        self.assertEqual(before["records"], after["records"])
+        self.assertEqual(before["frontier"], after["frontier"])
+
+    def test_migration_is_idempotent(self) -> None:
+        text = (ROOT / "awp.awp.md").read_text(encoding="utf-8")
+        once, first = self.module.migrate_front_matter(text)
+        once, first_sections = self.module.migrate_sections(once, self.module.registry_modules(ROOT))
+        self.assertEqual(first + first_sections, [])
+        self.assertEqual(once, text)

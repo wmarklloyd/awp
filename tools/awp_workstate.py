@@ -12,13 +12,19 @@ import hashlib
 import json
 import os
 import re
+import sys
 import tempfile
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator, Sequence
 
-from awp_coordination import (
+if __package__ in {None, ""}:
+    # Support `python tools/awp_workstate.py` as well as `python -m tools.awp_workstate`.
+    # Both paths must resolve these modules to the SAME objects, or the
+    # CoordinationError raised here is not the class a caller catches.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tools.awp_coordination import (
     CHECKPOINT_FIELD,
     FRONTIER_BLOCK,
     GENERATED_AT_FIELD,
@@ -30,7 +36,7 @@ from awp_coordination import (
     generated_region_digest,
     operational_context,
 )
-from awp_reentry import GENERATED, _artifact_projection, _record_index, _sections
+from tools.awp_reentry import GENERATED, _artifact_projection, _record_index, _sections
 
 
 PROFILE = "local-workstate-projector-v1"

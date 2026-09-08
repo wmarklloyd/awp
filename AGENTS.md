@@ -8,7 +8,7 @@ This repository defines the Agent Workshare Protocol (AWP), a portable format fo
 
 AWP 0.8.0 is the active operative working draft under `spec/drafts/0.8.0/`. Earlier releases are historical references only. Coordination remains normative but experimental. The repository contains specifications, schemas, validators, conformance fixtures, generated bundles, a synthetic experiment harness, and project workstate examples. It does not claim to contain a production reader/writer, complete semantic-scope analyzer, live coordination service, or independent interoperability implementation.
 
-Two specifications play two roles here and this is deliberate, not a conflict: the released, immutable AWP 0.6.0 governs the *format* of `awp.awp.md` and is what `.awp.json` names (see `decision:release-discipline`; a capsule binds to a release, never to a draft), while the 0.8.0 working draft governs *development of the draft itself* and is the sole source of operative requirements for that work.
+AWP 0.6.0 is legacy. It is retained immutably as a historical release and for migration reference, and it governs nothing in this project: the project capsule, the discovery document, and all development are governed by the 0.8.0 working draft. A capsule still declaring 0.6.0 is not merely dated, it fails the active Capsule schema, which requires `awp_version` matching `^0\.8\.[0-9]+$` and the `discovery: project` front-matter field that capsule.md states as a MUST. `tools/migrate_capsule_0_6_to_0_8.py --check` reports any capsule still in that state.
 
 The current project goal is seamless inter-agent collaboration: after a user authorizes a bounded COOP-2 interaction, the initiating agent should be able to reach another available agent in the same project without requiring the user to relay paths, messages, or reminders. Achieving that unattended behavior requires a selected `host-dispatch` or `subscription` binding; the local polling profile is a durable mailbox only. The complete AWP 0.8.0 working-draft bundle is the sole source of operative requirements, including the distinction between publication, delivery, and answer and the boundary between the project mailbox and an optional host wake mechanism.
 
@@ -41,7 +41,7 @@ The workstate capsule is intended to make project re-entry fast. Preserve its ge
 
 ## Canonical sources
 
-- `AWP_SPECIFICATION_0.6.0.md` is the immutable legacy-family overview.
+- `AWP_SPECIFICATION_0.6.0.md` is the immutable legacy-family overview. The 0.6.0 family is legacy and governs no current work.
 - `spec/0.6.0/` contains the legacy module specifications.
 - `spec/drafts/0.8.0/` contains the active working draft; normative development occurs there.
 - `schemas/` contains normative JSON Schemas.
@@ -52,11 +52,11 @@ The workstate capsule is intended to make project re-entry fast. Preserve its ge
 
 The conventional filename for a project-named capsule is `<project-name>.awp.md`. Versioned archival copies MAY use `<project-name>.v<revision>.awp.md`; follow `.awp.json` rather than inferring the current workstate from a filename.
 
-For external references, use the pinned 0.6.0 bundle URL:
+The governing specification for this project is the 0.8.0 working draft, identified in both the capsule metadata and `.awp.json` as the repository-relative generated bundle:
 
-`https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md`
+`dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md`
 
-The capsule metadata and `.awp.json` must identify the same exact governing specification. Do not substitute a `main` branch URL or assume compatibility with another AWP version. A sandboxed or offline project may use a repository-relative local copy of the exact bundle in both places.
+0.8.0 is unreleased, so no version-pinned remote artifact exists for it; capsule.md permits a repository-relative local copy when remote retrieval is unavailable or inappropriate, and that is the correct binding here. When 0.8.0 is released, both places move to the tagged URL together. The capsule metadata and `.awp.json` must always identify the same exact governing specification. Do not substitute a `main` branch URL or assume compatibility with another AWP version. The legacy 0.6.0 bundle URL (`https://raw.githubusercontent.com/wmarklloyd/awp/v0.6.0/AWP_SPECIFICATION_0.6.0.bundle.md`) remains valid only as a citation of that historical release.
 
 An external URL is a reference, not an automatic file include. Prefer the local discovery document and capsule for normal orientation. Do not edit released specification or schema semantics; create a correctly versioned draft and add conformance evidence.
 
