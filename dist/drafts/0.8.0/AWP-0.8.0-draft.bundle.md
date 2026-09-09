@@ -652,6 +652,20 @@ The host MUST serialize canonical replacement per workstate, write through a tem
 
 Artifact locations are not artifact identity. When bytes at a mutable location change, the writer MUST preserve the prior digest as historical evidence and create or reference a new artifact revision. It MUST NOT silently rewrite an old artifact claim to match new bytes. Routine entry MAY verify only active required artifacts; a full historical audit MUST be an explicit operation.
 
+### 3.3 Informative efficient-maintenance guidance
+
+The requirements above define observable safety and recovery behavior, not a requirement to reread or rewrite every workstate byte after every source-file write. An implementation can keep the common editing path small while preserving those requirements by separating an in-progress refresh from a semantic checkpoint.
+
+During ordinary work that has not reached a handoff, integration, publication, or other semantic boundary, a host can append a compact, idempotent refresh record instead of immediately rewriting the canonical Capsule. A useful record binds its request identifier, current whole-Capsule and generated-region digests, semantic frontier, concise change summary, next action, and evidence references, and identifies its projection state as deferred. This record is durable progress evidence; it is not a replacement Capsule, a new semantic frontier, or proof that changed artifact digests are current. A receiver still treats affected artifact claims and any dependent entry selection as stale until a canonical projection incorporates and verifies the change.
+
+A full canonical projection remains appropriate when semantic records, frontier, briefing, Resume, Handoff, required-artifact descriptors, or participant-facing entry state change; before integration or publication relies on the new state; and before a completed handoff claims current or complete state. A verified no-change operation remains preferable to rewriting identical bytes. Implementations can compact or discard superseded refresh records only under a declared retention and recovery policy that preserves every fact needed by the next projection.
+
+Within one locked maintenance operation, an implementation can read the Capsule once, derive its whole-artifact digest, generated-region integrity, frontier, parsed snapshot, and proposed replacement from that same byte snapshot, and reuse those results through serialization and entry-view generation. The lock or equivalent serialization boundary still covers the final expected-state comparison and replacement. Cached artifact verification can likewise be reused only when it is bound to the exact artifact digest and verification policy and is invalidated by a relevant byte, policy, dependency, or environment change.
+
+After a successful projection, a host can build a digest-bound entry slice from the already validated proposed state rather than reparsing the new Capsule and reverifying unchanged artifacts. The resulting slice remains disposable and gains no authority: it is accepted only when its recorded Capsule digest matches the authoritative Capsule, and a participant-facing `complete` result still depends on all validation required by Sections 3.1 and 3.2.
+
+Model-facing maintenance requests and receipts should carry concise semantic fields, identifiers, digests, statuses, omissions, and diagnostics rather than embedding the full Capsule or unchanged artifact content. This reduces context consumption without hiding stale, incomplete, unavailable, or budget-exceeded state. Platform-specific buffering, memory mapping, cache layout, and filesystem primitives are implementation choices; implementers should benchmark the complete cold and warm paths on their supported filesystems and report what was measured rather than infer performance from a storage technology.
+
 ## 4. Editable directory
 
 The default layout is:
@@ -3310,7 +3324,7 @@ Identified by digest; reproduced verbatim in `dist/drafts/0.8.0/AWP-0.8.0-draft.
 |---|---|---:|---|
 | Silo profile schema | `schemas/awp-silo-0.1.schema.json` | 9670 | `bc736a67a6c57ddd53e01168de1cbc193323290f65f50bfbeac675f3c4a88b5c` |
 | Module registry | `spec/drafts/0.8.0/modules.json` | 3341 | `233d381de6cac801971f93879e7db16def0f405d6fee8fc10c6f9f730e982e89` |
-| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 174186 | `85ebfad1406fcf9a047097d0764a4b1032d35377aeffa20984ea83cc54ce48ed` |
+| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 174186 | `8a908e9a248d006de5b5a31934891866835b2e6d50ca8c32b894dd7e030d0a3c` |
 | Core schema | `schemas/awp-core-0.8.schema.json` | 13567 | `cf10787593293c4bdcf98671378d96f11fa787c0c21172155725ebb79ea7bfda` |
 | Cooperation schema | `schemas/awp-cooperation-0.1.schema.json` | 22418 | `8139174ba626fdd517de079a4295b7006d7d7051f8b467514c76ba0cdecd4072` |
 | Capsule schema | `schemas/awp-capsule-0.5.schema.json` | 1289 | `8d33f83d815faf9ad7fa0b4b0823ae15b041b1d236e8c7153b60e886b18a080a` |

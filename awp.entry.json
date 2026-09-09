@@ -1,7 +1,7 @@
 {
-  "briefing": "# Resume references open work only\n\nffc3832 completed task:coordination-tier-split but left the resume naming it. Selective re-entry now reports resume references to completed or superseded records as selection.stale_resume_references, and the resume names the two open tasks instead.\n\nNext action: Work task:capsule-artifact-manifest and task:coordination-contract-dedupe, both owned by actor:codex. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
+  "briefing": "# Efficient maintenance guidance\n\nAdded non-normative, evidence-based Capsule maintenance guidance: compact deferred refreshes for in-progress ordinary work, full projection at semantic and handoff boundaries, one-read state reuse inside the serialization boundary, digest-bound entry-slice generation from validated state, and bounded model-facing receipts. Existing integrity, stale-state, durability, recovery, freshness, and completeness requirements remain unchanged.\n\nNext action: Implement and benchmark one-read Capsule state reuse and entry-slice generation from the validated checkpoint state; keep compact refresh explicitly deferred until a canonical projection incorporates changed semantics and artifact digests.",
   "capsule": "awp.awp.md",
-  "capsule_digest": "sha256:a77637ed53079750b67f6a4f2c6fc1c2ba0eba4fbfafd89834c77ad30db58471",
+  "capsule_digest": "sha256:af7d5da40a93c7edfea5edc30f5e1583cca651e90186574ac5f921ba2c4cad26",
   "entry": {
     "checkpoint": {
       "created_at": "2026-09-08T17:53:52Z",
@@ -370,20 +370,20 @@
       "type": "resume"
     }
   },
-  "generated_at": "2026-09-08T17:53:52.530853Z",
-  "generated_digest": "sha256:f358c6982cee31cb3e162032fb5f177f18c102e14a746fd00b231e92554992ff",
+  "generated_at": "2026-09-09T16:20:08.002713Z",
+  "generated_digest": "sha256:4f6e6e6be736a5b84abedd05ea21f760d90b10eb1036562879142d21f2f0917a",
   "metadata": {
     "awp_version": "0.8.0",
-    "checkpoint": "checkpoint:resume-references-open-work",
-    "generated_at": "2026-09-08T17:53:52.440491Z",
-    "generated_digest": "sha256:f358c6982cee31cb3e162032fb5f177f18c102e14a746fd00b231e92554992ff",
+    "checkpoint": "checkpoint:efficient-maintenance-guidance",
+    "generated_at": "2026-09-09T16:20:07.988192Z",
+    "generated_digest": "sha256:4f6e6e6be736a5b84abedd05ea21f760d90b10eb1036562879142d21f2f0917a",
     "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
     "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
   },
   "profile": "capsule-entry-slice-v1",
   "selection": {
     "complete": true,
-    "indexed_record_count": 224,
+    "indexed_record_count": 229,
     "missing_record_ids": [],
     "required_artifact_failures": [],
     "selected_record_count": 10,

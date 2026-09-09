@@ -3,7 +3,7 @@
 **Status:** Generated, non-normative bounded-context entry artifact  
 **Profile:** `agent-entry-core-v2`  
 **Source bundle:** `dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md`  
-**Source bundle SHA-256:** `73a9d40da6d552c4bf863a8e16dda73ac339ce18264af4de6946f863b34d23a2`
+**Source bundle SHA-256:** `46c4d9879e0e2bfc90415ce30026b303f0bab8d8a544245081543e1e594a7cc0`
 
 This profile supports safe orientation, not complete interpretation. Its source bundle governs if any detail conflicts. Verify the digest before relying on this file.
 
@@ -236,6 +236,6 @@ Schemas on demand (digest in the route output):
     }
   },
   "source_bundle": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
-  "source_bundle_sha256": "73a9d40da6d552c4bf863a8e16dda73ac339ce18264af4de6946f863b34d23a2"
+  "source_bundle_sha256": "46c4d9879e0e2bfc90415ce30026b303f0bab8d8a544245081543e1e594a7cc0"
 }
 ```

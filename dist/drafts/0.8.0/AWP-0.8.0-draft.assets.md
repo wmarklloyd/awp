@@ -722,61 +722,61 @@ Do not edit this generated file directly; regenerate it from the source files wh
     {
       "id": "AWP-CAPSULE-019",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 125,
+      "line": 139,
       "statement": "`WORK.md` and `manifest.json` are REQUIRED. `events.jsonl` is REQUIRED unless the manifest declares a snapshot-only representation. `snapshot.json`, `artifacts/`, `modules/`, and `views/` are optional."
     },
     {
       "id": "AWP-CAPSULE-020",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 127,
+      "line": 141,
       "statement": "Each `events.jsonl` line contains one complete JSON event. Module-specific events remain in this unified ledger. Module-owned auxiliary data MAY occupy separate files under `modules/`, but their manifest locations are authoritative; directory names are conventional only."
     },
     {
       "id": "AWP-CAPSULE-021",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 133,
+      "line": 147,
       "statement": "A `.awp.md` file begins with briefing metadata and human Markdown, followed by machine sections. Front matter MUST declare `capsule_boundary`, a lowercase hexadecimal token containing at least 128 bits of unpredictable entropy."
     },
     {
       "id": "AWP-CAPSULE-022",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 147,
+      "line": 161,
       "statement": "It may contain attributes of the form ` name=\"value\"` before ` -->`. Attribute names match `[a-z][a-z0-9_-]*`; values MUST NOT contain a quote, CR, LF, or `-->`."
     },
     {
       "id": "AWP-CAPSULE-023",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 166,
+      "line": 180,
       "statement": "The boundary token MUST NOT occur in decoded section content. A writer detecting a collision MUST generate a new boundary or encode the content using a binary-safe encoding such as base64. Binary artifacts MUST use base64 or a registered binary-safe encoding."
     },
     {
       "id": "AWP-CAPSULE-024",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 168,
+      "line": 182,
       "statement": "A reader MUST validate marker pairing, reject duplicate authoritative sections, verify each module section against a matching manifest declaration, reject malformed boundaries, and preserve unknown sections during lossless rewriting. It MUST NOT infer machine state from arbitrary Markdown headings or code examples outside marked sections."
     },
     {
       "id": "AWP-CAPSULE-025",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 172,
+      "line": 186,
       "statement": "Editable-directory packages, ZIP packages, JSON wire payloads, and standalone capsule exchange are archived design directions. They have no active AWP 0.8 conformance claim and MUST NOT be represented as a substitute for a project-scoped workstate or a COOP binding. A future version MAY define a transport or inter-project profile with its own discovery, authority, integrity, and lifecycle rules."
     },
     {
       "id": "AWP-CAPSULE-026",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 190,
+      "line": 204,
       "statement": "Standard representation kinds are `capsule-section`, `project-path`, `remote`, and `events-only`. A remote module location MUST disclose retrieval requirements. Secrets MUST NOT appear in locations."
     },
     {
       "id": "AWP-CAPSULE-027",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 196,
+      "line": 210,
       "statement": "A Capsule reader MUST validate the project representation safely, present the briefing, expose manifest module requirements, and preserve unknown sections when claiming lossless processing. A reader claiming repository-discovery support MUST implement Section 2 and expose discovery failures."
     },
     {
       "id": "AWP-CAPSULE-028",
       "source": "spec/drafts/0.8.0/capsule.md",
-      "line": 198,
+      "line": 212,
       "statement": "A Capsule writer MUST create an unambiguous project representation, bind generated prose to a frontier and digest, include or declare every required component, and accurately identify omitted or remote content. A project Markdown writer MUST include its discovery mode and governing specification in the capsule metadata."
     },
     {
