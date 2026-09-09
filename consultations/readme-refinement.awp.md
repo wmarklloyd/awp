@@ -6,10 +6,10 @@ discovery: self
 capsule_boundary: 4f8a1c9d7b3e52a6f0c481de93b72568
 workstate_id: urn:uuid:awp-consultation-readme-refinement-2026-09-04
 frontier:
-  - evt:readme-refinement-consultation
-checkpoint: checkpoint:readme-refinement-consultation
-generated_at: 2026-09-04T16:12:36Z
-generated_digest: sha256:3859307b0e5b171346e0e19edac3dd02c3d8b1fcb0286806db6cefac5b555562
+  - evt:readme-refinement-consultation-cancelled
+checkpoint: checkpoint:readme-refinement-consultation-cancelled
+generated_at: 2026-09-09T17:37:25.630969Z
+generated_digest: sha256:1f5c0a9e715e96f1ddb6913eae644b6f402718e9e9ea417fb16ed41a95f73720
 ---
 
 <!-- awp:generated:start -->
@@ -120,29 +120,10 @@ AWP is distributed under the [GNU General Public License version 3](../LICENSE).
 {
   "awp_version": "0.8.0",
   "workstate_id": "urn:uuid:awp-consultation-readme-refinement-2026-09-04",
-  "frontier": ["evt:readme-refinement-consultation"],
-  "generated_at": "2026-09-04T16:12:36Z",
+  "frontier": ["evt:readme-refinement-consultation-cancelled"],
+  "generated_at": "2026-09-09T17:37:25.630751Z",
   "records": {
-    "consultations": [
-      {
-        "id": "consultation:readme-refinement",
-        "type": "consultation",
-        "revision": 1,
-        "question": "How should the AWP README be refined so that it is concise, technically credible to experienced computer engineers, and immediately useful to a person or agent evaluating or adopting the protocol?",
-        "status": "open",
-        "requested_action": "Provide an editorial critique and proposed replacement prose or patch. Do not modify or commit repository files.",
-        "context": {
-          "project": "Agent Workshare Protocol",
-          "specification": "AWP 0.8.0",
-          "integration_point": "An AWP bootstrap link in AGENTS.md",
-          "activation_correction": "Do not say that placing a capsule in a repository enables AWP. The capsule is a portable workstate artifact; AGENTS.md is the project bootstrap point.",
-          "review_scope": "The full current README is embedded in the generated briefing above.",
-          "known_limitations": ["No production reader/writer is claimed", "No live coordinator is claimed", "No independent interoperability evidence is claimed"]
-        },
-        "read_first": [],
-        "desired_output": "Ranked critique, precise replacement wording for weak passages, and a concise adoption-oriented README outline."
-      }
-    ]
+    "consultations": [{"id":"consultation:readme-refinement","type":"consultation","revision":2,"question":"How should the AWP README be refined so that it is concise, technically credible to experienced computer engineers, and immediately useful to a person or agent evaluating or adopting the protocol?","status":"cancelled","requested_action":"Provide an editorial critique and proposed replacement prose or patch. Do not modify or commit repository files.","context":{"project":"Agent Workshare Protocol","specification":"AWP 0.8.0","integration_point":"An AWP bootstrap link in AGENTS.md","activation_correction":"Do not say that placing a capsule in a repository enables AWP. The capsule is a portable workstate artifact; AGENTS.md is the project bootstrap point.","review_scope":"The full current README is embedded in the generated briefing above.","known_limitations":["No production reader/writer is claimed","No live coordinator is claimed","No independent interoperability evidence is claimed"]},"read_first":[],"desired_output":"Ranked critique, precise replacement wording for weak passages, and a concise adoption-oriented README outline.","disposition":"Withdrawn by direct project-owner instruction on 2026-09-09: disregard this 2026-09-04 request rather than answer it. No editorial critique was produced."}]
   },
   "modules": {}
 }

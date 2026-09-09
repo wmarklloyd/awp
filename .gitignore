@@ -16,3 +16,6 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Desktop-app conversation export folder (not part of the repository)
+Claude outputs/
