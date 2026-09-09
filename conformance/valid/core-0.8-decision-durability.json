@@ -1,0 +1,12 @@
+{
+  "id": "decision:capsule-entry",
+  "type": "decision",
+  "question": "What is the AWP 0.8 project entry point?",
+  "status": "accepted",
+  "choice": "The project .awp.md capsule is the entry point.",
+  "rationale": "Keep portable discovery and semantic state in one canonical artifact.",
+  "affects": ["artifact:capsule-spec", "task:project-entry"],
+  "supersedes": ["decision:companion-discovery"],
+  "supersession_rationale": "The companion descriptor duplicated authoritative discovery state.",
+  "source": "artifact:adr-capsule-entry"
+}

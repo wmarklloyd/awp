@@ -1,0 +1,16 @@
+{
+  "schema": "schemas/awp-core-0.8.schema.json",
+  "definition": "coreRecord",
+  "cases": [
+    {
+      "document": "conformance/valid/core-0.8-decision-durability.json",
+      "valid": true,
+      "expected_keywords": []
+    },
+    {
+      "document": "conformance/invalid/core-0.8-decision-missing-supersession-rationale.json",
+      "valid": false,
+      "expected_keywords": ["supersession_rationale", "required"]
+    }
+  ]
+}

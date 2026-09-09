@@ -164,7 +164,7 @@ A core record contains `id` and `type` plus the fields below. It MAY include int
 | `constraint` | `statement`, `strength`, `status` | strength: `required`, `preferred`, `advisory` |
 | `claim` | `statement`, `epistemic_status` | status defined in Section 9; confidence, when present, is 0–1 |
 | `evidence` | `evidence_type` | identifies inspectable support, contradiction, or context |
-| `decision` | `question`, `status` | status: `proposed`, `accepted`, `rejected`, `deferred`, `reopened`, `superseded` |
+| `decision` | `question`, `status` | status: `proposed`, `accepted`, `rejected`, `deferred`, `reopened`, `superseded`, `revoked`, `expired` |
 | `plan` | `goal`, `status`, `steps` | expresses intent, not execution |
 | `task` | `title`, `status` | status: `proposed`, `ready`, `in_progress`, `input_required`, `blocked`, `completed`, `failed`, `cancelled`, `superseded` |
 | `question` | `text`, `status` | status: `open`, `answered`, `withdrawn`, `superseded` |
@@ -204,6 +204,20 @@ For example, a portable debugging consultation may be represented as:
 ```
 
 The consultation's `context` is a portable briefing, not a claim that every included observation is verified. Claims, evidence, decisions, tasks, and any resulting change remain separate records.
+
+### 8.1 Decision Durability
+
+Decision Durability is the property that an accepted decision remains discoverable and applicable across sessions and participants until an explicit decision record supersedes or revokes it, its declared expiry is reached, or its declared applicability does not intersect the contemplated work. A summary, omitted transcript, newer timestamp, different participant, or bounded-context projection MUST NOT silently cancel an accepted decision.
+
+An accepted decision MUST contain a non-empty `choice`. A decision MAY contain `rationale`, `affects`, `supersedes`, `supersession_rationale`, `source`, and `expires_at`. `affects` is an array of record or artifact references defining explicit Core-level applicability. When `affects` is absent, the decision is conservatively applicable to the whole workstate. `source` references a Core artifact record; integrity and retrieval semantics for that source belong to the Artifact module.
+
+`supersedes` is the sole Core decision-lineage edge and lists the decision records displaced by the new decision. A decision with a non-empty `supersedes` array MUST contain a non-empty `supersession_rationale`. It MUST NOT supersede itself. Every referenced predecessor MUST exist or be reported as unavailable; a processor MUST NOT infer supersession from time, array order, similar wording, or a generic dependency edge. A predecessor MAY be retained with status `superseded`; the successor's `supersedes` edge remains authoritative.
+
+An `accepted` decision is effective. `reopened` means its prior settlement is under reconsideration: its prior choice MUST remain visible as lineage, but it MUST NOT be treated as an unqualified effective decision for guarded work. `superseded`, `revoked`, and `expired` decisions are not effective, but their identifiers, choices, rationales, sources, and lineage MUST remain preservable. An `expired` decision MUST identify `expires_at`; a processor MUST use the applicable declared clock authority rather than unsynchronized participant time when expiry affects guarded work.
+
+For contemplated work, the **explicit decision closure** contains every effective decision whose `affects` references intersect the task, its declared scopes, required artifacts, or directly referenced records, plus every effective decision without `affects`. It also contains the effective lineage head and the identifiers and statuses of its ancestors; ancestor prose MAY be deferred from a bounded presentation. Core readers MUST be able to compute this explicit-reference closure without Coordination. A missing predecessor, cycle, self-supersession, multiple effective heads over the same explicit applicability, or applicable `reopened` decision makes decision context incomplete; it MUST NOT be resolved by recency.
+
+A decision source requiring Artifact processing is structurally preservable by a Core-only reader but not source-verifiable. Such a reader MUST report decision context as `partial` or `unverifiable`, not `complete`. Optional modules MAY extend applicability, but they MUST NOT replace or reinterpret the Core `affects` and `supersedes` fields.
 
 An optional module extending a Core record places its fields under `modules.{module-id}`. A module defining a new record type includes `id`, `type`, and `module`. It MUST NOT use an unqualified type name already owned by Core or another module.
 

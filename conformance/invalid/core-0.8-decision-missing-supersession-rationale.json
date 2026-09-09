@@ -1,0 +1,8 @@
+{
+  "id": "decision:capsule-entry",
+  "type": "decision",
+  "question": "What is the AWP 0.8 project entry point?",
+  "status": "accepted",
+  "choice": "The project .awp.md capsule is the entry point.",
+  "supersedes": ["decision:companion-discovery"]
+}

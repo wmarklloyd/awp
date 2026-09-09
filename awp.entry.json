@@ -1,28 +1,15 @@
 {
-  "briefing": "# Coop2 selection\n\nSelected exploratory COOP-2 as the current project cooperation level with claim_state partial; the local binding retains COOP-1 safeguards and discloses missing semantic and integration capabilities.\n\nNext action: Use the COOP-2 rendezvous for explicitly authorized, bounded collaboration while separately implementing and testing semantic analysis and integration assurance.",
+  "briefing": "# Git doorbell specification draft\n\nThe 0.8 draft now distinguishes Git-ref signaling from host wake, watcher liveness from declaration, and entry-only recovery from unattended delivery; generated artifact records are refreshed.\n\nNext action: Implement the host-supervised Git-ref watcher and run the publication-to-wake test on a host that can keep the watcher alive.",
   "capsule": "awp.awp.md",
-  "capsule_digest": "sha256:972c058619187f421386987c2245c1b20c6bd6472618815d394a76dbe5c3b5e6",
+  "capsule_digest": "sha256:703f8f2a51b5ff32e6a4126ff0256189068e201c06b6614b83bfd6da0e6a4660",
   "entry": {
-    "checkpoint": {
-      "created_at": "2026-09-08T17:53:52Z",
-      "frontier": [
-        "evt:ccd749a2-96f4-46a1-a872-c5fd73035b67"
-      ],
-      "id": "checkpoint:resume-references-open-work",
-      "recommended_next_action": {
-        "action": "Work task:capsule-artifact-manifest and task:coordination-contract-dedupe, both owned by actor:codex. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
-        "requires_authority": false
-      },
-      "resumption_level": "semantic",
-      "summary": "Resume points at open work; re-entry reports references to finished work.",
-      "type": "checkpoint"
-    },
+    "checkpoint": null,
     "handoff": {
       "authority_ceiling": [
         "read_only",
         "local_write"
       ],
-      "checkpoint": "checkpoint:resume-references-open-work",
+      "checkpoint": "checkpoint:decision-durability-resume",
       "completeness": "portable",
       "dependencies": [
         {
@@ -68,9 +55,16 @@
         {
           "availability": "retrievable",
           "ref": "artifact:silo-fixtures"
+        },
+        {
+          "availability": "retrievable",
+          "ref": "artifact:adr-0004-single-file-discovery"
         }
       ],
       "do_not_assume": [
+        "A companion discovery document is a second authority; the project .awp.md Capsule is the normative entry point",
+        "Structural re-entry completeness implies complete decision context",
+        "The current local tools implement task-scoped decision closure",
         "The AWP 0.8 draft retains a separate Coordination C0-C3 ladder",
         "The current local tools are a complete COOP-1 binding",
         "COOP-1 provides COOP-2 semantic awareness or integration assurance, or COOP-3 authentication, fencing, or scale",
@@ -85,9 +79,9 @@
         "agent"
       ],
       "module": "urn:awp:handoff",
-      "requested_action": "Work task:capsule-artifact-manifest and task:coordination-contract-dedupe, both owned by actor:codex. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
+      "requested_action": "Implement and test task-scoped decision-closure projection in the reference re-entry tool, then migrate remaining accepted project decisions to explicit affects and source references where useful.",
       "resumption_level": "semantic",
-      "revision": 3,
+      "revision": 4,
       "type": "handoff"
     },
     "read_first": [
@@ -112,20 +106,51 @@
         "type": "decision"
       },
       {
+        "affects": [
+          "artifact:spec-08-unified-coop",
+          "artifact:cooperation-contracts-unified",
+          "artifact:coordination-coop-mechanisms"
+        ],
         "choice": "Use no named contract for portable collaboration; COOP-1 for small-group conflict reduction, COOP-2 for semantic and integration coordination, and COOP-3 for protected scalable coordination. Consultation is an independently enabled optional subprotocol.",
         "id": "decision:unified-coop-ladder",
         "question": "How should AWP express cooperation and coordination conformance?",
+        "revision": 1,
         "status": "accepted",
-        "supersedes": "decision:unified-coop-ladder",
+        "supersedes": [
+          "decision:cooperation-contracts"
+        ],
+        "supersession_rationale": "The cumulative COOP ladder replaces the earlier split between Cooperation contracts and a separate Coordination conformance axis.",
         "type": "decision"
       },
       {
-        "choice": "The 0.8.0 working draft governs the capsule and discovery document. 0.6.0 is retained immutably as a historical release and migration reference only. Because 0.8.0 is unreleased and has no version-pinned remote artifact, both the capsule metadata and .awp.json bind to the repository-relative generated bundle, which capsule.md permits; both move to a tagged URL together when 0.8.0 is released.",
-        "evidence": [
-          "artifact:capsule-migration-tool"
+        "affects": [
+          "artifact:spec-08-unified-coop",
+          "artifact:adr-0004-single-file-discovery"
         ],
-        "id": "decision:capsule-0-8-governance",
-        "question": "Which specification governs the project capsule now that 0.6.0 is legacy?",
+        "choice": "The project .awp.md Capsule is the normative entry point and may reference every other required file or binding; a companion locator may point to it but is not a second authority.",
+        "id": "decision:capsule-entry-08",
+        "question": "What is the normative project entry point for AWP 0.8?",
+        "rationale": "A single portable entry surface prevents duplicated discovery state and conflicting starting instructions.",
+        "revision": 1,
+        "source": "artifact:adr-0004-single-file-discovery",
+        "status": "accepted",
+        "supersedes": [
+          "decision:capsule-0-8-governance"
+        ],
+        "supersession_rationale": "The earlier 0.8 project decision made the companion discovery document coauthoritative; the project owner restored capsule-first discovery.",
+        "type": "decision"
+      },
+      {
+        "affects": [
+          "artifact:spec-08-unified-coop",
+          "artifact:cooperation-contracts-unified",
+          "artifact:coordination-coop-mechanisms",
+          "artifact:adr-0004-single-file-discovery"
+        ],
+        "choice": "Make Decision Durability a key AWP feature: accepted decisions retain explicit applicability, source, rationale, and supersession lineage; task-scoped entry computes a bounded decision closure and reports decision context independently from structural completeness.",
+        "id": "decision:decision-durability",
+        "question": "How must AWP preserve governing choices across agents and sessions?",
+        "rationale": "A structurally complete re-entry omitted a relevant accepted ADR and caused two agents to nearly re-propose a settled architecture.",
         "revision": 1,
         "status": "accepted",
         "type": "decision"
@@ -172,7 +197,7 @@
         "id": "artifact:spec-08-unified-coop",
         "integrity": {
           "algorithm": "sha256",
-          "digest": "73014bb344787090b33feaa89fb54b4ae9ae79532927a4b5742adacffe6e7b97"
+          "digest": "605baf209cd289ca1fd2b1aed29c07578c12c9fcd53e942a205b0ba63febe372"
         },
         "locations": [
           {
@@ -188,7 +213,7 @@
         "id": "artifact:cooperation-contracts-unified",
         "integrity": {
           "algorithm": "sha256",
-          "digest": "f1ecedc4b9c3ba48d64a1f4f37f03ec0bca6ef9ee791fb6a6e0d8ef302424bf1"
+          "digest": "cc575614f1c9c2ddb4ec2faebadbe4cad6d4fe7fbdfd58ba6f50fca1582c2d9a"
         },
         "locations": [
           {
@@ -204,7 +229,7 @@
         "id": "artifact:coordination-coop-mechanisms",
         "integrity": {
           "algorithm": "sha256",
-          "digest": "65342c17b9039711bcaae285127bc94d3a8dc10ecb6cee4adfb40664e1cde692"
+          "digest": "07a3d4da115870ac8a017a1d4f03701a9e87d43bdad028a37aa037427c357697"
         },
         "locations": [
           {
@@ -327,6 +352,22 @@
         "name": "Seven silo structural fixture expectations",
         "status": "retrievable",
         "verification_state": "current"
+      },
+      {
+        "id": "artifact:adr-0004-single-file-discovery",
+        "integrity": {
+          "algorithm": "sha256",
+          "digest": "ed230fa710d250fcd740d5303759cf6734eaaf1b375cc5124a74843359d54cd5"
+        },
+        "locations": [
+          {
+            "kind": "local",
+            "path": "docs/decisions/0004-single-file-capsule-discovery.md"
+          }
+        ],
+        "name": "ADR 0004: Single-file capsule is the portable discovery unit",
+        "status": "retrievable",
+        "verification_state": "current"
       }
     ],
     "resume": {
@@ -334,7 +375,7 @@
         "read_only",
         "local_write"
       ],
-      "checkpoint": "checkpoint:resume-references-open-work",
+      "checkpoint": "checkpoint:decision-durability-resume",
       "freshness_policy": "verify_before_continue",
       "handoff": "handoff:cooperation-contracts",
       "id": "resume:awp-project",
@@ -346,14 +387,15 @@
         "constraint:no-private-cot",
         "decision:release-discipline",
         "decision:unified-coop-ladder",
-        "decision:capsule-0-8-governance",
+        "decision:capsule-entry-08",
+        "decision:decision-durability",
         "claim:unified-coop-ladder",
         "risk:coop1-completeness",
         "task:coop1-conformance",
         "task:capsule-artifact-manifest",
         "task:coordination-contract-dedupe"
       ],
-      "recommended_next_action": "Work task:capsule-artifact-manifest and task:coordination-contract-dedupe, both owned by actor:codex. Enter with `python tools/awp_reentry.py --project . --actor <self> --register-observation <watcher|on-entry-only> --slice`, and route specification reading through `python tools/awp_spec_entry.py --route <task-class> --statements`.",
+      "recommended_next_action": "Implement and test task-scoped decision-closure projection in the reference re-entry tool, then migrate remaining accepted project decisions to explicit affects and source references where useful.",
       "required_artifacts": [
         "artifact:spec-08-unified-coop",
         "artifact:cooperation-contracts-unified",
@@ -364,29 +406,30 @@
         "artifact:conformance-unified-coop",
         "artifact:silo-profile",
         "artifact:silo-schema",
-        "artifact:silo-fixtures"
+        "artifact:silo-fixtures",
+        "artifact:adr-0004-single-file-discovery"
       ],
-      "revision": 3,
+      "revision": 4,
       "type": "resume"
     }
   },
-  "generated_at": "2026-09-09T17:39:51.911955Z",
-  "generated_digest": "sha256:bf187acc546a249a7b6963c6f61f380528b99ccd8d5e8d2b66f6722dab7ee2da",
+  "generated_at": "2026-09-09T22:15:25.930984Z",
+  "generated_digest": "sha256:4b07d5404c5cf7973cd68686871c2b9b29e4cb5f077b05dc2ce72cc2a83bb397",
   "metadata": {
     "awp_version": "0.8.0",
-    "checkpoint": "checkpoint:coop2-selection",
-    "generated_at": "2026-09-09T17:39:51.899951Z",
-    "generated_digest": "sha256:bf187acc546a249a7b6963c6f61f380528b99ccd8d5e8d2b66f6722dab7ee2da",
+    "checkpoint": "checkpoint:doorbell-spec-draft",
+    "generated_at": "2026-09-09T22:15:25.917981Z",
+    "generated_digest": "sha256:4b07d5404c5cf7973cd68686871c2b9b29e4cb5f077b05dc2ce72cc2a83bb397",
     "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
     "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
   },
   "profile": "capsule-entry-slice-v1",
   "selection": {
     "complete": true,
-    "indexed_record_count": 232,
+    "indexed_record_count": 235,
     "missing_record_ids": [],
     "required_artifact_failures": [],
-    "selected_record_count": 10,
+    "selected_record_count": 11,
     "stale_resume_references": [],
     "state": "complete"
   }

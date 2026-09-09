@@ -836,6 +836,12 @@ Verification becomes stale when its subject revision, tested state-space revisio
 
 Dependency edge kinds are `requires`, `implements`, `verifies`, `derived_from`, `relies_on`, `orders_before`, `conflicts_with`, `supersedes`, and `integrates`.
 
+The generic `supersedes` dependency kind does not establish Core decision lineage. Decision supersession is represented only by the successor decision's Core `supersedes` field. A Coordination edge MAY mirror that fact for dependency traversal, but if it disagrees with Core the decision context is `conflicting`; the processor MUST NOT choose either spelling by recency or convenience.
+
+Coordination MAY extend a decision's Core `affects` references with pinned semantic selectors. A COOP-2 analyzer computes semantic applicability against contemplated work and unions the result with the Core explicit decision closure; it MUST NOT remove a decision selected by Core. Unsupported, ambiguous, or stale selector comparison produces `unknown` and a `partial` or `unverifiable` decision context. Coordination unavailability does not prevent Core-only closure computation, but it MUST prevent a `complete` result when contemplated work depends on semantic applicability.
+
+Two effective decisions with intersecting applicability conflict when neither is in the other's Core supersession lineage and their choices cannot both govern contemplated work. Broken or cyclic lineage, conflicting mirrored edges, stale decision sources, and unresolved applicable `reopened` decisions MUST disclose `AWP-DECISION-CONTEXT-INCOMPLETE` and block guarded work. Continuation requires a bounded decision-owner record identifying the exact decisions, accepted risk, scope, and expiry; it does not silently repair the durable lineage.
+
 For each event that changes a record revision or status, a deterministic Coordination projector MUST:
 
 1. identify reverse dependencies on the changed record and revision;
@@ -957,6 +963,7 @@ Diagnostics have stable code, severity, event or record subjects, explanation, a
 | `AWP-COORD-ARBITRATION-SCOPE-MISMATCH` | error | An implementation or integration exceeds the scopes or conditions authorized by the decision |
 | `AWP-COORD-LEDGER-UNAVAILABLE` | warning | No safe writable or readable ledger binding is available; snapshot-only or unavailable operational mode is explicit |
 | `AWP-COORD-LEDGER-WORKTREE-LOCAL` | warning | Coordination is active only for agents sharing one worktree-local ledger; other worktrees require an explicit shared path |
+| `AWP-SIGNAL-UNVERIFIED` | warning | The ledger is readable, but the recipient signal or watcher evidence does not prove unattended wake or delivery |
 
 Errors invalidate the affected transition. Warnings preserve state but MUST be visible before a safety-relevant continuation. Implementations MAY add namespaced diagnostics.
 

@@ -229,8 +229,29 @@
             "required": ["question", "status"],
             "properties": {
               "question": { "type": "string", "minLength": 1 },
-              "status": { "enum": ["proposed", "accepted", "rejected", "deferred", "reopened", "superseded"] }
-            }
+              "status": { "enum": ["proposed", "accepted", "rejected", "deferred", "reopened", "superseded", "revoked", "expired"] },
+              "choice": { "type": "string", "minLength": 1 },
+              "rationale": { "type": "string", "minLength": 1 },
+              "affects": { "$ref": "#/$defs/referenceArray" },
+              "supersedes": { "$ref": "#/$defs/referenceArray" },
+              "supersession_rationale": { "type": "string", "minLength": 1 },
+              "source": { "$ref": "#/$defs/identifier" },
+              "expires_at": { "$ref": "#/$defs/timestamp" }
+            },
+            "allOf": [
+              {
+                "if": { "properties": { "status": { "const": "accepted" } }, "required": ["status"] },
+                "then": { "required": ["choice"] }
+              },
+              {
+                "if": { "properties": { "status": { "const": "expired" } }, "required": ["status"] },
+                "then": { "required": ["expires_at"] }
+              },
+              {
+                "if": { "required": ["supersedes"], "properties": { "supersedes": { "minItems": 1 } } },
+                "then": { "required": ["supersession_rationale"] }
+              }
+            ]
           }
         },
         {

@@ -74,6 +74,8 @@ Packaged and embedded artifacts MUST include a digest over the exact decoded byt
 
 Readers SHOULD verify a digest before relying on content. Digest validity establishes byte identity, not safety, truth, authorship, or authority.
 
+When a Core decision names an external ADR or other source through its `source` artifact reference, the Artifact descriptor supplies the source's location, availability, and integrity. A reader claiming decision-context completeness MUST resolve that reference and verify its declared digest before treating the decision source as current. The decision record MUST NOT duplicate the artifact digest as a second authority. An unavailable or mismatched source makes the applicable decision context `unverifiable` or `stale` and MUST disclose `AWP-DECISION-CONTEXT-INCOMPLETE`.
+
 Content-addressed packaged artifacts are immutable. Changing bytes creates a new content identity. A mutable remote URI SHOULD be paired with a digest, immutable version, ETag, or explicit `mutable: true` warning.
 
 ## 5. Availability and retrieval
@@ -126,5 +128,4 @@ Ordinary semantic deletion is not physical redaction and leaves event bytes inta
 An Artifact reader validates registered location requirements, applies path and retrieval safety rules, checks digests when claiming verified integrity, and preserves availability status.
 
 An Artifact writer assigns new identities to changed content, supplies required integrity metadata, avoids credentials in locations, and represents omission or redaction explicitly.
-
 

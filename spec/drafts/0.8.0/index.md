@@ -24,6 +24,8 @@ AWP is intended for agents and users that already have their own working environ
 
 AWP does not replace an agent runtime, source control, artifact storage, or an agent-specific startup convention. Its purpose is to provide project semantic state and coordination information that those systems can consume. Standalone capsule exchange and cross-project collaboration are deferred from this draft.
 
+**Decision Durability** is a family invariant: an accepted decision remains discoverable and applicable across sessions and participants until it is explicitly superseded, revoked, expired, or outside the scope of contemplated work. Its effective choice, applicability, source, and supersession lineage MUST remain inspectable; omission from a summary or bounded model context MUST NOT silently cancel it.
+
 ## 2. Specification family
 
 | Subspecification | Module identifier | Version | Status | Direct dependencies |
@@ -176,9 +178,9 @@ Every module and binding MUST preserve these rules:
 
 AWP 0.8.0 defines the `0.2` event envelope and the module identifiers used by this family. Core is `0.8.0`; dependent modules are `0.5.0`. Project discovery and the canonical project capsule are defined together by Capsule 0.5.0.
 
-The migration is intentionally incompatible: a 0.8 project capsule identifies its exact governing specification and project discovery mode in its own metadata. A 0.8 reader MUST NOT silently substitute another specification. The project discovery document and the capsule MUST agree on the current workstate and governing specification.
+The migration is intentionally incompatible: a 0.8 project capsule identifies its exact governing specification and project discovery mode in its own metadata. The project `.awp.md` Capsule is the normative entry point and MAY reference every other required file or binding. A host-specific locator MAY point to it, but that locator is not a second workstate authority and MUST NOT override Capsule metadata. A 0.8 reader MUST NOT silently substitute another specification.
 
-An upgrader from an earlier AWP workstate MUST add the governing `specification` and `discovery: project` to capsule metadata, update Capsule to `0.5.0`, and create or update the project discovery document. Historical events remain unchanged.
+An upgrader from an earlier AWP workstate MUST add the governing `specification` and `discovery: project` to capsule metadata and update Capsule to `0.5.0`. It MAY create or update a host-specific locator that points to the Capsule, but the Capsule remains authoritative. Historical events remain unchanged.
 
 ## 10. Agent entry profiles
 

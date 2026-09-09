@@ -3,7 +3,7 @@
 **Status:** Generated, non-normative bounded-context entry artifact  
 **Profile:** `agent-entry-core-v2`  
 **Source bundle:** `dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md`  
-**Source bundle SHA-256:** `46c4d9879e0e2bfc90415ce30026b303f0bab8d8a544245081543e1e594a7cc0`
+**Source bundle SHA-256:** `cc5d0171b6c495010eedae649de956ff96ef7fe0fb02f584f4f1e92050b0c9ef`
 
 This profile supports safe orientation, not complete interpretation. Its source bundle governs if any detail conflicts. Verify the digest before relying on this file.
 
@@ -29,7 +29,7 @@ Read the routed requirement statements first; they are the normative authority a
 
 Ordinary project orientation with no proposed specification change.
 
-Read first: `python tools/awp_spec_entry.py --route general --statements` (44 statements, 12651 bytes).
+Read first: `python tools/awp_spec_entry.py --route general --statements` (51 statements, 16365 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -42,7 +42,7 @@ Schemas on demand (digest in the route output):
 
 Capsule, discovery, handoff, checkpoint, or re-entry work.
 
-Read first: `python tools/awp_spec_entry.py --route workstate --statements` (105 statements, 30728 bytes).
+Read first: `python tools/awp_spec_entry.py --route workstate --statements` (116 statements, 37324 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -60,7 +60,7 @@ Schemas on demand (digest in the route output):
 
 Coordination binding, COOP contract, leases, intents, or integration work.
 
-Read first: `python tools/awp_spec_entry.py --route coordination --statements` (226 statements, 94035 bytes).
+Read first: `python tools/awp_spec_entry.py --route coordination --statements` (242 statements, 104641 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -80,7 +80,7 @@ Schemas on demand (digest in the route output):
 
 Presence monitoring, multi-host scale, or COOP-3 deployment work.
 
-Read first: `python tools/awp_spec_entry.py --route coordination-scale --statements` (189 statements, 83263 bytes).
+Read first: `python tools/awp_spec_entry.py --route coordination-scale --statements` (202 statements, 91561 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -97,7 +97,7 @@ Schemas on demand (digest in the route output):
 
 Security guardrails, signatures, encryption, or authority controls.
 
-Read first: `python tools/awp_spec_entry.py --route security --statements` (78 statements, 20237 bytes).
+Read first: `python tools/awp_spec_entry.py --route security --statements` (86 statements, 24525 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -113,7 +113,7 @@ Schemas on demand (digest in the route output):
 
 Silo identity, hierarchy, pinned bases, governance, and adoption; expand coordination/security sources when those mechanisms are used.
 
-Read first: `python tools/awp_spec_entry.py --route silos --statements` (298 statements, 121271 bytes).
+Read first: `python tools/awp_spec_entry.py --route silos --statements` (315 statements, 132451 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -236,6 +236,6 @@ Schemas on demand (digest in the route output):
     }
   },
   "source_bundle": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
-  "source_bundle_sha256": "46c4d9879e0e2bfc90415ce30026b303f0bab8d8a544245081543e1e594a7cc0"
+  "source_bundle_sha256": "cc5d0171b6c495010eedae649de956ff96ef7fe0fb02f584f4f1e92050b0c9ef"
 }
 ```
