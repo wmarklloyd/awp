@@ -1,7 +1,7 @@
 {
-  "briefing": "# Efficient maintenance guidance\n\nAdded non-normative, evidence-based Capsule maintenance guidance: compact deferred refreshes for in-progress ordinary work, full projection at semantic and handoff boundaries, one-read state reuse inside the serialization boundary, digest-bound entry-slice generation from validated state, and bounded model-facing receipts. Existing integrity, stale-state, durability, recovery, freshness, and completeness requirements remain unchanged.\n\nNext action: Implement and benchmark one-read Capsule state reuse and entry-slice generation from the validated checkpoint state; keep compact refresh explicitly deferred until a canonical projection incorporates changed semantics and artifact digests.",
+  "briefing": "# Coop2 selection\n\nSelected exploratory COOP-2 as the current project cooperation level with claim_state partial; the local binding retains COOP-1 safeguards and discloses missing semantic and integration capabilities.\n\nNext action: Use the COOP-2 rendezvous for explicitly authorized, bounded collaboration while separately implementing and testing semantic analysis and integration assurance.",
   "capsule": "awp.awp.md",
-  "capsule_digest": "sha256:af7d5da40a93c7edfea5edc30f5e1583cca651e90186574ac5f921ba2c4cad26",
+  "capsule_digest": "sha256:972c058619187f421386987c2245c1b20c6bd6472618815d394a76dbe5c3b5e6",
   "entry": {
     "checkpoint": {
       "created_at": "2026-09-08T17:53:52Z",
@@ -370,20 +370,20 @@
       "type": "resume"
     }
   },
-  "generated_at": "2026-09-09T16:20:08.002713Z",
-  "generated_digest": "sha256:4f6e6e6be736a5b84abedd05ea21f760d90b10eb1036562879142d21f2f0917a",
+  "generated_at": "2026-09-09T17:39:51.911955Z",
+  "generated_digest": "sha256:bf187acc546a249a7b6963c6f61f380528b99ccd8d5e8d2b66f6722dab7ee2da",
   "metadata": {
     "awp_version": "0.8.0",
-    "checkpoint": "checkpoint:efficient-maintenance-guidance",
-    "generated_at": "2026-09-09T16:20:07.988192Z",
-    "generated_digest": "sha256:4f6e6e6be736a5b84abedd05ea21f760d90b10eb1036562879142d21f2f0917a",
+    "checkpoint": "checkpoint:coop2-selection",
+    "generated_at": "2026-09-09T17:39:51.899951Z",
+    "generated_digest": "sha256:bf187acc546a249a7b6963c6f61f380528b99ccd8d5e8d2b66f6722dab7ee2da",
     "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
     "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
   },
   "profile": "capsule-entry-slice-v1",
   "selection": {
     "complete": true,
-    "indexed_record_count": 229,
+    "indexed_record_count": 232,
     "missing_record_ids": [],
     "required_artifact_failures": [],
     "selected_record_count": 10,

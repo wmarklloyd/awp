@@ -73,7 +73,7 @@ class CoordinationLedgerTests(unittest.TestCase):
             context["binding_observation"]["atomicity_mechanism"],
             "sqlite-begin-immediate",
         )
-        self.assertEqual(context["cooperation_binding"]["contract"], "COOP-1")
+        self.assertEqual(context["cooperation_binding"]["contract"], "COOP-2")
         self.assertEqual(context["cooperation_binding"]["claim_state"], "partial")
         self.assertEqual(
             context["cooperation_binding"]["subprotocols"]["work"],

@@ -1694,7 +1694,7 @@ def operational_context(start: Path, ledger_override: Path | None = None) -> dic
                 context["cooperation_binding"] = {
                     "type": "cooperation_binding",
                     "module": COOPERATION_MODULE,
-                    "contract": "COOP-1",
+                    "contract": "COOP-2",
                     "claim_state": "partial",
                     "capabilities": [
                         "coordination-awareness",
@@ -1712,6 +1712,7 @@ def operational_context(start: Path, ledger_override: Path | None = None) -> dic
                         "consultation": {"enabled": False},
                     },
                     "limitations": [
+                        "exploratory COOP-2 selection; semantic analysis and integration assurance are not implemented",
                         "advisory enforcement; source-control writes are not fenced",
                         "path-like physical scopes only; semantic conflicts can remain undetected",
                         "local checkpoint projection recovers explicitly from a crash between file replacement and database commit",
