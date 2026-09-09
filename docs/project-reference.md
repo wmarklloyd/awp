@@ -1,6 +1,6 @@
 # AWP Project Reference
 
-This document collects release, validation, repository, research, and governance information that supports the Agent Workshare Protocol without interrupting the introductory path in the main [README](../README.md).
+This document collects release, validation, repository, and research information that supports the Agent Workshare Protocol without interrupting the introductory path in the main [README](../README.md).
 
 ## Release status
 
@@ -80,7 +80,7 @@ schemas/                    Versioned JSON Schemas
 dist/                       Generated bundles, release manifests, and checksums
 conformance/                Positive, negative, and interoperability fixtures
 experiments/                Reproducible research harnesses and results
-docs/                       Architecture, rationale, governance records, and releases
+docs/                       Architecture, rationale, decisions, and releases
 research/                   Design history and disclosed model-assisted reviews
 tools/                      Validators and reproducible-build utilities
 tests/                      Repository-integrity tests
@@ -88,8 +88,8 @@ tests/                      Repository-integrity tests
 
 The [specification index](../spec/README.md) distinguishes immutable releases from working drafts. Protocol changes follow the [evolution policy](protocol-evolution.md), and consequential decisions are recorded under [decision records](decisions).
 
-## Research, governance, and citation
+## Research and citation
 
 AWP composes ideas from event sourcing, distributed version control, provenance models, workflow checkpointing, software-supply-chain attestations, CRDT research, and agent transports. The [related-work note](related-work.md) describes that lineage. Model-assisted critiques are archived under [research/model-assisted-reviews](../research/model-assisted-reviews) with their provenance disclosed.
 
-See the [project scope](project-scope.md), [contribution guidance](../CONTRIBUTING.md), [governance policy](../GOVERNANCE.md), [security policy](../SECURITY.md), and [citation metadata](../CITATION.cff).
+See the [project scope](project-scope.md), [contribution guidance](../CONTRIBUTING.md), [security policy](../SECURITY.md), and [citation metadata](../CITATION.cff).

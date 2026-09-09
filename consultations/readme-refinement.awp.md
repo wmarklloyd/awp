@@ -90,7 +90,7 @@ An explicitly supplied or configured filename or location is an advanced impleme
 - [Schemas](../schemas)
 - [Conformance examples](../conformance)
 
-AWP 0.6.0 is the current stable exploratory release family. AWP 0.8.0 remains a working draft. Release details, validation instructions, limitations, the repository map, and research and governance links are collected in the [project reference](../docs/project-reference.md).
+AWP 0.6.0 is the current stable exploratory release family. AWP 0.8.0 remains a working draft. Release details, validation instructions, limitations, the repository map, and research links are collected in the [project reference](../docs/project-reference.md).
 
 AWP is distributed under the [GNU General Public License version 3](../LICENSE).
 ```
