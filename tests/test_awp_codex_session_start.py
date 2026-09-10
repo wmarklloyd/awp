@@ -7,6 +7,7 @@ import unittest
 
 from tools.awp_codex_session_start import (
     HOOK_EVENT,
+    ROLE_ACTOR,
     actor_for_session,
     bootstrap_command,
     run_hook,
@@ -43,6 +44,8 @@ class CodexSessionStartHookTests(unittest.TestCase):
         command = calls[0][0][0]
         self.assertEqual(command, bootstrap_command(project, "thread:current"))
         self.assertIn("enter", command)
+        self.assertIn(ROLE_ACTOR, command)
+        self.assertIn(ROLE_ACTOR, result["hookSpecificOutput"]["additionalContext"])
         self.assertIn(actor_for_session("thread:current"), result["hookSpecificOutput"]["additionalContext"])
 
     def test_non_awp_directory_is_a_safe_noop(self) -> None:
@@ -55,11 +58,13 @@ class CodexSessionStartHookTests(unittest.TestCase):
     def test_project_hook_configuration_is_valid_and_uses_session_start(self) -> None:
         hook_file = Path(__file__).resolve().parents[1] / ".codex" / "hooks.json"
         configuration = json.loads(hook_file.read_text(encoding="utf-8"))
-        handler = configuration["hooks"]["SessionStart"][0]["hooks"][0]
-        self.assertIn("startup", configuration["hooks"]["SessionStart"][0]["matcher"])
+        session_start = configuration["hooks"]["SessionStart"][0]
+        handler = session_start["hooks"][0]
+        self.assertEqual(session_start["matcher"], "^(startup|resume)$")
         self.assertTrue(handler["async"])
-        self.assertIn("awp_codex_session_start.py", handler["command"])
-        self.assertIn("awp_codex_session_start.py", handler["commandWindows"])
+        self.assertIn("awp_agent_start.py", handler["command"])
+        self.assertIn("awp_agent_start.py", handler["commandWindows"])
+        self.assertIn("--host codex", handler["command"])
 
 
 if __name__ == "__main__":

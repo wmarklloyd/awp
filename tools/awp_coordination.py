@@ -1626,6 +1626,41 @@ class CoordinationLedger:
             ).fetchall()
             return [json.loads(row["event_json"]) for row in rows]
 
+    def events_after(self, workstate_id: str, cursor: int = 0, limit: int = 256) -> dict:
+        """Read a bounded ledger page without advancing a consumer cursor.
+
+        Delivery supervisors must not use :meth:`scan`, because ``scan`` commits
+        its cursor before a downstream host endpoint has accepted the event.
+        This read-only page API lets a supervisor persist its own cursor only
+        after every event in the contiguous prefix has a durable disposition.
+        """
+        if cursor < 0:
+            raise CoordinationError("cursor must be non-negative")
+        if limit < 1 or limit > 4096:
+            raise CoordinationError("limit must be between 1 and 4096")
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT sequence, event_json FROM events WHERE workstate_id = ? "
+                "AND sequence > ? ORDER BY sequence LIMIT ?",
+                (workstate_id, cursor, limit),
+            ).fetchall()
+            events = []
+            for row in rows:
+                event = json.loads(row["event_json"])
+                event["_ledger_sequence"] = int(row["sequence"])
+                events.append(event)
+            next_cursor = int(rows[-1]["sequence"]) if rows else cursor
+            remaining = connection.execute(
+                "SELECT 1 FROM events WHERE workstate_id = ? AND sequence > ? LIMIT 1",
+                (workstate_id, next_cursor),
+            ).fetchone()
+        return {
+            "cursor": cursor,
+            "next_cursor": next_cursor,
+            "has_more": remaining is not None,
+            "events": events,
+        }
+
 
 def operational_context(start: Path, ledger_override: Path | None = None) -> dict:
     try:

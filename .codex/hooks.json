@@ -1,14 +1,14 @@
 {
-  "description": "Start or attach the AWP doorbell when a Codex session enters this project.",
+  "description": "Activate the generic AWP doorbell when an agent session enters this project.",
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "^(startup|resume|clear|compact)$",
+        "matcher": "^(startup|resume)$",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel)/tools/awp_codex_session_start.py\"",
-            "commandWindows": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& python (Join-Path (git rev-parse --show-toplevel) 'tools\\awp_codex_session_start.py')\"",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/tools/awp_agent_start.py\" --host codex --actor actor:codex",
+            "commandWindows": "powershell -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& python (Join-Path (git rev-parse --show-toplevel) 'tools\\awp_agent_start.py') --host codex --actor actor:codex\"",
             "async": true,
             "timeout": 30,
             "statusMessage": "Starting AWP doorbell"

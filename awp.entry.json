@@ -1,7 +1,7 @@
 {
-  "briefing": "# Participant inventory and reachability probe\n\nCooperation Contracts 5.2 now defines two optional managed-collaboration capabilities: a read-only participant inventory that retains lapsed participants and separates declared observation from observed liveness, and a decision-free reachability probe with a bounded time-to-live that reuses the existing signal path. Neither is a COOP-2 conformance requirement in this draft, and the publication-to-wake test should use the probe as its fixture.\n\nNext action: Implement the participant inventory and the coop2.tickle.sent / coop2.tickle.acked event pair in tools/awp_coop2.py, then run the section 5.1.1 publication-to-wake test on a host that can supervise a watcher process.",
+  "briefing": "# Recorded the current cooperation contracts source digest for the generic startup doorbell checkpoint.\n\nThe generic AWP startup-doorbell implementation and its normative Cooperation Contracts source are synchronized and validated.\n\nNext action: Commit the implementation, then run the clean Codex-and-Claude restart acceptance test without manually arming or repairing either doorbell.",
   "capsule": "awp.awp.md",
-  "capsule_digest": "sha256:c692069f5a4a68e6b8d7cfe37bbddc1d2118acef49d6c0357104a651b6d237c9",
+  "capsule_digest": "sha256:2247a5879ade1c55292a1adb4829b65f34f181999cea757a7ca94374418ef106",
   "entry": {
     "checkpoint": null,
     "handoff": {
@@ -213,7 +213,7 @@
         "id": "artifact:cooperation-contracts-unified",
         "integrity": {
           "algorithm": "sha256",
-          "digest": "758f00de83d4ecead158cf913e39f0c7dbb7f7a7d273bd801773685caf0f2de7"
+          "digest": "b17d06d653c11a6c7509d81620480e8373d043c94945a4b53a005c476c0fd005"
         },
         "locations": [
           {
@@ -413,13 +413,13 @@
       "type": "resume"
     }
   },
-  "generated_at": "2026-09-10T14:06:52.709340Z",
-  "generated_digest": "sha256:f9306f2cdaa2cee800fefd600e7c726b00b51f7606e16252e2502cbb18b79c48",
+  "generated_at": "2026-09-10T22:55:10.473379Z",
+  "generated_digest": "sha256:83d8b8576bce9adce50c139fced769801ccbb540c55d9e8134cecad0206ee79b",
   "metadata": {
     "awp_version": "0.8.0",
-    "checkpoint": "checkpoint:partners-tickle-capabilities",
-    "generated_at": "2026-09-10T14:06:52.623303Z",
-    "generated_digest": "sha256:f9306f2cdaa2cee800fefd600e7c726b00b51f7606e16252e2502cbb18b79c48",
+    "checkpoint": "Recorded the current Cooperation Contracts source digest for the generic startup-doorbell checkpoint.",
+    "generated_at": "2026-09-10T22:55:10.460370Z",
+    "generated_digest": "sha256:83d8b8576bce9adce50c139fced769801ccbb540c55d9e8134cecad0206ee79b",
     "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
     "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
   },

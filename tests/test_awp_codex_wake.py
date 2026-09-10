@@ -24,7 +24,6 @@ class FakeRendezvous:
     def _events(self) -> list[dict]:
         return self.events
 
-
 def event(event_id: str, kind: str, recipient: str, interaction_id: str = "interaction:test") -> dict:
     return {"event_id": event_id, "kind": kind, "payload": {"interaction_id": interaction_id, "recipient": recipient}}
 
@@ -88,13 +87,34 @@ class CodexQueueWatcherTests(unittest.TestCase):
         self.assertEqual(second["queued_events"], [])
         self.assertEqual(queue.call_count, 1)
 
-    def test_watcher_queues_an_open_probe_and_its_acknowledgement(self) -> None:
+    def test_watcher_does_not_queue_a_withdrawn_request(self) -> None:
+        request = event("evt:request", "coop2.interaction.requested", "actor:codex", "interaction:closed")
+        withdrawn = event("evt:withdrawn", "coop2.interaction.withdrawn", "actor:codex", "interaction:closed")
+        watcher = CodexQueueWatcher(FakeRendezvous([request, withdrawn]), "actor:codex", "thread:test", None, self.state)
+        with patch.object(watcher, "queue") as queue:
+            result = watcher.step()
+        self.assertEqual(result["queued_events"], [])
+        queue.assert_not_called()
+
+    def test_watcher_does_not_queue_an_expired_request_on_bootstrap(self) -> None:
+        expired = event("evt:expired", "coop2.interaction.requested", "actor:codex")
+        expired["occurred_at"] = "2000-01-01T00:00:00Z"
+        expired["payload"]["authorization"] = {"delivery_window_seconds": 1}
+        watcher = CodexQueueWatcher(FakeRendezvous([expired]), "actor:codex", "thread:test", None, self.state)
+        with patch.object(watcher, "queue") as queue:
+            result = watcher.step()
+        self.assertEqual(result["queued_events"], [])
+        queue.assert_not_called()
+
+    def test_watcher_queues_probe_without_claiming_recipient_acknowledgement(self) -> None:
         probe = {"event_id": "evt:probe", "kind": "coop2.tickle.sent", "payload": {"tickle_id": "tickle:one", "recipient": "actor:codex"}}
         watcher = CodexQueueWatcher(FakeRendezvous([probe]), "actor:codex", "thread:test", None, self.state)
         with patch.object(watcher, "queue") as queue:
             first = watcher.step()
         self.assertEqual(first["queued_events"], ["evt:probe"])
         queue.assert_called_once_with(probe)
+        self.assertEqual(first["transport_state"], "transport_queued")
+        self.assertFalse(any(item["kind"] == "coop2.tickle.acked" for item in watcher.rendezvous.events))
 
         acknowledgement = {"event_id": "evt:ack", "kind": "coop2.tickle.acked", "payload": {"tickle_id": "tickle:one", "recipient": "actor:codex"}}
         acknowledged = CodexQueueWatcher(FakeRendezvous([acknowledgement]), "actor:codex", "thread:test", None, self.state)
@@ -141,6 +161,14 @@ class CodexQueueWatcherTests(unittest.TestCase):
         self.assertIn("queue", command)
         self.assertIn("--thread", command)
         self.assertNotIn("--remote", command)
+
+    def test_windows_queue_uses_hidden_process_options(self) -> None:
+        watcher = CodexQueueWatcher(FakeRendezvous([]), "actor:codex", "thread:test", None, self.state)
+        with patch("tools.awp_codex_wake.os.name", "nt"), patch("tools.awp_codex_wake.subprocess.STARTUPINFO") as info:
+            options = watcher._hidden_process_options()
+        self.assertIn("creationflags", options)
+        self.assertIn("startupinfo", options)
+        self.assertEqual(info.return_value.wShowWindow, 0)
 
     def test_new_session_generation_retires_old_watcher(self) -> None:
         control = Path(self.temporary.name) / "control.json"

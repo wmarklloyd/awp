@@ -236,8 +236,8 @@ class LifecycleExpiryTests(RendezvousFixture):
         self.assertTrue(item["timed_out"])
 
 
-class WatcherObservedOnQueueTests(unittest.TestCase):
-    def test_watcher_publishes_observed_and_heartbeat_when_it_queues(self) -> None:
+class WatcherTransportOnQueueTests(unittest.TestCase):
+    def test_legacy_watcher_publishes_heartbeat_but_not_recipient_observation(self) -> None:
         from tools.awp_codex_wake import CodexQueueWatcher, atomic_json
 
         class Rendezvous:
@@ -265,8 +265,8 @@ class WatcherObservedOnQueueTests(unittest.TestCase):
         watcher = CodexQueueWatcher(rendezvous, "actor:codex", "thread", "ws://t", state)
         with patch.object(watcher, "queue"):
             result = watcher.step()
-        self.assertEqual(rendezvous.observed, [("actor:codex", "interaction:x")])
-        self.assertEqual(result["observed_receipts"], {"evt:req": "evt:observed"})
+        self.assertEqual(rendezvous.observed, [])
+        self.assertEqual(result["transport_state"], "transport_queued")
         self.assertEqual(rendezvous.heartbeats, 1)
         self.assertEqual(result["heartbeat"]["last_seen"], "now")
 
@@ -285,7 +285,7 @@ class WatcherObservedOnQueueTests(unittest.TestCase):
         with patch.object(watcher, "queue"):
             result = watcher.step()
         self.assertEqual(result["queued_events"], ["evt:req"])
-        self.assertEqual(result["observed_receipts"], {})
+        self.assertEqual(result["transport_state"], "transport_queued")
         self.assertNotIn("heartbeat", result)
 
 

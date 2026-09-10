@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/tools/awp_agent_start.py\" --host claude --actor actor:claude",
+            "async": true,
+            "timeout": 30,
+            "statusMessage": "Activating AWP doorbell"
+          }
+        ]
+      }
+    ]
+  }
+}

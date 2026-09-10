@@ -1,0 +1,16 @@
+{
+  "type": "cooperation_activation_envelope",
+  "module": "urn:awp:cooperation",
+  "profile": "awp-host-activation-v1",
+  "operation_id": "operation:example",
+  "binding_id": "binding:example",
+  "project_id": "project:example",
+  "workstate_id": "workstate:example",
+  "recipient_actor": "actor:example",
+  "route_id": "route:example",
+  "route_generation": "generation:1",
+  "event_id": "evt:example",
+  "event_kind": "coop2.tickle.sent",
+  "interaction_id": "tickle:example",
+  "ledger_frontier": ["evt:example"]
+}

@@ -1,7 +1,7 @@
-"""Enter an AWP project and make its Codex doorbell operational.
+"""Enter an AWP project and make its host-neutral doorbell operational.
 
 The bootstrap discovers the project-local COOP-2 rendezvous, binds the current
-Codex thread, starts or replaces a detached watcher, waits for an observed
+host session, starts or replaces a detached supervisor, waits for an observed
 heartbeat, and then runs the ordinary AWP re-entry check.  It reports success
 only when the watcher is actually live; durable entry-only recovery remains
 available through ``awp_reentry.py``.
@@ -23,16 +23,18 @@ from typing import Any, Sequence
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from tools.awp_codex_wake import PROFILE as WATCHER_PROFILE, atomic_json
+    from tools.awp_runtime import atomic_json
+    from tools.awp_supervisor import PROFILE as WATCHER_PROFILE
     from tools.awp_coop2 import Rendezvous
     from tools.awp_coordination import CoordinationError
 else:
-    from .awp_codex_wake import PROFILE as WATCHER_PROFILE, atomic_json
+    from .awp_runtime import atomic_json
+    from .awp_supervisor import PROFILE as WATCHER_PROFILE
     from .awp_coop2 import Rendezvous
     from .awp_coordination import CoordinationError
 
 
-PROFILE = "awp-codex-session-bootstrap-v1"
+PROFILE = "awp-agent-session-bootstrap-v1"
 DEFAULT_LEDGER = Path(".awp-runtime/coop2-rendezvous.sqlite3")
 
 
@@ -51,11 +53,11 @@ def actor_token(actor: str) -> str:
 
 
 def control_path(project: Path, actor: str = "actor:codex") -> Path:
-    return project / ".awp-runtime" / f"coop2-codex-session-{actor_token(actor)}.json"
+    return project / ".awp-runtime" / f"awp-session-{actor_token(actor)}.json"
 
 
 def watcher_state_path(project: Path, actor: str = "actor:codex") -> Path:
-    return project / ".awp-runtime" / f"coop2-codex-watcher-{actor_token(actor)}.json"
+    return project / ".awp-runtime" / f"awp-supervisor-{actor_token(actor)}.json"
 
 
 def _windows_process_is_running(pid: int) -> bool:
@@ -111,18 +113,22 @@ def watcher_command(
     generation: str,
     interval_seconds: float,
     remote: str | None,
+    host: str = "codex",
+    adapter_command: str | None = None,
 ) -> list[str]:
     command = [
         sys.executable,
         "-m",
-        "tools.awp_codex_wake",
+        "tools.awp_supervisor",
         "--project",
         str(project),
         "--ledger",
         str(ledger),
         "--actor",
         actor,
-        "--thread",
+        "--host",
+        host,
+        "--session-ref",
         thread,
         "--state",
         str(watcher_state_path(project, actor)),
@@ -133,8 +139,8 @@ def watcher_command(
         "--interval-seconds",
         str(interval_seconds),
     ]
-    if remote:
-        command.extend(["--remote", remote])
+    if adapter_command:
+        command.extend(["--adapter-command", adapter_command])
     return command
 
 
@@ -154,6 +160,8 @@ def start_watcher(
     remote: str | None = None,
     interval_seconds: float = 5.0,
     startup_timeout_seconds: float = 12.0,
+    host: str = "codex",
+    adapter_command: str | None = None,
 ) -> dict[str, Any]:
     project = project.resolve()
     ledger = ledger if ledger.is_absolute() else (project / ledger)
@@ -165,6 +173,7 @@ def start_watcher(
         prior.get("profile") == PROFILE
         and prior.get("desired_state") == "running"
         and prior.get("thread") == thread
+        and prior.get("host") == host
         and process_is_running(prior.get("pid"))
         and observed.get("watcher_liveness") == "active"
     ):
@@ -181,6 +190,7 @@ def start_watcher(
         "desired_state": "running",
         "state": "starting",
         "actor": actor,
+        "host": host,
         "thread": thread,
         "remote": remote,
         "ledger": str(ledger),
@@ -190,9 +200,9 @@ def start_watcher(
 
     runtime = project / ".awp-runtime"
     runtime.mkdir(parents=True, exist_ok=True)
-    output_path = runtime / f"coop2-codex-watcher-{actor_token(actor)}.out.log"
-    error_path = runtime / f"coop2-codex-watcher-{actor_token(actor)}.err.log"
-    command = watcher_command(project, ledger, actor, thread, generation, interval_seconds, remote)
+    output_path = runtime / f"awp-supervisor-{actor_token(actor)}.out.log"
+    error_path = runtime / f"awp-supervisor-{actor_token(actor)}.err.log"
+    command = watcher_command(project, ledger, actor, thread, generation, interval_seconds, remote, host, adapter_command)
     creationflags = 0
     start_new_session = False
     if os.name == "nt":
@@ -302,6 +312,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--actor", default="actor:codex")
     result.add_argument("--thread")
     result.add_argument("--remote")
+    result.add_argument("--host", default="codex")
+    result.add_argument("--adapter-command", help="JSON string array or shell words for a trusted host adapter")
     result.add_argument("--interval-seconds", type=float, default=5.0)
     result.add_argument("--startup-timeout-seconds", type=float, default=12.0)
     result.add_argument("--max-output-bytes", type=int, default=24_000)
@@ -334,6 +346,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     remote=args.remote,
                     interval_seconds=args.interval_seconds,
                     startup_timeout_seconds=args.startup_timeout_seconds,
+                    host=args.host,
+                    adapter_command=args.adapter_command,
                 )
     except CoordinationError as error:
         result = coordination_unavailable(error)

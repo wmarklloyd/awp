@@ -7,6 +7,9 @@
     {"$ref": "#/$defs/policy"},
     {"$ref": "#/$defs/interaction"},
     {"$ref": "#/$defs/deliveryReceipt"},
+    {"$ref": "#/$defs/activationBinding"},
+    {"$ref": "#/$defs/activationEnvelope"},
+    {"$ref": "#/$defs/transportReceipt"},
     {"$ref": "#/$defs/participantLease"}
   ],
   "$defs": {
@@ -404,6 +407,64 @@
           }
         }
       ],
+      "additionalProperties": true
+    },
+    "activationBinding": {
+      "type": "object",
+      "required": ["type", "module", "profile", "actor", "host", "route_id", "route_generation", "activation", "adapter", "ledger_replay"],
+      "properties": {
+        "type": {"const": "cooperation_activation_binding"},
+        "module": {"const": "urn:awp:cooperation"},
+        "profile": {"const": "awp-host-activation-v1"},
+        "actor": {"$ref": "#/$defs/id"},
+        "host": {"$ref": "#/$defs/id"},
+        "route_id": {"$ref": "#/$defs/id"},
+        "route_generation": {"$ref": "#/$defs/id"},
+        "activation": {"enum": ["startup-hook", "managed-launcher", "subscription"]},
+        "adapter": {"$ref": "#/$defs/id"},
+        "ledger_replay": {"const": "durable-cursor"},
+        "hint_channel": {"enum": ["git-ref", "filesystem", "subscription", "none"]}
+      },
+      "additionalProperties": true
+    },
+    "activationEnvelope": {
+      "type": "object",
+      "required": ["type", "module", "profile", "operation_id", "binding_id", "project_id", "workstate_id", "recipient_actor", "route_id", "route_generation", "event_id", "event_kind", "ledger_frontier"],
+      "properties": {
+        "type": {"const": "cooperation_activation_envelope"},
+        "module": {"const": "urn:awp:cooperation"},
+        "profile": {"const": "awp-host-activation-v1"},
+        "operation_id": {"$ref": "#/$defs/id"},
+        "binding_id": {"$ref": "#/$defs/id"},
+        "project_id": {"$ref": "#/$defs/id"},
+        "workstate_id": {"$ref": "#/$defs/id"},
+        "recipient_actor": {"$ref": "#/$defs/id"},
+        "route_id": {"$ref": "#/$defs/id"},
+        "route_generation": {"$ref": "#/$defs/id"},
+        "event_id": {"$ref": "#/$defs/id"},
+        "event_kind": {"$ref": "#/$defs/id"},
+        "interaction_id": {"$ref": "#/$defs/id"},
+        "ledger_frontier": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true}
+      },
+      "additionalProperties": false
+    },
+    "transportReceipt": {
+      "type": "object",
+      "required": ["type", "module", "profile", "operation_id", "event_id", "recipient_actor", "route_id", "route_generation", "state", "recorded_at"],
+      "properties": {
+        "type": {"const": "cooperation_transport_receipt"},
+        "module": {"const": "urn:awp:cooperation"},
+        "profile": {"const": "awp-host-activation-v1"},
+        "operation_id": {"$ref": "#/$defs/id"},
+        "event_id": {"$ref": "#/$defs/id"},
+        "recipient_actor": {"$ref": "#/$defs/id"},
+        "route_id": {"$ref": "#/$defs/id"},
+        "route_generation": {"$ref": "#/$defs/id"},
+        "state": {"enum": ["transport_queued", "transport_deferred", "transport_unavailable"]},
+        "recorded_at": {"type": "string", "format": "date-time"},
+        "endpoint_receipt": {"$ref": "#/$defs/id"},
+        "reason": {"type": "string"}
+      },
       "additionalProperties": true
     },
     "deliveryReceipt": {

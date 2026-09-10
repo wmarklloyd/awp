@@ -1,0 +1,13 @@
+{
+  "type": "cooperation_activation_binding",
+  "module": "urn:awp:cooperation",
+  "profile": "awp-host-activation-v1",
+  "actor": "actor:example",
+  "host": "host:example",
+  "route_id": "route:example",
+  "route_generation": "generation:1",
+  "activation": "startup-hook",
+  "adapter": "adapter:example",
+  "ledger_replay": "durable-cursor",
+  "hint_channel": "git-ref"
+}

@@ -1,0 +1,13 @@
+{
+  "type": "cooperation_transport_receipt",
+  "module": "urn:awp:cooperation",
+  "profile": "awp-host-activation-v1",
+  "operation_id": "operation:example",
+  "event_id": "evt:example",
+  "recipient_actor": "actor:example",
+  "route_id": "route:example",
+  "route_generation": "generation:1",
+  "state": "transport_queued",
+  "recorded_at": "2026-09-10T20:00:00Z",
+  "endpoint_receipt": "endpoint:example"
+}

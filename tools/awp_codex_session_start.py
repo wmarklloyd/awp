@@ -1,4 +1,4 @@
-"""Codex SessionStart hook for the project-local AWP doorbell.
+"""Compatibility wrapper for the generic AWP SessionStart activation hook.
 
 Codex provides the durable session identifier in the hook payload.  Reusing it
 as the queue thread and deriving a stable per-session actor keeps the watcher
@@ -19,9 +19,11 @@ if __package__ in {None, ""}:
     from tools.awp_coordination import CoordinationError, find_project
 else:
     from .awp_coordination import CoordinationError, find_project
+from tools.awp_agent_start import run_hook as run_generic_hook
 
 
 HOOK_EVENT = "SessionStart"
+ROLE_ACTOR = "actor:codex"
 
 
 def actor_for_session(session_id: str) -> str:
@@ -38,7 +40,7 @@ def bootstrap_command(project: Path, session_id: str) -> list[str]:
         "--project",
         str(project),
         "--actor",
-        actor_for_session(session_id),
+        ROLE_ACTOR,
         "--thread",
         session_id,
     ]
@@ -58,7 +60,9 @@ def run_hook(
     *,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> dict[str, Any]:
-    """Start or attach the session's watcher and return safe hook feedback."""
+    """Start or attach through the generic activation path."""
+    if runner is subprocess.run:
+        return run_generic_hook(payload, host="codex", actor=ROLE_ACTOR)
     if payload.get("hook_event_name") != HOOK_EVENT:
         return hook_result("AWP doorbell bootstrap skipped: unexpected hook event.")
     session_id = payload.get("session_id")
@@ -82,7 +86,7 @@ def run_hook(
         return hook_result(f"AWP doorbell bootstrap unavailable: {error}")
     if completed.returncode == 0:
         return hook_result(
-            f"AWP doorbell bootstrap active for {actor_for_session(session_id)}."
+            f"AWP doorbell bootstrap active for {ROLE_ACTOR}; session binding is {actor_for_session(session_id)}."
         )
     detail = (completed.stderr or completed.stdout or "bootstrap command failed").strip()
     return hook_result(f"AWP doorbell bootstrap unavailable: {detail[:500]}")

@@ -27,12 +27,14 @@ class SessionBootstrapTests(unittest.TestCase):
         self.assertEqual(thread_id("thread:explicit", {}), "thread:explicit")
         self.assertIsNone(thread_id(None, {}))
 
-    def test_watcher_command_uses_local_queue_unless_remote_is_explicit(self) -> None:
+    def test_watcher_command_uses_generic_supervisor_and_host(self) -> None:
         project = Path("project")
         local = watcher_command(project, Path("ledger"), "actor:codex", "thread:test", "generation", 5.0, None)
-        self.assertNotIn("--remote", local)
-        remote = watcher_command(project, Path("ledger"), "actor:codex", "thread:test", "generation", 5.0, "ws://test")
-        self.assertEqual(remote[-2:], ["--remote", "ws://test"])
+        self.assertIn("tools.awp_supervisor", local)
+        self.assertIn("--host", local)
+        self.assertIn("codex", local)
+        claude = watcher_command(project, Path("ledger"), "actor:claude", "session:test", "generation", 5.0, None, "claude")
+        self.assertIn("claude", claude)
 
     def test_two_actors_have_isolated_control_and_cursor_paths(self) -> None:
         project = Path("project")
@@ -45,8 +47,8 @@ class SessionBootstrapTests(unittest.TestCase):
         )
         first = watcher_command(project, Path("ledger"), "actor:one", "thread:one", "one", 5.0, None)
         second = watcher_command(project, Path("ledger"), "actor:two", "thread:two", "two", 5.0, None)
-        self.assertIn(str(first_control), first)
-        self.assertIn(str(second_control), second)
+        self.assertIn("tools.awp_supervisor", first)
+        self.assertIn("tools.awp_supervisor", second)
 
     def test_status_requires_process_and_observed_heartbeat(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

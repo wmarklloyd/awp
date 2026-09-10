@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
@@ -28,31 +29,15 @@ if __package__ in {None, ""}:
 
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from tools.awp_coop2 import Rendezvous
+    from tools.awp_runtime import atomic_json, control_is_current
 else:
     from .awp_coop2 import Rendezvous
+    from .awp_runtime import atomic_json, control_is_current
 
 
 PROFILE = "codex-local-queue-watcher-v1"
 QUEUE_TIMEOUT_SECONDS = 30
 MAX_NOTIFIED_EVENTS = 256
-
-
-def atomic_json(path: Path, value: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    handle, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
-    try:
-        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as temporary:
-            json.dump(value, temporary, indent=2, sort_keys=True)
-            temporary.write("\n")
-            temporary.flush()
-            os.fsync(temporary.fileno())
-        os.replace(temporary_name, path)
-    except Exception:
-        try:
-            os.unlink(temporary_name)
-        except FileNotFoundError:
-            pass
-        raise
 
 
 def _state_path_usable(path: Path) -> bool:
@@ -144,7 +129,7 @@ class CodexQueueWatcher:
         answered = {
             event["payload"].get("interaction_id")
             for event in events
-            if event["kind"] == "coop2.interaction.responded"
+            if event["kind"] in {"coop2.interaction.responded", "coop2.interaction.withdrawn"}
         }
         result = []
         for event in events:
@@ -153,6 +138,7 @@ class CodexQueueWatcher:
                 event["kind"] == "coop2.interaction.requested"
                 and payload.get("recipient") == self.actor
                 and payload.get("interaction_id") not in answered
+                and not self._delivery_expired(event)
             ) or (
                 event["kind"] == "coop2.interaction.responded"
                 and payload.get("recipient") == self.actor
@@ -175,19 +161,44 @@ class CodexQueueWatcher:
         return result
 
     @staticmethod
+    def _delivery_expired(event: dict[str, Any]) -> bool:
+        """Keep expired mailbox items durable, but do not wake a fresh session for them."""
+        if event.get("kind") != "coop2.interaction.requested":
+            return False
+        try:
+            occurred_at = datetime.fromisoformat(event["occurred_at"].replace("Z", "+00:00"))
+            seconds = int(event["payload"]["authorization"]["delivery_window_seconds"])
+        except (KeyError, TypeError, ValueError, AttributeError):
+            return False
+        return datetime.now(timezone.utc) > occurred_at + timedelta(seconds=seconds)
+
+    @staticmethod
     def _command(arguments: list[str]) -> list[str]:
         executable = Path(shutil.which("codex") or "codex")
         if executable.suffix.lower() == ".ps1":
             return ["powershell", "-NoProfile", "-File", str(executable), *arguments]
         return [str(executable), *arguments]
 
+    @staticmethod
+    def _hidden_process_options() -> dict[str, Any]:
+        """Prevent a background watcher from stealing the user's desktop on Windows."""
+        if os.name != "nt":
+            return {}
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = 0  # SW_HIDE
+        return {
+            "creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            "startupinfo": startupinfo,
+        }
+
     def queue(self, event: dict[str, Any]) -> None:
         payload = event["payload"]
         if event["kind"] == "coop2.tickle.sent":
             message = (
-                f"AWP COOP-2 reachability probe {payload['tickle_id']} arrived in event {event['event_id']}. "
-                f"Run `python -m tools.awp_coop2 tickle-ack --actor {self.actor} --tickle {payload['tickle_id']}`. "
-                "This only acknowledges the probe; it does not authorize repository changes."
+                f"AWP COOP-2 reachability probe {payload['tickle_id']} arrived in event {event['event_id']} "
+                "and was acknowledged by the host watcher. This is path evidence, not authority "
+                "for repository changes."
             )
         elif event["kind"] == "coop2.tickle.acked":
             message = (
@@ -212,6 +223,7 @@ class CodexQueueWatcher:
             capture_output=True,
             text=True,
             timeout=QUEUE_TIMEOUT_SECONDS,
+            **self._hidden_process_options(),
         )
 
     def _heartbeat(self) -> dict[str, Any] | None:
@@ -224,24 +236,6 @@ class CodexQueueWatcher:
         except Exception as error:  # liveness must never break delivery
             return {"error": str(error)}
 
-    def _observe(self, event: dict[str, Any]) -> str | None:
-        """Publish the `observed` receipt at the moment a request is queued.
-
-        Delivery to the watcher is the earliest point the recipient host can
-        honestly say it has seen the request; recording it here keeps the ledger
-        from reporting 'nothing happened' while the session is already working.
-        """
-        if event["kind"] != "coop2.interaction.requested":
-            return None
-        observe = getattr(self.rendezvous, "observe", None)
-        if observe is None:
-            return None
-        try:
-            receipt = observe(self.actor, event["payload"]["interaction_id"])
-        except Exception as error:  # read-only fallback or ledger contention: report, do not fail the queue
-            return f"observe-failed: {error}"
-        return receipt.get("receipt", {}).get("event_id")
-
     def step(self) -> dict[str, Any]:
         with self._claim_lock():
             state = self._state()
@@ -250,7 +244,6 @@ class CodexQueueWatcher:
             initializing = not state.get("initialized", False)
             queued: list[str] = []
             failed: list[str] = []
-            observed: dict[str, str] = {}
             for event in self.pending_events(events, state):
                 try:
                     self.queue(event)
@@ -262,9 +255,6 @@ class CodexQueueWatcher:
                     atomic_json(self.state_path, state)
                     break
                 queued.append(event["event_id"])
-                observed_receipt = self._observe(event)
-                if observed_receipt is not None:
-                    observed[event["event_id"]] = observed_receipt
                 state["notified_events"] = bounded_event_ids(
                     [*state.get("notified_events", []), event["event_id"]]
                 )
@@ -284,7 +274,9 @@ class CodexQueueWatcher:
                 )
                 state["initialized"] = True
                 atomic_json(self.state_path, state)
-            result = {"profile": PROFILE, "queued_events": queued, "failed_events": failed, "observed_receipts": observed, "state_path": str(self.state_path)}
+            result = {"profile": PROFILE, "queued_events": queued, "failed_events": failed,
+                      "transport_state": "transport_queued" if queued else "idle",
+                      "state_path": str(self.state_path)}
             if heartbeat is not None:
                 result["heartbeat"] = {key: heartbeat[key] for key in ("last_seen", "path", "error") if key in heartbeat}
             return result
@@ -306,19 +298,6 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--interval-seconds", type=float, default=5.0)
     result.add_argument("--once", action="store_true")
     return result
-
-
-def control_is_current(path: Path | None, generation: str | None) -> bool:
-    """Return false when a newer session bootstrap has replaced this watcher."""
-    if path is None and generation is None:
-        return True
-    if path is None or not generation:
-        return False
-    try:
-        control = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return False
-    return control.get("generation") == generation and control.get("desired_state") == "running"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
