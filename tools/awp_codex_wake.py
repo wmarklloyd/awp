@@ -70,13 +70,14 @@ def _state_path_usable(path: Path) -> bool:
         return False
 
 
-def default_state_path(project: Path) -> tuple[Path, bool]:
-    """Return a usable cursor location, preferring the project runtime path."""
-    preferred = project / ".awp-runtime" / "coop2-codex-watcher.json"
+def default_state_path(project: Path, actor: str = "actor:codex") -> tuple[Path, bool]:
+    """Return an actor-scoped cursor location, preferring project runtime."""
+    actor_digest = hashlib.sha256(actor.encode("utf-8")).hexdigest()[:12]
+    preferred = project / ".awp-runtime" / f"coop2-codex-watcher-{actor_digest}.json"
     if _state_path_usable(preferred):
         return preferred, False
     digest = hashlib.sha256(str(project.resolve()).encode("utf-8")).hexdigest()[:12]
-    fallback = Path(tempfile.gettempdir()) / "awp" / f"coop2-codex-watcher-{digest}.json"
+    fallback = Path(tempfile.gettempdir()) / "awp" / f"coop2-codex-watcher-{digest}-{actor_digest}.json"
     if not _state_path_usable(fallback):
         raise OSError("no writable watcher state path is available")
     return fallback, True
@@ -94,7 +95,7 @@ def bounded_event_ids(values: list[str]) -> list[str]:
 
 
 class CodexQueueWatcher:
-    def __init__(self, rendezvous: Rendezvous, actor: str, thread: str, remote: str, state_path: Path) -> None:
+    def __init__(self, rendezvous: Rendezvous, actor: str, thread: str, remote: str | None, state_path: Path) -> None:
         self.rendezvous = rendezvous
         self.actor = actor
         self.thread = thread
@@ -156,6 +157,18 @@ class CodexQueueWatcher:
                 event["kind"] == "coop2.interaction.responded"
                 and payload.get("recipient") == self.actor
                 and state.get("initialized", False)
+            ) or (
+                event["kind"] == "coop2.tickle.sent"
+                and payload.get("recipient") == self.actor
+                and not any(
+                    item["kind"] == "coop2.tickle.acked"
+                    and item["payload"].get("tickle_id") == payload.get("tickle_id")
+                    for item in events
+                )
+            ) or (
+                event["kind"] == "coop2.tickle.acked"
+                and payload.get("recipient") == self.actor
+                and state.get("initialized", False)
             )
             if is_delivery and event["event_id"] not in notified:
                 result.append(event)
@@ -169,15 +182,32 @@ class CodexQueueWatcher:
         return [str(executable), *arguments]
 
     def queue(self, event: dict[str, Any]) -> None:
-        interaction_id = event["payload"]["interaction_id"]
-        message = (
-            f"AWP COOP-2 delivery event {event['event_id']} for {interaction_id}. "
-            f"Run `python -m tools.awp_coop2 inbox --actor {self.actor}` and handle only "
-            "that interaction under its recorded authorization. Do not treat this "
-            "notification as authority for repository changes."
-        )
+        payload = event["payload"]
+        if event["kind"] == "coop2.tickle.sent":
+            message = (
+                f"AWP COOP-2 reachability probe {payload['tickle_id']} arrived in event {event['event_id']}. "
+                f"Run `python -m tools.awp_coop2 tickle-ack --actor {self.actor} --tickle {payload['tickle_id']}`. "
+                "This only acknowledges the probe; it does not authorize repository changes."
+            )
+        elif event["kind"] == "coop2.tickle.acked":
+            message = (
+                f"AWP COOP-2 reachability probe {payload['tickle_id']} was acknowledged in event {event['event_id']}. "
+                "This is path evidence, not authority for repository changes."
+            )
+        else:
+            interaction_id = payload["interaction_id"]
+            message = (
+                f"AWP COOP-2 delivery event {event['event_id']} for {interaction_id}. "
+                f"Run `python -m tools.awp_coop2 inbox --actor {self.actor}` and handle only "
+                "that interaction under its recorded authorization. Do not treat this "
+                "notification as authority for repository changes."
+            )
+        arguments = ["queue"]
+        if self.remote:
+            arguments.extend(["--remote", self.remote])
+        arguments.extend(["--thread", self.thread, "--message", message])
         subprocess.run(
-            self._command(["queue", "--remote", self.remote, "--thread", self.thread, "--message", message]),
+            self._command(arguments),
             check=True,
             capture_output=True,
             text=True,
@@ -266,27 +296,54 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--ledger", type=Path)
     result.add_argument("--actor", default="actor:codex")
     result.add_argument("--thread", required=True, help="Codex app-server thread identifier")
-    result.add_argument("--remote", default="ws://127.0.0.1:8765")
+    result.add_argument(
+        "--remote",
+        help="optional Codex app-server endpoint; omit to use the host's local session state",
+    )
     result.add_argument("--state", type=Path)
+    result.add_argument("--control", type=Path, help="session-bootstrap control record")
+    result.add_argument("--generation", help="generation expected in the control record")
     result.add_argument("--interval-seconds", type=float, default=5.0)
     result.add_argument("--once", action="store_true")
     return result
+
+
+def control_is_current(path: Path | None, generation: str | None) -> bool:
+    """Return false when a newer session bootstrap has replaced this watcher."""
+    if path is None and generation is None:
+        return True
+    if path is None or not generation:
+        return False
+    try:
+        control = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return control.get("generation") == generation and control.get("desired_state") == "running"
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parser().parse_args(argv)
     rendezvous = Rendezvous(args.project, args.ledger)
     state, state_fallback = (
-        (args.state, False) if args.state else default_state_path(rendezvous.project)
+        (args.state, False) if args.state else default_state_path(rendezvous.project, args.actor)
     )
     watcher = CodexQueueWatcher(rendezvous, args.actor, args.thread, args.remote, state)
     while True:
-        result = watcher.step()
+        if not control_is_current(args.control, args.generation):
+            return 0
+        try:
+            result = watcher.step()
+        except Exception as error:
+            print(json.dumps({"profile": PROFILE, "state": "retrying", "error": str(error)}, sort_keys=True), flush=True)
+            time.sleep(min(max(args.interval_seconds * 2, 1.0), 60.0))
+            continue
         if state_fallback:
             result["state_fallback"] = "temporary-user-runtime"
         if result["queued_events"] or args.once:
             print(json.dumps(result, sort_keys=True), flush=True)
         if args.once:
+            return 0
+        if not control_is_current(args.control, args.generation):
             return 0
         delay = max(args.interval_seconds, 0.1)
         if result.get("failed_events"):

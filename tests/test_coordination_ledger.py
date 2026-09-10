@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -60,6 +61,29 @@ class CoordinationLedgerTests(unittest.TestCase):
         with self.assertRaises(CoordinationError):
             with recovered._transaction():
                 pass
+
+    def test_recovery_reads_committed_wal_pages(self) -> None:
+        reader = sqlite3.connect(self.path, isolation_level=None)
+        reader.execute("BEGIN")
+        reader.execute("SELECT count(*) FROM events").fetchone()
+        self.ledger.begin(
+            workstate_id="workstate:wal",
+            project_id="git-root:test",
+            actor="actor:codex",
+            goal="goal:test",
+            summary="WAL recovery test",
+            base_revision="git:test",
+            scopes=[("repository", ".")],
+            policy="warn",
+        )
+        try:
+            wal_path = self.path.with_name(self.path.name + "-wal")
+            self.assertTrue(wal_path.exists(), "the active reader should keep committed WAL pages")
+            recovered = CoordinationLedger(self.path, read_only=True)
+            self.assertEqual(len(recovered.export_events("workstate:wal")), 2)
+        finally:
+            reader.rollback()
+            reader.close()
 
     def test_binding_identity_is_stable_and_frontier_is_an_observation(self) -> None:
         context = operational_context(ROOT, self.path)

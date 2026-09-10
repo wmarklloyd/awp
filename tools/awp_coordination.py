@@ -282,12 +282,11 @@ class CoordinationLedger:
         if read_only:
             if not self.path.is_file():
                 raise CoordinationError(f"read-only ledger does not exist: {self.path}")
-            # Immutable mode never creates a lock, journal, or WAL sidecar.
-            # It is safe only when no WAL contains newer committed pages.
-            if self.path.with_name(self.path.name + "-wal").exists():
-                raise CoordinationError(
-                    "read-only ledger fallback is unsafe while a WAL sidecar exists"
-                )
+            # Read-only mode must include committed pages held in a WAL.  The
+            # SQLite `mode=ro` URI does not open a write transaction, while
+            # `immutable=1` would intentionally ignore the WAL and can return
+            # an older database image.  This is the recovery path used when a
+            # normal writer cannot acquire the host's coordination sidecars.
         else:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self._initialize()
@@ -295,9 +294,12 @@ class CoordinationLedger:
     def _connect(self) -> sqlite3.Connection:
         if self.read_only:
             connection = sqlite3.connect(
-                f"file:{self.path.as_posix()}?immutable=1", uri=True,
+                f"file:{self.path.as_posix()}?mode=ro", uri=True,
+                timeout=10,
                 isolation_level=None,
             )
+            connection.execute("PRAGMA query_only = ON")
+            connection.execute("PRAGMA busy_timeout = 10000")
         else:
             connection = sqlite3.connect(self.path, timeout=10, isolation_level=None)
         connection.row_factory = sqlite3.Row

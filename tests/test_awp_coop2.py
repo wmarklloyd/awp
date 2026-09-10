@@ -402,3 +402,53 @@ class LifecycleGuardTests(RendezvousFixture):
         self.assertEqual(len(siblings), 1)
         self.assertEqual(siblings[0]["module"], "urn:awp:coordination")
         self.assertIn("discover_with", siblings[0])
+
+
+class InventoryAndProbeTests(RendezvousFixture):
+    def test_inventory_retains_participants_and_separates_liveness(self) -> None:
+        self.rendezvous.join("actor:peer", ["managed-collaboration"], observation="watcher")
+        before = len(self.rendezvous._events())
+        inventory = self.rendezvous.participant_inventory()
+        self.assertEqual(len(inventory), 1)
+        self.assertEqual(inventory[0]["declared_observation"], "watcher")
+        self.assertEqual(inventory[0]["watcher_liveness"], "none")
+        self.assertEqual(len(self.rendezvous._events()), before)
+        self.rendezvous.heartbeat("actor:peer", "test-watcher")
+        self.assertEqual(self.rendezvous.participant_inventory()[0]["watcher_liveness"], "active")
+
+    def test_tickle_is_not_an_interaction_and_ack_is_idempotent(self) -> None:
+        self.rendezvous.join("actor:sender", [])
+        self.rendezvous.join("actor:recipient", [])
+        result = self.rendezvous.tickle("actor:sender", "actor:recipient", ttl_seconds=30, idempotency_key="retry:one")
+        self.assertTrue(result["tickle_id"].startswith("tickle:"))
+        self.assertEqual([event["kind"] for event in self.rendezvous._events()].count("coop2.interaction.requested"), 0)
+        retry = self.rendezvous.tickle("actor:sender", "actor:recipient", ttl_seconds=30, idempotency_key="retry:one")
+        self.assertTrue(retry["deduplicated"])
+        self.assertEqual(retry["tickle_id"], result["tickle_id"])
+        fresh = self.rendezvous.tickle("actor:sender", "actor:recipient", ttl_seconds=30)
+        self.assertFalse(fresh["deduplicated"])
+        self.assertNotEqual(fresh["tickle_id"], result["tickle_id"])
+        ack = self.rendezvous.tickle_ack("actor:recipient", result["tickle_id"])
+        self.assertEqual(ack["publication"], "confirmed")
+        again = self.rendezvous.tickle_ack("actor:recipient", result["tickle_id"])
+        self.assertTrue(again["deduplicated"])
+        self.assertEqual(self.rendezvous.tickles()[0]["state"], "acknowledged")
+
+    def test_tickle_expiry_is_derived_without_a_failure_event(self) -> None:
+        from datetime import datetime, timedelta, timezone
+        from unittest.mock import patch
+
+        self.rendezvous.join("actor:sender", [])
+        self.rendezvous.join("actor:recipient", [])
+        self.rendezvous.tickle("actor:sender", "actor:recipient", ttl_seconds=1)
+        before = len(self.rendezvous._events())
+        future = datetime.now(timezone.utc) + timedelta(seconds=5)
+
+        class Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return future if tz else future.replace(tzinfo=None)
+
+        with patch("tools.awp_coop2.datetime", Clock):
+            self.assertEqual(self.rendezvous.tickles()[0]["state"], "expired")
+        self.assertEqual(len(self.rendezvous._events()), before)

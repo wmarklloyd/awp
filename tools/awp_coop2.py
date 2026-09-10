@@ -15,6 +15,7 @@ import os
 import re
 import subprocess
 import tempfile
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Sequence
@@ -396,6 +397,29 @@ class Rendezvous:
             )
         return result
 
+    def participant_inventory(self) -> list[dict]:
+        """Return retained participants with presence and liveness separate.
+
+        This is deliberately read-only.  A participant remains in the
+        inventory after its heartbeat expires; absence of current liveness is
+        operational evidence, not permission to prune the participant.
+        """
+        inventory = []
+        for actor, registration in sorted(self._registrations().items()):
+            watcher = self.heartbeats.read(actor, binding_id=self.ledger.binding_id())
+            inventory.append({
+                "actor": actor,
+                "project_id": registration.get("project_id"),
+                "workstate_id": registration.get("workstate_id"),
+                "binding_id": registration.get("binding_id"),
+                "capabilities": registration.get("capabilities", []),
+                "declared_observation": registration.get("observation", "on-entry-only"),
+                "watcher_liveness": watcher.get("watcher_liveness", "none"),
+                "entry_event_id": registration.get("event_id"),
+                "heartbeat": {key: watcher[key] for key in ("profile", "last_seen", "age_seconds", "frontier") if key in watcher},
+            })
+        return inventory
+
     def signal_reach(self, watchers: list[dict] | None = None) -> dict:
         """Reachability per ordered pair.  Mailbox reach is shared; signal reach is not."""
         watchers = watchers if watchers is not None else self.participant_watchers()
@@ -442,6 +466,7 @@ class Rendezvous:
             "heartbeat": {"profile": HEARTBEAT_PROFILE, "ttl_seconds": HEARTBEAT_TTL_SECONDS, "directory": str(self.heartbeats.directory)},
             "sibling_bindings": self._sibling_bindings(),
             "participant_watchers": watchers,
+            "participant_inventory": self.participant_inventory(),
             "signal_reach": matrix,
             "limitations": [
                 "experimental pilot",
@@ -478,6 +503,67 @@ class Rendezvous:
             latest.pop(actor, None)
         participants = [{"actor": item["actor"], "capabilities": item["capabilities"], "availability": item["availability"], "observation": item.get("observation", "on-entry-only"), "event_id": item["event_id"]} for item in latest.values()]
         return {"binding": self.status(), "participants": sorted(participants, key=lambda item: item["actor"])}
+
+    def tickle(
+        self,
+        actor: str,
+        recipient: str,
+        ttl_seconds: int = 90,
+        idempotency_key: str | None = None,
+    ) -> dict:
+        """Publish a decision-free reachability probe over the normal signal path."""
+        if ttl_seconds < 1:
+            raise CoordinationError("probe TTL must be at least one second")
+        if idempotency_key is not None and not idempotency_key:
+            raise CoordinationError("probe idempotency key must not be empty")
+        if recipient not in {item["actor"] for item in self.peers()["participants"]}:
+            raise CoordinationError("recipient is not registered in this project rendezvous")
+        # A probe is repeatable.  Callers that need retry idempotency supply a
+        # stable key; otherwise each invocation is a new measurement.
+        nonce = idempotency_key or uuid.uuid4().hex
+        tickle_id = "tickle:" + hashlib.sha256(canonical([
+            self.project_id, self.workstate_id, self.ledger.binding_id(), actor, recipient, nonce,
+        ]).encode()).hexdigest()[:24]
+        sent = next((event for event in self._events() if event["kind"] == "coop2.tickle.sent" and event["payload"].get("tickle_id") == tickle_id), None)
+        if sent:
+            return {"tickle_id": tickle_id, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": sent["event_id"]}}
+        frontier = self.ledger.refresh(self.workstate_id)["frontier"]
+        payload = {"tickle_id": tickle_id, "sender": actor, "recipient": recipient, "binding_id": self.ledger.binding_id(), "frontier": frontier, "ttl_seconds": ttl_seconds, "status": "open"}
+        if idempotency_key is not None:
+            payload["idempotency_key"] = idempotency_key
+        receipt = self._append(actor, "coop2.tickle.sent", payload)
+        return {"tickle_id": tickle_id, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "doorbell": self._signal(receipt, tickle_id, "coop2.tickle.sent")}
+
+    def tickle_ack(self, actor: str, tickle_id: str) -> dict:
+        sent = next((event for event in self._events() if event["kind"] == "coop2.tickle.sent" and event["payload"].get("tickle_id") == tickle_id), None)
+        if sent is None:
+            raise CoordinationError("unknown reachability probe")
+        payload = sent["payload"]
+        if payload["recipient"] != actor:
+            raise CoordinationError("only the named recipient may acknowledge a probe")
+        prior = next((event for event in self._events() if event["kind"] == "coop2.tickle.acked" and event["payload"].get("tickle_id") == tickle_id), None)
+        if prior:
+            return {"tickle_id": tickle_id, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": prior["event_id"]}}
+        deadline = _parse_time(sent["occurred_at"]) + timedelta(seconds=int(payload["ttl_seconds"]))
+        if datetime.now(timezone.utc) > deadline:
+            raise CoordinationError("reachability probe has expired")
+        frontier = self.ledger.refresh(self.workstate_id)["frontier"]
+        ack = {"tickle_id": tickle_id, "sender": actor, "recipient": payload["sender"], "binding_id": payload["binding_id"], "frontier": frontier, "status": "acknowledged"}
+        receipt = self._append(actor, "coop2.tickle.acked", ack)
+        return {"tickle_id": tickle_id, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "doorbell": self._signal(receipt, tickle_id, "coop2.tickle.acked")}
+
+    def tickles(self, actor: str | None = None) -> list[dict]:
+        """Read probe state; expiry is derived and never published."""
+        result = []
+        events = self._events()
+        for sent in events:
+            if sent["kind"] != "coop2.tickle.sent" or (actor and sent["payload"].get("sender") != actor and sent["payload"].get("recipient") != actor):
+                continue
+            ack = next((event for event in events if event["kind"] == "coop2.tickle.acked" and event["payload"].get("tickle_id") == sent["payload"].get("tickle_id")), None)
+            deadline = _parse_time(sent["occurred_at"]) + timedelta(seconds=int(sent["payload"]["ttl_seconds"]))
+            expired = ack is None and datetime.now(timezone.utc) > deadline
+            result.append(sent["payload"] | {"event_id": sent["event_id"], "state": "acknowledged" if ack else ("expired" if expired else "pending"), "ack_event_id": ack["event_id"] if ack else None, "deadline": deadline.replace(microsecond=0).isoformat().replace("+00:00", "Z")})
+        return result
 
     def _request_event(self, interaction_id: str) -> dict:
         event = next((item for item in self._events() if item["kind"] == "coop2.interaction.requested" and item["payload"]["interaction_id"] == interaction_id), None)
@@ -643,6 +729,10 @@ def parser() -> argparse.ArgumentParser:
     commands = result.add_subparsers(dest="command", required=True)
     commands.add_parser("status")
     commands.add_parser("doorbell-status")
+    commands.add_parser("inventory")
+    tickle = commands.add_parser("tickle"); tickle.add_argument("--actor", required=True); tickle.add_argument("--to", required=True); tickle.add_argument("--ttl-seconds", type=int, default=90); tickle.add_argument("--idempotency-key")
+    tickle_ack = commands.add_parser("tickle-ack"); tickle_ack.add_argument("--actor", required=True); tickle_ack.add_argument("--tickle", required=True)
+    tickles = commands.add_parser("tickles"); tickles.add_argument("--actor")
     join = commands.add_parser("join"); join.add_argument("--actor", required=True); join.add_argument("--capability", action="append", default=[]); join.add_argument("--observation", choices=list(OBSERVATION_MODES), default="on-entry-only", help="how this actor observes signals: a live watcher, or only on project entry")
     heartbeat = commands.add_parser("heartbeat"); heartbeat.add_argument("--actor", required=True); heartbeat.add_argument("--profile", default="manual-heartbeat")
     peers = commands.add_parser("peers"); peers.add_argument("--actor")
@@ -662,6 +752,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         rendezvous = Rendezvous(args.project, args.ledger)
         if args.command == "status": result = rendezvous.status()
         elif args.command == "doorbell-status": result = rendezvous.doorbell.status(project_id=rendezvous.project_id, workstate_id=rendezvous.workstate_id, binding_id=rendezvous.ledger.binding_id())
+        elif args.command == "inventory": result = {"binding": rendezvous.status(), "participants": rendezvous.participant_inventory()}
+        elif args.command == "tickle": result = rendezvous.tickle(args.actor, args.to, args.ttl_seconds, args.idempotency_key)
+        elif args.command == "tickle-ack": result = rendezvous.tickle_ack(args.actor, args.tickle)
+        elif args.command == "tickles": result = {"binding": rendezvous.status(), "tickles": rendezvous.tickles(args.actor)}
         elif args.command == "join": result = rendezvous.join(args.actor, args.capability, args.observation)
         elif args.command == "heartbeat": result = rendezvous.heartbeat(args.actor, args.profile)
         elif args.command == "peers": result = rendezvous.peers(args.actor)
