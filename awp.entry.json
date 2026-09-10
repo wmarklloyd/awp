@@ -1,7 +1,7 @@
 {
-  "briefing": "# Git doorbell specification draft\n\nThe 0.8 draft now distinguishes Git-ref signaling from host wake, watcher liveness from declaration, and entry-only recovery from unattended delivery; generated artifact records are refreshed.\n\nNext action: Implement the host-supervised Git-ref watcher and run the publication-to-wake test on a host that can keep the watcher alive.",
+  "briefing": "# Participant inventory and reachability probe\n\nCooperation Contracts 5.2 now defines two optional managed-collaboration capabilities: a read-only participant inventory that retains lapsed participants and separates declared observation from observed liveness, and a decision-free reachability probe with a bounded time-to-live that reuses the existing signal path. Neither is a COOP-2 conformance requirement in this draft, and the publication-to-wake test should use the probe as its fixture.\n\nNext action: Implement the participant inventory and the coop2.tickle.sent / coop2.tickle.acked event pair in tools/awp_coop2.py, then run the section 5.1.1 publication-to-wake test on a host that can supervise a watcher process.",
   "capsule": "awp.awp.md",
-  "capsule_digest": "sha256:703f8f2a51b5ff32e6a4126ff0256189068e201c06b6614b83bfd6da0e6a4660",
+  "capsule_digest": "sha256:c692069f5a4a68e6b8d7cfe37bbddc1d2118acef49d6c0357104a651b6d237c9",
   "entry": {
     "checkpoint": null,
     "handoff": {
@@ -213,7 +213,7 @@
         "id": "artifact:cooperation-contracts-unified",
         "integrity": {
           "algorithm": "sha256",
-          "digest": "cc575614f1c9c2ddb4ec2faebadbe4cad6d4fe7fbdfd58ba6f50fca1582c2d9a"
+          "digest": "758f00de83d4ecead158cf913e39f0c7dbb7f7a7d273bd801773685caf0f2de7"
         },
         "locations": [
           {
@@ -413,20 +413,20 @@
       "type": "resume"
     }
   },
-  "generated_at": "2026-09-09T22:15:25.930984Z",
-  "generated_digest": "sha256:4b07d5404c5cf7973cd68686871c2b9b29e4cb5f077b05dc2ce72cc2a83bb397",
+  "generated_at": "2026-09-10T14:06:52.709340Z",
+  "generated_digest": "sha256:f9306f2cdaa2cee800fefd600e7c726b00b51f7606e16252e2502cbb18b79c48",
   "metadata": {
     "awp_version": "0.8.0",
-    "checkpoint": "checkpoint:doorbell-spec-draft",
-    "generated_at": "2026-09-09T22:15:25.917981Z",
-    "generated_digest": "sha256:4b07d5404c5cf7973cd68686871c2b9b29e4cb5f077b05dc2ce72cc2a83bb397",
+    "checkpoint": "checkpoint:partners-tickle-capabilities",
+    "generated_at": "2026-09-10T14:06:52.623303Z",
+    "generated_digest": "sha256:f9306f2cdaa2cee800fefd600e7c726b00b51f7606e16252e2502cbb18b79c48",
     "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
     "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
   },
   "profile": "capsule-entry-slice-v1",
   "selection": {
     "complete": true,
-    "indexed_record_count": 235,
+    "indexed_record_count": 236,
     "missing_record_ids": [],
     "required_artifact_failures": [],
     "selected_record_count": 11,

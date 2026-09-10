@@ -2319,72 +2319,108 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "id": "AWP-COOP-046",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 204,
-      "statement": "`COOP-2` extends `COOP-1` work coordination with semantic awareness and integration assurance. It is also the first contract that may enable managed, directly inter-agent collaboration under Section 5's explicit authorization and budget. It MAY require a database, broker, registry, subscription system, or another service-backed binding, but neither a storage technology nor consultation alone supplies `COOP-2` semantics."
+      "statement": "A managed-collaboration binding MAY expose a **participant inventory**: a read-only view of every actor that has entered the project rendezvous, whether or not it is currently reachable. The inventory MUST retain a participant whose activity has lapsed rather than pruning it, because the continued absence of a once-present participant is itself operational evidence. For each actor it MUST distinguish the observation mode declared at entry from liveness observed by the binding, and MUST derive the latter only from evidence the binding can observe under the rules in section 5.1. A self-declared availability recorded at entry describes that moment only; a binding MUST NOT present it as current state, and MUST NOT let it satisfy the disclosure of observed liveness. Reading the inventory MUST NOT publish an event, alter any actor's liveness, or substitute for the entry-recovery check."
     },
     {
       "id": "AWP-COOP-047",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 206,
-      "statement": "A `COOP-2` binding MUST maintain a stable semantic registry; resolve comparable selectors against pinned state revisions; compare declared scope, observed scope, and relied-upon reads; preserve `unknown` when relation evidence is ambiguous; and require acknowledgement or blocking under the effective policy. It MUST bind interface contracts, typed preconditions, verification results, staleness, change-set readiness, and integration results so that a stale or unsatisfied dependency cannot silently become integration-ready."
+      "statement": "A participant inventory describes presence and reachability; a `COOP-1` participant lease describes responsibility for guarded work. A binding MAY carry lease state into the inventory as a separately attributed summary or sibling reference, but MUST NOT merge it into an actor's presence or liveness fields and MUST NOT infer either property from the other. A participant may hold an active lease while unreachable, and may be reachable while holding no lease; collapsing the two would let an unreachable participant appear available for collaboration, or an idle participant appear to hold guarded work."
     },
     {
       "id": "AWP-COOP-048",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 208,
-      "statement": "A `COOP-2` claim MUST declare its semantic-analysis coverage, selector and scope model, integration policy, tested participant count, and the failure behavior for unavailable or ambiguous semantic evidence. It MUST NOT infer protected external mutation, authentication, fencing, cross-host availability, or scalability from this claim."
+      "statement": "A binding MAY also expose a **reachability probe**: a minimal exchange whose only purpose is to establish whether a named participant's request-in and acknowledgement-out path is working at the time of the probe. A probe is not a consultation and MUST NOT be recorded as an interaction. It MUST NOT carry a consultation purpose, a decision owner, or a loop budget, because nothing is being decided and no continuation authority is at stake; requiring a decision owner for a probe would record an accountable decision that was never made. A probe publication MUST identify its sender, recipient, binding identity, event identifier, and frontier, and MUST declare a bounded time-to-live. An acknowledgement MUST correlate to the probe by that event identifier and MUST be published as a durable receipt."
     },
     {
       "id": "AWP-COOP-049",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 210,
-      "statement": "A registry, selector analyzer, verification evaluator, or integration-readiness evaluator alone MUST NOT claim `COOP-2`; the contract applies to the composed participant, binding, semantic registry, analyzer, readiness evaluator, checkpoint, and recovery behavior."
+      "statement": "A probe MUST reuse the binding's existing signal channel, cursor deduplication, and watcher-liveness observation rather than introducing a second delivery mechanism, so that a probe exercises the same path a later interaction will use. A probe that travelled a path an interaction would not take is not evidence about that interaction."
     },
     {
       "id": "AWP-COOP-050",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 214,
-      "statement": "`COOP-3` extends `COOP-2` with authenticated protected mutation and a declared scalable operating envelope. It MAY require a database, broker, sharded registry, protected mutation gateway, or another service-backed binding."
+      "line": 212,
+      "statement": "A completed probe is evidence that one request-in and acknowledgement-out path worked at the moment it completed, and MAY strengthen the recorded signal reach for that ordered pair for no longer than the probe's declared time-to-live. It MUST NOT be represented as authentication of the acknowledging actor, as durable liveness, or as a guarantee that a later interaction will be delivered. A probe unacknowledged within its time-to-live MUST be reported as expired, MUST leave the pair's reach unchanged or reduced to `entry-recovery-only`, and MUST emit `AWP-SIGNAL-UNVERIFIED`. It MUST NOT be reported as a refusal by the recipient, and MUST NOT invalidate, retire, or hide any durably published interaction."
     },
     {
       "id": "AWP-COOP-051",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 216,
-      "statement": "For guarded mutation, a `COOP-3` binding MUST authenticate actors to principals and use protected optimistic-concurrency or lease operations with epochs and fencing tokens. It MUST reject stale owners at the protected mutation path; advisory metadata or an unprotected lock file is insufficient. Its policy MUST define retry bounds, lease duration, clock authority, deadlock and starvation behavior, cancellation consequences, and human or organizational arbitration."
+      "line": 214,
+      "statement": "Where a binding exposes both capabilities, the publication-to-wake test in section 5.1.1 SHOULD use the reachability probe as its minimal fixture rather than a separate harness, so the tested path and the operational path remain the same. Neither capability is required for `COOP-2` conformance in this draft, and no binding is required to expose either under a particular command name or surface. A binding that exposes them MUST meet the semantics above and MUST disclose which of the two it provides. In the `local-coop2-rendezvous-v1` profile the probe is published as the event pair `coop2.tickle.sent` and `coop2.tickle.acked`, and the inventory is a read-only listing over retained participant entry receipts joined with observed heartbeat liveness."
     },
     {
       "id": "AWP-COOP-052",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 218,
-      "statement": "A `COOP-3` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, trust boundary, protected mutation paths, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST include fault evidence for stale-owner rejection, event loss or retention gaps, projector races, binding-identity disagreement, and recovery after interruption. It MUST NOT infer scale, availability, semantic accuracy, or enforcement from a storage technology alone."
+      "statement": "`COOP-2` extends `COOP-1` work coordination with semantic awareness and integration assurance. It is also the first contract that may enable managed, directly inter-agent collaboration under Section 5's explicit authorization and budget. It MAY require a database, broker, registry, subscription system, or another service-backed binding, but neither a storage technology nor consultation alone supplies `COOP-2` semantics."
     },
     {
       "id": "AWP-COOP-053",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 222,
-      "statement": "`coop3-a2a-v1` is a named optional COOP-3 binding profile for participants that communicate across runtimes, hosts, or organizational boundaries through the Agent2Agent (A2A) protocol. A2A is the profile's communications and execution control plane; it is not the authoritative coordination state or a substitute for protected mutation enforcement. An A2A task accepted, updated, completed, failed, cancelled, or resumed state MUST NOT by itself be interpreted as an AWP intent decision, lease grant, fenced mutation, checkpoint, integration result, or authority grant."
+      "line": 220,
+      "statement": "A `COOP-2` binding MUST maintain a stable semantic registry; resolve comparable selectors against pinned state revisions; compare declared scope, observed scope, and relied-upon reads; preserve `unknown` when relation evidence is ambiguous; and require acknowledgement or blocking under the effective policy. It MUST bind interface contracts, typed preconditions, verification results, staleness, change-set readiness, and integration results so that a stale or unsatisfied dependency cannot silently become integration-ready."
     },
     {
       "id": "AWP-COOP-054",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 224,
-      "statement": "A binding claiming `transport.profile: coop3-a2a-v1` MUST declare the supported A2A protocol version and interfaces, the authenticated mapping from A2A peer identity to AWP actor and accountable principal, its task-to-AWP-operation correlation and idempotency rule, its authoritative coordination-store identity, and its protected mutation gateway. It MUST carry an immutable AWP operation identifier and the relevant workstate and binding identity in every coordination request. The binding MUST durably record the resulting AWP event or return a stable rejection before it acknowledges the operation as accepted to a participant."
+      "line": 222,
+      "statement": "A `COOP-2` claim MUST declare its semantic-analysis coverage, selector and scope model, integration policy, tested participant count, and the failure behavior for unavailable or ambiguous semantic evidence. It MUST NOT infer protected external mutation, authentication, fencing, cross-host availability, or scalability from this claim."
     },
     {
       "id": "AWP-COOP-055",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 226,
-      "statement": "The profile MAY use A2A tasks, messages, artifacts, or data parts to carry typed AWP coordination requests and receipts. At minimum it MUST support carrying a request and response for participant entry or renewal, guarded intent announcement, guarded decision or conflict result, checkpoint or handoff publication, and terminal completion or withdrawal. A retry, reconnect, duplicate delivery, or a task routed to another A2A endpoint MUST resolve through the same AWP operation identifier; it MUST return the prior receipt or a stable conflict or rejection, and MUST NOT create a second lease, intent, fencing generation, or protected mutation."
+      "line": 224,
+      "statement": "A registry, selector analyzer, verification evaluator, or integration-readiness evaluator alone MUST NOT claim `COOP-2`; the contract applies to the composed participant, binding, semantic registry, analyzer, readiness evaluator, checkpoint, and recovery behavior."
     },
     {
       "id": "AWP-COOP-056",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 228,
-      "statement": "The authoritative COOP-3 store and protected mutation gateway MUST enforce the actor/principal authorization, expected binding epoch and frontier or revision, protected scope, and current fencing token independently of A2A task state. The gateway MUST reject a stale, unauthenticated, or mismatched request even when A2A reports successful delivery. A binding MUST disclose A2A reachability, authentication failure, transport retry, and store or gateway availability separately; it MUST fail closed for protected mutation when any required enforcement check is unavailable."
+      "statement": "`COOP-3` extends `COOP-2` with authenticated protected mutation and a declared scalable operating envelope. It MAY require a database, broker, sharded registry, protected mutation gateway, or another service-backed binding."
     },
     {
       "id": "AWP-COOP-057",
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
-      "line": 249,
+      "line": 230,
+      "statement": "For guarded mutation, a `COOP-3` binding MUST authenticate actors to principals and use protected optimistic-concurrency or lease operations with epochs and fencing tokens. It MUST reject stale owners at the protected mutation path; advisory metadata or an unprotected lock file is insufficient. Its policy MUST define retry bounds, lease duration, clock authority, deadlock and starvation behavior, cancellation consequences, and human or organizational arbitration."
+    },
+    {
+      "id": "AWP-COOP-058",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 232,
+      "statement": "A `COOP-3` claim MUST declare its tested participant count, scope distribution, latency and throughput measurements, failure behavior, retention policy, trust boundary, protected mutation paths, and the guarantees retained during restart, partition, duplicate delivery, and concurrent capsule projection. It MUST include fault evidence for stale-owner rejection, event loss or retention gaps, projector races, binding-identity disagreement, and recovery after interruption. It MUST NOT infer scale, availability, semantic accuracy, or enforcement from a storage technology alone."
+    },
+    {
+      "id": "AWP-COOP-059",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 236,
+      "statement": "`coop3-a2a-v1` is a named optional COOP-3 binding profile for participants that communicate across runtimes, hosts, or organizational boundaries through the Agent2Agent (A2A) protocol. A2A is the profile's communications and execution control plane; it is not the authoritative coordination state or a substitute for protected mutation enforcement. An A2A task accepted, updated, completed, failed, cancelled, or resumed state MUST NOT by itself be interpreted as an AWP intent decision, lease grant, fenced mutation, checkpoint, integration result, or authority grant."
+    },
+    {
+      "id": "AWP-COOP-060",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 238,
+      "statement": "A binding claiming `transport.profile: coop3-a2a-v1` MUST declare the supported A2A protocol version and interfaces, the authenticated mapping from A2A peer identity to AWP actor and accountable principal, its task-to-AWP-operation correlation and idempotency rule, its authoritative coordination-store identity, and its protected mutation gateway. It MUST carry an immutable AWP operation identifier and the relevant workstate and binding identity in every coordination request. The binding MUST durably record the resulting AWP event or return a stable rejection before it acknowledges the operation as accepted to a participant."
+    },
+    {
+      "id": "AWP-COOP-061",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 240,
+      "statement": "The profile MAY use A2A tasks, messages, artifacts, or data parts to carry typed AWP coordination requests and receipts. At minimum it MUST support carrying a request and response for participant entry or renewal, guarded intent announcement, guarded decision or conflict result, checkpoint or handoff publication, and terminal completion or withdrawal. A retry, reconnect, duplicate delivery, or a task routed to another A2A endpoint MUST resolve through the same AWP operation identifier; it MUST return the prior receipt or a stable conflict or rejection, and MUST NOT create a second lease, intent, fencing generation, or protected mutation."
+    },
+    {
+      "id": "AWP-COOP-062",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 242,
+      "statement": "The authoritative COOP-3 store and protected mutation gateway MUST enforce the actor/principal authorization, expected binding epoch and frontier or revision, protected scope, and current fencing token independently of A2A task state. The gateway MUST reject a stale, unauthenticated, or mismatched request even when A2A reports successful delivery. A binding MUST disclose A2A reachability, authentication failure, transport retry, and store or gateway availability separately; it MUST fail closed for protected mutation when any required enforcement check is unavailable."
+    },
+    {
+      "id": "AWP-COOP-063",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 263,
       "statement": "The checkpoint step SHOULD use the selected canonical workstate projector. A verified `no_change` receipt is sufficient when no semantic state changed; an incomplete or stale projection is not."
     }
   ]
