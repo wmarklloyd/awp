@@ -423,22 +423,31 @@ class Rendezvous:
     def signal_reach(self, watchers: list[dict] | None = None) -> dict:
         """Reachability per ordered pair.  Mailbox reach is shared; signal reach is not."""
         watchers = watchers if watchers is not None else self.participant_watchers()
-        liveness = {item["actor"]: item["watcher_liveness"] for item in watchers}
+        participants = {item["actor"]: item for item in watchers}
         matrix: dict[str, dict] = {}
-        for sender in liveness:
-            for recipient in liveness:
+        for sender in participants:
+            for recipient, watcher in participants.items():
                 if sender == recipient:
                     continue
-                state = liveness[recipient]
-                if state == "active":
+                state = watcher["watcher_liveness"]
+                declared = watcher.get("declared_observation", "on-entry-only")
+                if declared != "watcher":
+                    reach = "entry-recovery-only"
+                    reason = "recipient declared on-entry-only; no supervised watcher is claimed"
+                elif state == "active":
                     reach = "reachable"
+                    reason = "recipient declared watcher and has an active observed heartbeat"
                 elif state == "stale":
                     reach = "degraded"
+                    reason = "recipient watcher heartbeat is stale"
                 else:
                     reach = "entry-recovery-only"
+                    reason = "recipient has no active observed watcher"
                 matrix[f"{sender}->{recipient}"] = {
                     "signal_reach": reach,
                     "recipient_watcher": state,
+                    "recipient_observation": declared,
+                    "reason": reason,
                     "fallback": "entry-recovery check on the recipient's next project entry",
                 }
         return matrix
@@ -447,7 +456,10 @@ class Rendezvous:
         reach, evidence = self._reach()
         watchers = self.participant_watchers()
         matrix = self.signal_reach(watchers)
-        active = sorted(item["actor"] for item in watchers if item["watcher_liveness"] == "active")
+        active = sorted(
+            item["actor"] for item in watchers
+            if item["watcher_liveness"] == "active" and item.get("declared_observation") == "watcher"
+        )
         liveness_summary = (
             "derived from per-actor heartbeats; active: " + (", ".join(active) if active else "none")
         )

@@ -142,7 +142,7 @@ class HeartbeatAndReachTests(RendezvousFixture):
 
     def test_signal_reach_is_per_direction_while_mailbox_reach_is_shared(self) -> None:
         self.rendezvous.join("actor:a", [])
-        self.rendezvous.join("actor:b", [])
+        self.rendezvous.join("actor:b", [], observation="watcher")
         self.rendezvous.heartbeat("actor:b", "test-watcher")
         status = self.rendezvous.status()
         self.assertEqual(status["mailbox_reach"], "shared")
@@ -150,6 +150,20 @@ class HeartbeatAndReachTests(RendezvousFixture):
         self.assertEqual(status["signal_reach"]["actor:b->actor:a"]["signal_reach"], "entry-recovery-only")
         self.assertIn("active: actor:b", status["doorbell"]["watcher_liveness"])
         self.assertFalse(any("not verified" in item for item in status["limitations"]))
+
+    def test_entry_only_participant_is_not_reachable_from_a_manual_heartbeat(self) -> None:
+        self.rendezvous.join("actor:a", [], observation="watcher")
+        self.rendezvous.join("actor:b", [], observation="on-entry-only")
+        self.rendezvous.heartbeat("actor:b", "manual-heartbeat")
+        status = self.rendezvous.status()
+        # The heartbeat remains useful inventory evidence, but it cannot turn
+        # an entry-only participant into an unattended recipient.
+        inventory = {item["actor"]: item for item in status["participant_inventory"]}
+        self.assertEqual(inventory["actor:b"]["watcher_liveness"], "active")
+        reach = status["signal_reach"]["actor:a->actor:b"]
+        self.assertEqual(reach["signal_reach"], "entry-recovery-only")
+        self.assertIn("on-entry-only", reach["reason"])
+        self.assertNotIn("actor:b", status["doorbell"]["watcher_liveness"])
 
     def test_join_records_observation_mode_and_rejects_unknown(self) -> None:
         from tools.awp_coop2 import CoordinationError
