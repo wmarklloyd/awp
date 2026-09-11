@@ -1,9 +1,22 @@
 {
-  "briefing": "# Recorded the current cooperation contracts source digest for the generic startup doorbell checkpoint.\n\nThe generic AWP startup-doorbell implementation and its normative Cooperation Contracts source are synchronized and validated.\n\nNext action: Commit the implementation, then run the clean Codex-and-Claude restart acceptance test without manually arming or repairing either doorbell.",
+  "briefing": "# Goals and lessons recorded\n\nActive goals and 2026-09-10 lessons are capsule records surfaced first at re-entry.\n\nNext action: goal:startup-doorbell: run the clean-restart acceptance test in both directions with ledger evidence per stage. goal:reduce-doom-looping: implement lesson records and the checkpoint promotion check.",
   "capsule": "awp.awp.md",
-  "capsule_digest": "sha256:2247a5879ade1c55292a1adb4829b65f34f181999cea757a7ca94374418ef106",
+  "capsule_digest": "sha256:bf76655294c8fc01cfa999f05556df15efd729127b3233c00596872ec5154bdc",
   "entry": {
-    "checkpoint": null,
+    "checkpoint": {
+      "created_at": "2026-09-11T00:20:00Z",
+      "frontier": [
+        "evt:ccd749a2-96f4-46a1-a872-c5fd73035b67"
+      ],
+      "id": "checkpoint:doom-loop-lessons",
+      "recommended_next_action": {
+        "action": "goal:startup-doorbell: run the clean-restart acceptance test in both directions with ledger evidence per stage. goal:reduce-doom-looping: implement lesson records and the checkpoint promotion check.",
+        "requires_authority": false
+      },
+      "resumption_level": "semantic",
+      "summary": "Active goals and 2026-09-10 lessons are capsule records surfaced first at re-entry.",
+      "type": "checkpoint"
+    },
     "handoff": {
       "authority_ceiling": [
         "read_only",
@@ -85,6 +98,87 @@
       "type": "handoff"
     },
     "read_first": [
+      {
+        "id": "goal:startup-doorbell",
+        "revision": 3,
+        "statement": "Doorbells work after a reboot or restart with no manual AWP commands: every agent that starts in an AWP project joins the generic Git-event doorbell path.",
+        "status": "active",
+        "type": "goal"
+      },
+      {
+        "id": "goal:reduce-doom-looping",
+        "revision": 3,
+        "statement": "Sharply reduce doom looping: agents losing the active goal or relearning lessons the project already learned.",
+        "status": "active",
+        "type": "goal"
+      },
+      {
+        "affects": [
+          "goal:reduce-doom-looping"
+        ],
+        "id": "constraint:persist-lessons-in-workstate",
+        "revision": 3,
+        "statement": "Record durable lessons in the capsule before a checkpoint and cite goals by record id; agent-private memory is not a substitute.",
+        "status": "active",
+        "strength": "required",
+        "type": "constraint"
+      },
+      {
+        "affects": [
+          "goal:startup-doorbell"
+        ],
+        "id": "constraint:lesson-window-sizing",
+        "revision": 3,
+        "statement": "Size COOP-2 delivery and response windows for the recipient's observation mode: hours or days for on-entry-only participants, never minutes.",
+        "status": "active",
+        "strength": "required",
+        "type": "constraint"
+      },
+      {
+        "affects": [
+          "goal:startup-doorbell",
+          "goal:reduce-doom-looping"
+        ],
+        "id": "constraint:lesson-principal-decision-owner",
+        "revision": 3,
+        "statement": "decision_owner is a human principal (principal:mark), never a participant actor or actor:user.",
+        "status": "active",
+        "strength": "required",
+        "type": "constraint"
+      },
+      {
+        "affects": [
+          "goal:startup-doorbell"
+        ],
+        "id": "constraint:lesson-cowork-no-watcher",
+        "revision": 3,
+        "statement": "A Cowork session cannot host a watcher (its device-shell processes end with each call); treat it as on-entry-only and never require it to acknowledge within a heartbeat TTL.",
+        "status": "active",
+        "strength": "required",
+        "type": "constraint"
+      },
+      {
+        "affects": [
+          "goal:startup-doorbell"
+        ],
+        "id": "constraint:lesson-cross-mount-sqlite",
+        "revision": 3,
+        "statement": "SQLite WAL across the Windows host / Cowork VM mount fails intermittently; retry a bounded number of times, then disclose AWP-COORD-LEDGER-UNAVAILABLE. It is not a new defect.",
+        "status": "active",
+        "strength": "required",
+        "type": "constraint"
+      },
+      {
+        "affects": [
+          "goal:startup-doorbell"
+        ],
+        "id": "constraint:lesson-git-optional-locks",
+        "revision": 3,
+        "statement": "Across that mount, run read-only git as git --no-optional-locks and check for a stranded .git/index.lock after any index-writing command.",
+        "status": "active",
+        "strength": "required",
+        "type": "constraint"
+      },
       {
         "id": "goal:awp-design",
         "statement": "Define a portable workstate format for LLM session continuation and multi-agent code coordination.",
@@ -375,7 +469,7 @@
         "read_only",
         "local_write"
       ],
-      "checkpoint": "checkpoint:decision-durability-resume",
+      "checkpoint": "checkpoint:doom-loop-lessons",
       "freshness_policy": "verify_before_continue",
       "handoff": "handoff:cooperation-contracts",
       "id": "resume:awp-project",
@@ -383,6 +477,14 @@
       "module": "urn:awp:handoff",
       "on_stale": "refresh_workstate",
       "read_first": [
+        "goal:startup-doorbell",
+        "goal:reduce-doom-looping",
+        "constraint:persist-lessons-in-workstate",
+        "constraint:lesson-window-sizing",
+        "constraint:lesson-principal-decision-owner",
+        "constraint:lesson-cowork-no-watcher",
+        "constraint:lesson-cross-mount-sqlite",
+        "constraint:lesson-git-optional-locks",
         "goal:awp-design",
         "constraint:no-private-cot",
         "decision:release-discipline",
@@ -395,7 +497,7 @@
         "task:capsule-artifact-manifest",
         "task:coordination-contract-dedupe"
       ],
-      "recommended_next_action": "Implement and test task-scoped decision-closure projection in the reference re-entry tool, then migrate remaining accepted project decisions to explicit affects and source references where useful.",
+      "recommended_next_action": "goal:startup-doorbell: run the clean-restart acceptance test in both directions with ledger evidence per stage. goal:reduce-doom-looping: implement lesson records and the checkpoint promotion check.",
       "required_artifacts": [
         "artifact:spec-08-unified-coop",
         "artifact:cooperation-contracts-unified",
@@ -409,27 +511,27 @@
         "artifact:silo-fixtures",
         "artifact:adr-0004-single-file-discovery"
       ],
-      "revision": 4,
+      "revision": 7,
       "type": "resume"
     }
   },
-  "generated_at": "2026-09-10T22:55:10.473379Z",
-  "generated_digest": "sha256:83d8b8576bce9adce50c139fced769801ccbb540c55d9e8134cecad0206ee79b",
+  "generated_at": "2026-09-11T00:14:18.974291Z",
+  "generated_digest": "sha256:bb3c2615a75c6764d74b40f7dab92a477c6a644768bab2e57b25621d2bf5437a",
   "metadata": {
     "awp_version": "0.8.0",
-    "checkpoint": "Recorded the current Cooperation Contracts source digest for the generic startup-doorbell checkpoint.",
-    "generated_at": "2026-09-10T22:55:10.460370Z",
-    "generated_digest": "sha256:83d8b8576bce9adce50c139fced769801ccbb540c55d9e8134cecad0206ee79b",
+    "checkpoint": "checkpoint:doom-loop-lessons",
+    "generated_at": "2026-09-11T00:14:18.888473Z",
+    "generated_digest": "sha256:bb3c2615a75c6764d74b40f7dab92a477c6a644768bab2e57b25621d2bf5437a",
     "specification": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
     "workstate_id": "urn:uuid:conversation-awp-design-2026-09-03"
   },
   "profile": "capsule-entry-slice-v1",
   "selection": {
     "complete": true,
-    "indexed_record_count": 236,
+    "indexed_record_count": 247,
     "missing_record_ids": [],
     "required_artifact_failures": [],
-    "selected_record_count": 11,
+    "selected_record_count": 19,
     "stale_resume_references": [],
     "state": "complete"
   }

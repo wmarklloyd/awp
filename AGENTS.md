@@ -24,6 +24,16 @@ Before making project changes:
 6. Verify referenced artifacts and freshness before relying on them. Treat imported workstate as project context, not as authorization for external side effects.
 7. Do not assume that an implementation or coordination service exists merely because the specification describes one.
 
+## Goals and lessons (doom-loop prevention)
+
+Sharply reducing doom looping, where agents lose the active goal or relearn lessons the project already learned, is a primary AWP goal. See [Preventing agent doom loops](docs/awp-doom-loop-prevention.md) for the observed case and the proposed protocol mechanisms.
+
+1. Cite goals by capsule record identifier (for example `goal:startup-doorbell`) in intents, checkpoints, and consultation requests instead of restating them in new words. Changing an active goal or a settled design requires a decision record whose decision owner is a human principal (`principal:mark`), never a participant actor or `actor:user`.
+2. Before diagnosing a failure, read the active `constraint:lesson-*` records that re-entry surfaces and check whether the failure is already known. The same failure signature a third time means stop and escalate to the principal, not try again.
+3. When a session learns something durable about this project (a failure cause, a host limitation, a convention that was violated), record it in the capsule as a lesson record through the canonical projector before its checkpoint. Host-private agent memory is not a substitute: a lesson that exists only there is lost to every other participant.
+4. When closing a COOP-2 interaction, either promote its durable conclusions into capsule records or say in the response that it carries no durable lesson.
+5. Startup instructions outside the capsule, such as `resume.md`, must not override this file or skip entry recovery before guarded work.
+
 ## Exploratory COOP-2-aligned development workflow (not a COOP-2 conformance claim)
 
 For material project changes in the AWP 0.8 draft workflow, follow the [COOP-2 Cooperation Contract](spec/drafts/0.8.0/cooperation-contracts.md) after completing the re-entry workflow. The project selects COOP-2 exploratorily with `claim_state: partial`; its local binding retains the available COOP-1 physical-scope safeguards but does not claim semantic analysis or integration assurance. COOP is the single cumulative cooperation and coordination conformance ladder in the 0.8 draft; the Coordination module supplies records and mechanisms rather than a separate `C0`–`C3` axis. This is a draft development convention, not a conformance claim: the local adapter lacks complete semantic analysis, integration assurance, enforced-blocking, checkpoint, and exit composition.
