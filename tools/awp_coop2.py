@@ -548,7 +548,14 @@ class Rendezvous:
         receipt = self._append(actor, "coop2.tickle.sent", payload)
         return {"tickle_id": tickle_id, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "doorbell": self._signal(receipt, tickle_id, "coop2.tickle.sent")}
 
-    def tickle_ack(self, actor: str, tickle_id: str) -> dict:
+    def tickle_ack(self, actor: str, tickle_id: str, via: str = "direct") -> dict:
+        """Acknowledge a probe as its recipient.
+
+        ``via`` records how the acknowledgement was produced (``direct`` for the
+        recipient running tickle-ack, ``agent-ingress`` for the recipient agent
+        handing a delivered notice to its supervisor), so a transport receipt is
+        never mistaken for the agent having received the probe.
+        """
         sent = next((event for event in self._events() if event["kind"] == "coop2.tickle.sent" and event["payload"].get("tickle_id") == tickle_id), None)
         if sent is None:
             raise CoordinationError("unknown reachability probe")
@@ -562,7 +569,7 @@ class Rendezvous:
         if datetime.now(timezone.utc) > deadline:
             raise CoordinationError("reachability probe has expired")
         frontier = self.ledger.refresh(self.workstate_id)["frontier"]
-        ack = {"tickle_id": tickle_id, "sender": actor, "recipient": payload["sender"], "binding_id": payload["binding_id"], "frontier": frontier, "status": "acknowledged"}
+        ack = {"tickle_id": tickle_id, "sender": actor, "recipient": payload["sender"], "binding_id": payload["binding_id"], "frontier": frontier, "status": "acknowledged", "acknowledged_via": via}
         receipt = self._append(actor, "coop2.tickle.acked", ack)
         return {"tickle_id": tickle_id, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "doorbell": self._signal(receipt, tickle_id, "coop2.tickle.acked")}
 

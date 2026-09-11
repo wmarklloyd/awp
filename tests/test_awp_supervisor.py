@@ -25,7 +25,7 @@ class FakeRendezvous:
     def _append(self, actor, kind, payload):
         receipt = {"event_id": f"receipt:{len(self.receipts)}", "kind": kind, "payload": payload}
         self.receipts.append(receipt); return receipt
-    def tickle_ack(self, actor, tickle_id):
+    def tickle_ack(self, actor, tickle_id, via="direct"):
         receipt = {"event_id": f"ack:{tickle_id}"}
         self.receipts.append({"event_id": receipt["event_id"], "kind": "coop2.tickle.acked",
                               "payload": {"tickle_id": tickle_id, "sender": actor}})
@@ -45,16 +45,52 @@ def tickle(index: int, recipient="actor:test"):
 
 
 class SupervisorTests(unittest.TestCase):
-    def test_replays_more_than_signal_ref_retention_with_immediate_acknowledgements(self):
+    def test_replays_more_than_signal_ref_retention_delivering_every_probe_to_the_agent(self):
         with tempfile.TemporaryDirectory() as directory:
             rendezvous = FakeRendezvous([tickle(index) for index in range(40)])
             adapter = Adapter(); supervisor = Supervisor(rendezvous, "actor:test", "fake", "session", "generation",
                                                           adapter, Path(directory) / "state.json")
             result = supervisor.step(limit=100)
-        self.assertEqual(len(result["acknowledged"]), 40)
+        self.assertEqual(len(result["delivered"]), 40)
         self.assertEqual(result["cursor"], 40)
+        self.assertEqual(len(adapter.calls), 40)
+        # The supervisor never acknowledges on the agent's behalf.
+        self.assertEqual(result["acknowledged"], [])
+        self.assertTrue(all(item["kind"] == "coop2.tickle.transport_queued" for item in rendezvous.receipts))
+
+    def test_expired_probe_is_not_delivered(self):
+        expired = tickle(0) | {"occurred_at": "2000-01-01T00:00:00Z"}
+        expired["payload"] = expired["payload"] | {"ttl_seconds": 90}
+        with tempfile.TemporaryDirectory() as directory:
+            adapter = Adapter()
+            result = Supervisor(FakeRendezvous([expired]), "actor:test", "fake", "session", "generation",
+                                adapter, Path(directory) / "state.json").step()
         self.assertEqual(adapter.calls, [])
-        self.assertTrue(all(item["kind"] == "coop2.tickle.acked" for item in rendezvous.receipts))
+        self.assertEqual(result["cursor"], 1)
+
+    def test_agent_ingress_acknowledges_with_provenance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rendezvous = FakeRendezvous([tickle(0)])
+            calls = []
+            rendezvous.tickle_ack = lambda actor, tickle_id, via="direct": calls.append(via) or {"ok": True}
+            supervisor = Supervisor(rendezvous, "actor:test", "fake", "session", "generation",
+                                    Adapter(), Path(directory) / "state.json")
+            supervisor._handle_request({"actor": "actor:test", "event_id": "evt:0"})
+        self.assertEqual(calls, ["agent-ingress"])
+
+    def test_signal_watch_fires_on_new_signal_ref(self):
+        import subprocess
+        from tools.awp_supervisor import SignalWatch
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=project, check=True)
+            subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q",
+                            "--allow-empty", "-m", "init"], cwd=project, check=True)
+            watch = SignalWatch(project, "actor:test")
+            before = watch.fingerprint()
+            self.assertEqual(before, watch.fingerprint())
+            subprocess.run(["git", "update-ref", "refs/awp/signal/evt-one", "HEAD"], cwd=project, check=True)
+            self.assertNotEqual(before, watch.fingerprint())
 
     def test_cursor_does_not_advance_past_unavailable_delivery(self):
         with tempfile.TemporaryDirectory() as directory:

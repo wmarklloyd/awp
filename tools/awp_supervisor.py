@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import time
 from typing import Any, Sequence
 
 from .awp_activation import CLIResumeAdapter, CommandAdapter, HostAdapter, parse_command
-from .awp_request_spool import RequestSpool
-from .awp_runtime import atomic_json, control_is_current
+from .awp_request_spool import RequestSpool, safe_token
+from .awp_runtime import atomic_json, control_is_current, hidden_process_options
 from .awp_coop2 import Rendezvous
 
 
@@ -52,6 +56,8 @@ class Supervisor:
         if payload.get("recipient") != self.actor:
             return False
         if event["kind"] == "coop2.tickle.sent":
+            if _tickle_expired(event):
+                return False
             return not any(item["kind"] == "coop2.tickle.acked" and item.get("payload", {}).get("tickle_id") == payload.get("tickle_id") for item in all_events)
         if event["kind"] == "coop2.interaction.requested":
             terminal = {"coop2.interaction.responded", "coop2.interaction.withdrawn", "coop2.interaction.refused"}
@@ -111,22 +117,18 @@ class Supervisor:
         for event in page["events"]:
             sequence = event.pop("_ledger_sequence")
             if self._is_actionable(event, all_events):
-                if event["kind"] == "coop2.tickle.sent":
-                    # A reachability probe is transport plumbing, not model work.
-                    # A live recipient supervisor acknowledges it immediately; the
-                    # acknowledgement event is then available to the sender's
-                    # supervisor without asking either model to run ingress.
-                    receipt = self.rendezvous.tickle_ack(self.actor, event["payload"]["tickle_id"])
-                    state["jobs"][event["event_id"]] = {"state": "acknowledged", "receipt": receipt["receipt"]["event_id"]}
-                    acknowledged.append(event["event_id"])
-                else:
-                    result = self.adapter.deliver(self._envelope(event))
-                    receipt = self._receipt(event, result)
-                    state["jobs"][event["event_id"]] = {"state": result["state"], "receipt": receipt["event_id"]}
-                    {"accepted": delivered, "deferred": deferred, "unavailable": unavailable}[result["state"]].append(event["event_id"])
-                    if result["state"] != "accepted":
-                        atomic_json(self.state_path, state)
-                        break
+                # Every actionable event, reachability probes included, goes to
+                # the recipient agent through the host adapter.  The supervisor
+                # records only a transport receipt as actor:awp-supervisor; an
+                # acknowledgement exists only after the agent's own turn runs
+                # ingress (or tickle-ack), so a probe measures agent reach.
+                result = self.adapter.deliver(self._envelope(event))
+                receipt = self._receipt(event, result)
+                state["jobs"][event["event_id"]] = {"state": result["state"], "receipt": receipt["event_id"]}
+                {"accepted": delivered, "deferred": deferred, "unavailable": unavailable}[result["state"]].append(event["event_id"])
+                if result["state"] != "accepted":
+                    atomic_json(self.state_path, state)
+                    break
             state["cursor"] = sequence
             atomic_json(self.state_path, state)
         heartbeat = self.rendezvous.heartbeat(self.actor, PROFILE)
@@ -144,10 +146,92 @@ class Supervisor:
             raise ValueError("unknown or misaddressed ingress event")
         payload = event["payload"]
         if event["kind"] == "coop2.tickle.sent":
-            return self.rendezvous.tickle_ack(self.actor, payload["tickle_id"])
+            return self.rendezvous.tickle_ack(self.actor, payload["tickle_id"], via="agent-ingress")
         if event["kind"] == "coop2.interaction.requested":
             return self.rendezvous.observe(self.actor, payload["interaction_id"])
         return {"publication": "not-required", "event_id": event_id}
+
+
+def _tickle_expired(event: dict[str, Any]) -> bool:
+    try:
+        sent = datetime.fromisoformat(str(event["occurred_at"]).replace("Z", "+00:00"))
+        ttl = int(event.get("payload", {})["ttl_seconds"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    return datetime.now(timezone.utc) > sent + timedelta(seconds=ttl)
+
+
+class SignalWatch:
+    """Wake trigger: a change in the Git signal-ref namespace.
+
+    Publishing any COOP-2 event writes ``refs/awp/signal/<event>`` in the Git
+    common directory.  The watch fingerprints that namespace (loose refs and
+    packed-refs) plus this actor's ingress spool with plain ``stat`` and
+    directory listings, so waiting costs no child processes.  A changed
+    fingerprint is only a hint: the supervisor then replays the authoritative
+    ledger from its cursor.
+    """
+
+    def __init__(self, project: Path, actor: str) -> None:
+        self.project = project.resolve()
+        common = self._git_common_dir(self.project)
+        self.paths = [common / "refs" / "awp" / "signal", common / "packed-refs",
+                      self.project / ".awp-runtime" / "requests" / safe_token(actor)]
+
+    @staticmethod
+    def _git_common_dir(project: Path) -> Path:
+        try:
+            completed = subprocess.run(["git", "rev-parse", "--git-common-dir"], cwd=project,
+                                       capture_output=True, text=True, check=False, timeout=15,
+                                       **hidden_process_options())
+            value = completed.stdout.strip() if completed.returncode == 0 else ""
+        except (OSError, subprocess.TimeoutExpired):
+            value = ""
+        path = Path(value) if value else project / ".git"
+        return path if path.is_absolute() else (project / path).resolve()
+
+    def fingerprint(self) -> tuple:
+        parts = []
+        for path in self.paths:
+            try:
+                stat = path.stat()
+            except OSError:
+                parts.append((str(path), None))
+                continue
+            names = tuple(sorted(os.listdir(path))) if path.is_dir() else ()
+            parts.append((str(path), stat.st_mtime_ns, stat.st_size, names))
+        return tuple(parts)
+
+
+def _code_fingerprint() -> tuple:
+    tools = Path(__file__).resolve().parent
+    return tuple(sorted((item.name, item.stat().st_mtime_ns) for item in tools.glob("awp_*.py")))
+
+
+def _relaunch(argv: Sequence[str], state_path: Path) -> None:
+    """Replace this process with one running the current code, same generation."""
+    flags = 0
+    if os.name == "nt":
+        flags = (getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+                 | getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    stem = state_path.with_suffix("")
+    with open(f"{stem}.out.log", "ab") as output, open(f"{stem}.err.log", "ab") as error:
+        subprocess.Popen([sys.executable, "-m", "tools.awp_supervisor", *argv],
+                         cwd=Path(__file__).resolve().parent.parent, stdin=subprocess.DEVNULL,
+                         stdout=output, stderr=error, close_fds=True, creationflags=flags,
+                         start_new_session=os.name != "nt")
+
+
+def _claim_control(control: Path | None, generation: str) -> None:
+    if control is None:
+        return
+    try:
+        value = json.loads(control.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if value.get("generation") == generation and value.get("pid") != os.getpid():
+        value["pid"] = os.getpid()
+        atomic_json(control, value)
 
 
 def default_state(project: Path, actor: str) -> Path:
@@ -166,7 +250,10 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--adapter-command")
     result.add_argument("--state", type=Path)
     result.add_argument("--control", type=Path)
-    result.add_argument("--interval-seconds", type=float, default=5.0)
+    result.add_argument("--interval-seconds", type=float, default=5.0,
+                        help="safety replay interval when no Git signal arrives (also bounds heartbeat age)")
+    result.add_argument("--signal-poll-seconds", type=float, default=0.25,
+                        help="how often the Git signal-ref fingerprint is checked")
     result.add_argument("--once", action="store_true")
     return result
 
@@ -176,19 +263,36 @@ def main(argv: Sequence[str] | None = None) -> int:
     rendezvous = Rendezvous(args.project, args.ledger)
     adapter_command = parse_command(args.adapter_command)
     adapter = CommandAdapter(adapter_command) if adapter_command else CLIResumeAdapter(args.host, args.session_ref)
+    state_path = args.state or default_state(rendezvous.project, args.actor)
     supervisor = Supervisor(rendezvous, args.actor, args.host, args.session_ref, args.generation,
-                            adapter, args.state or default_state(rendezvous.project, args.actor))
+                            adapter, state_path)
+    watch = SignalWatch(rendezvous.project, args.actor)
+    code = _code_fingerprint()
+    _claim_control(args.control, args.generation)
+    trigger = "start"
     while True:
         if not control_is_current(args.control, args.generation):
             return 0
+        seen = watch.fingerprint()
         output = supervisor.step()
+        output["trigger"] = trigger
         if args.once or output["delivered"] or output["deferred"] or output["unavailable"]:
             print(json.dumps(output, sort_keys=True), flush=True)
         if args.once:
             return 0 if not output["unavailable"] else 2
-        if not control_is_current(args.control, args.generation):
+        # Wait for a Git signal-ref change (the doorbell) or the safety replay.
+        deadline = time.monotonic() + max(args.interval_seconds, 0.1)
+        trigger = "replay"
+        while time.monotonic() < deadline:
+            if not control_is_current(args.control, args.generation):
+                return 0
+            if watch.fingerprint() != seen:
+                trigger = "git-signal"
+                break
+            time.sleep(max(args.signal_poll_seconds, 0.05))
+        if _code_fingerprint() != code:
+            _relaunch(list(argv) if argv is not None else sys.argv[1:], state_path)
             return 0
-        time.sleep(max(args.interval_seconds, 0.1))
 
 
 if __name__ == "__main__":
