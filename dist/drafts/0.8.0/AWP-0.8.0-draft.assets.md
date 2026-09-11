@@ -2554,6 +2554,42 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 325,
       "statement": "**Migration.** Migrating a ledger from another profile MUST preserve every event identifier and event document and the binding identity, and MUST be idempotent."
+    },
+    {
+      "id": "AWP-COOP-086",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 333,
+      "statement": "**One serialized ref.** The profile MUST keep the coordination history of a project on one ref shared by all participants (the reference binding uses `refs/awp/coordination/<project>`). Each commit MUST carry exactly one transaction document and MUST have as its only parent the commit the transaction was computed against. A transaction document MUST contain every event the operation appended, in order, and MAY contain request-idempotency entries and scan-cursor entries written by the same operation."
+    },
+    {
+      "id": "AWP-COOP-087",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 335,
+      "statement": "**Atomic announce-and-check.** An operation MUST read the ref, rebuild the ledger state at that commit, evaluate the operation (including overlap detection against every active intent and lease), and then advance the ref by compare-and-swap from that commit to the new one. If the ref moved, the operation MUST write nothing and MUST be re-evaluated against the new state. This satisfies the atomicity required by Section 4.1: no announcement can be accepted between another announcement's check and its write. An operation that writes nothing MUST NOT create a commit."
+    },
+    {
+      "id": "AWP-COOP-088",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 337,
+      "statement": "**Derived records.** Intents, scopes, leases, overlaps, and other coordination records MUST NOT be stored separately from events. A binding MUST rebuild them by replaying the events' replacement records in order, and MUST refuse to publish a transaction whose record changes cannot be reproduced by replaying its events. Any index used to query the rebuilt state is a process-local cache and MUST NOT be treated as durable."
+    },
+    {
+      "id": "AWP-COOP-089",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 339,
+      "statement": "**Remote serialization.** With a remote configured, the push of the new commit to the remote's coordination ref MUST be the compare-and-swap: a push that is not a fast-forward MUST be treated as a moved ref, and the operation re-evaluated on the fetched state. The local ref MUST be advanced only after the remote accepted the commit. The privacy rule of Section 10 applies to coordination refs as well."
+    },
+    {
+      "id": "AWP-COOP-090",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 341,
+      "statement": "**Migration.** Migrating from another coordination store MUST preserve every event identifier and document and the binding identity, MUST verify that replay reproduces the source's records and their order before writing anything, MUST carry request-idempotency answers over, MUST translate consumer cursors to the new sequence, and MUST refuse to run over existing Git coordination history."
+    },
+    {
+      "id": "AWP-COOP-091",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 343,
+      "statement": "**Limits.** The profile inherits Section 10's limits: actors are self-asserted, and history is not encrypted. Write contention on the single ref is expected to be low at `COOP-1` and `COOP-2` group sizes; a binding that observes sustained compare-and-swap retries SHOULD disclose it rather than silently degrading."
     }
   ]
 }

@@ -394,8 +394,20 @@ class Rendezvous:
         discovers one has no way to find the other. Each now names its sibling.
         """
         try:
-            from tools.awp_coordination import default_ledger
+            from tools.awp_coordination import _coordination_profile, default_ledger
 
+            if _coordination_profile(self.project) == "git-coordination-v1":
+                from tools.awp_git_coordination import GitCoordinationLedger
+
+                ref = GitCoordinationLedger(self.project).ref()
+                return [{
+                    "module": "urn:awp:coordination",
+                    "role": "COOP-1 intents, scopes, overlaps, and participant leases",
+                    "profile": "git-coordination-v1",
+                    "path": ref,
+                    "state": "present" if _git_config(self.project, "awp.coop1.ledger") else "configured",
+                    "discover_with": "python tools/awp_coordination.py status",
+                }]
             path = default_ledger(self.project)
         except Exception:
             return []

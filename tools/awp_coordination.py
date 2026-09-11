@@ -1668,13 +1668,27 @@ class CoordinationLedger:
         }
 
 
+def _git_config_value(project: Path, key: str) -> str | None:
+    result = subprocess.run(["git", "config", "--get", key], cwd=project, check=False, capture_output=True,
+                            text=True, **hidden_process_options())
+    return result.stdout.strip() or None
+
+
+def _coordination_profile(project: Path) -> str:
+    """COOP-1 ledger profile for this clone: AWP_COOP1_LEDGER, else
+    ``git config awp.coop1.ledger``, else the SQLite profile."""
+    return os.environ.get("AWP_COOP1_LEDGER") or _git_config_value(project, "awp.coop1.ledger") or "local-ledger-awareness-v1"
+
+
 def operational_context(start: Path, ledger_override: Path | None = None) -> dict:
     try:
         project = find_project(start)
         workstate_id, capsule = discover_workstate(project)
+        git_profile = None if ledger_override else _coordination_profile(project)
         candidates = (
             [(ledger_override.resolve(), "configured-unverified", "configured")]
             if ledger_override
+            else [("git-refs", "shared", "git-refs")] if git_profile == "git-coordination-v1"
             else [
                 (default_ledger(project), "shared", "git-common"),
                 (
@@ -1687,7 +1701,24 @@ def operational_context(start: Path, ledger_override: Path | None = None) -> dic
         failures: list[str] = []
         for ledger_path, reach, source in candidates:
             try:
-                ledger = CoordinationLedger(ledger_path)
+                if ledger_path == "git-refs":
+                    try:
+                        from tools.awp_git_coordination import GitCoordinationLedger
+                    except ImportError:  # executed as a script from tools/
+                        from awp_git_coordination import GitCoordinationLedger
+                    ledger = GitCoordinationLedger(project, remote=_git_config_value(project, "awp.coop1.remote"))
+                    ledger_path = Path(ledger.ref())
+                else:
+                    ledger = CoordinationLedger(ledger_path)
+                git_backed = getattr(ledger, "profile", None) == "git-coordination-v1"
+                atomicity = ledger.atomicity_mechanism if git_backed else "sqlite-begin-immediate"
+                storage = ([
+                    "all participants share one Git repository (or one Git remote) holding the coordination ref",
+                    "ref updates are compare-and-swap: a writer whose ref moved re-runs its operation",
+                ] if git_backed else [
+                    "all participants open the same SQLite database file",
+                    "the filesystem preserves SQLite locking and atomic commit semantics",
+                ])
                 context = {
                     "mode": "ledger-backed-advisory",
                     "profile": PROFILE,
@@ -1721,17 +1752,15 @@ def operational_context(start: Path, ledger_override: Path | None = None) -> dic
                     "observed_at": observation["observed_at"],
                     "operational_reach": reach,
                     "frontier": observation["frontier"],
-                    "atomicity_mechanism": "sqlite-begin-immediate",
+                    "atomicity_mechanism": atomicity,
+                    "ledger_profile": getattr(ledger, "profile", "local-ledger-awareness-v1"),
                     "access_mode_table": ACCESS_MODE_TABLE,
                     "scope_model_behavior": {
                         "case": "case-sensitive comparison after host path resolution",
                         "unicode": "no additional normalization",
                         "symbolic_links": "resolved by the host filesystem before repository-relative comparison",
                     },
-                    "storage_assumptions": [
-                        "all participants open the same SQLite database file",
-                        "the filesystem preserves SQLite locking and atomic commit semantics",
-                    ],
+                    "storage_assumptions": storage,
                 }
                 context["capsule_integrity"] = capsule_integrity(capsule)
                 context["cooperation_binding"] = {
@@ -1748,7 +1777,7 @@ def operational_context(start: Path, ledger_override: Path | None = None) -> dic
                     "operational_mode": context["mode"],
                     "identity": context["binding_identity"],
                     "observation": context["binding_observation"],
-                    "atomicity_mechanism": "sqlite-begin-immediate",
+                    "atomicity_mechanism": atomicity,
                     "storage_assumptions": context["binding_observation"]["storage_assumptions"],
                     "subprotocols": {
                         "work": {"enabled": True, "claim_state": "partial"},
