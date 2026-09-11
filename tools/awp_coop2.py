@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from .awp_coordination import CoordinationError, CoordinationLedger, discover_workstate, find_project, stable_project_id
+from .awp_runtime import hidden_process_options
 
 
 PROFILE = "local-coop2-rendezvous-v1"
@@ -136,7 +137,8 @@ class GitRefDoorbell:
         return cls.prefix + event_id.replace(":", "-")
 
     def _git(self, *arguments: str) -> subprocess.CompletedProcess:
-        return subprocess.run(["git", *arguments], cwd=self.project, check=False, capture_output=True, text=True)
+        return subprocess.run(["git", *arguments], cwd=self.project, check=False, capture_output=True, text=True,
+                              **hidden_process_options())
 
     def _recover_stale_lock(self, stderr: str) -> str | None:
         match = _LOCK_PATH.search(stderr)

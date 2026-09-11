@@ -11,6 +11,11 @@ import shutil
 import subprocess
 from typing import Any, Callable, Sequence
 
+try:
+    from .awp_runtime import hidden_process_options
+except ImportError:  # executed as a script from tools/
+    from awp_runtime import hidden_process_options
+
 
 PROFILE = "awp-host-activation-v1"
 RESULTS = {"accepted", "deferred", "unavailable"}
@@ -67,7 +72,7 @@ class CommandAdapter(HostAdapter):
         try:
             completed = self.runner(
                 list(self.command), input=json.dumps(payload), capture_output=True,
-                text=True, timeout=self.timeout_seconds, check=False,
+                text=True, timeout=self.timeout_seconds, check=False, **hidden_process_options(),
             )
         except (OSError, subprocess.TimeoutExpired) as error:
             return activation_result("unavailable", reason=str(error))
@@ -122,7 +127,7 @@ class CLIResumeAdapter(HostAdapter):
         try:
             completed = self.runner(
                 [*self.executable(), message], capture_output=True, text=True,
-                timeout=self.timeout_seconds, check=False,
+                timeout=self.timeout_seconds, check=False, **hidden_process_options(),
             )
         except (OSError, subprocess.TimeoutExpired) as error:
             return activation_result("unavailable", reason=str(error))
@@ -146,6 +151,7 @@ class CLIResumeAdapter(HostAdapter):
                 text=True,
                 timeout=self.timeout_seconds,
                 check=False,
+                **hidden_process_options(),
             )
         except (OSError, subprocess.TimeoutExpired) as error:
             return activation_result("unavailable", reason=str(error))

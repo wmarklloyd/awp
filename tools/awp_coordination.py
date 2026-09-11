@@ -23,6 +23,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 from typing import Iterator, Sequence
 
+try:
+    from .awp_runtime import hidden_process_options
+except ImportError:  # executed as a script from tools/
+    from awp_runtime import hidden_process_options
+
 
 PROFILE = "local-ledger-awareness-v1"
 MODULE = "urn:awp:coordination"
@@ -172,6 +177,7 @@ def git_value(project: Path, *arguments: str) -> str:
         check=False,
         capture_output=True,
         text=True,
+        **hidden_process_options(),
     )
     if result.returncode != 0:
         raise CoordinationError(

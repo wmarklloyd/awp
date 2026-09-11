@@ -99,5 +99,46 @@ class ActivationContractTests(unittest.TestCase):
         self.assertIn("--host claude", command)
 
 
+
+class HiddenChildProcessTests(unittest.TestCase):
+    """Background supervisors have no console; on Windows each console child
+    they start would otherwise flash a visible window on the user's desktop."""
+
+    def test_adapter_children_are_started_hidden(self) -> None:
+        from unittest import mock
+        import tools.awp_activation as activation
+        marker = {"creationflags": 0x08000000}
+        calls = []
+        class Completed:
+            returncode = 0
+            stdout = "queued"
+            stderr = ""
+        def runner(*args, **kwargs):
+            calls.append(kwargs); return Completed()
+        with mock.patch.object(activation, "hidden_process_options", return_value=marker):
+            adapter = CLIResumeAdapter("codex", "thread:test", command=["codex", "queue"], runner=runner)
+            adapter.deliver(envelope())
+            adapter.probe()
+        self.assertEqual(len(calls), 2)
+        for kwargs in calls:
+            self.assertEqual(kwargs.get("creationflags"), 0x08000000)
+
+    def test_git_signal_refs_are_started_hidden(self) -> None:
+        from unittest import mock
+        import tools.awp_coop2 as coop2
+        with mock.patch.object(coop2, "hidden_process_options", return_value={"creationflags": 0x08000000}), \
+                mock.patch.object(coop2.subprocess, "run") as run:
+            coop2.GitRefDoorbell._git(mock.Mock(project=Path(".")), "for-each-ref")
+        self.assertEqual(run.call_args.kwargs.get("creationflags"), 0x08000000)
+
+    def test_hidden_options_are_empty_off_windows(self) -> None:
+        import os
+        from tools.awp_runtime import hidden_process_options
+        if os.name != "nt":
+            self.assertEqual(hidden_process_options(), {})
+        else:
+            self.assertIn("startupinfo", hidden_process_options())
+
+
 if __name__ == "__main__":
     unittest.main()
