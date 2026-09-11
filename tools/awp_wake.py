@@ -86,6 +86,9 @@ BUILTIN_PROFILES: dict[str, dict[str, Any]] = {
     "gemini-print": {"class": "W2", "kind": "headless", "command": ["gemini", "-p", "{prompt}"]},
     "claude-routine": {"class": "W3", "kind": "claude-routine"},
     "desktop-notify": {"class": "W5", "kind": "notify"},
+    # A hosted agent that cannot be woken from outside but can schedule its own
+    # wake-ups (Claude in Cowork) checks the ledger itself while it is active.
+    "self-poll": {"class": "W1", "kind": "self-poll"},
 }
 ROUTINE_ENDPOINT = "https://api.anthropic.com/v1/claude_code/routines/"
 ROUTINE_BETA = "experimental-cc-routine-2026-04-01"
@@ -161,6 +164,12 @@ def validate_declaration(payload: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def _default_window(wake_class: str, adapter: str, params: dict[str, Any] | None) -> int:
+    if adapter == "self-poll":
+        return int((params or {}).get("interval_seconds", SELF_POLL_SECONDS)) + 120
+    return DEFAULT_ACK_WINDOW.get(wake_class, 600)
+
+
 def declare(rendezvous: Any, actor: str, wake_class: str, adapter: str, *, relay: str | None = None,
             params: dict[str, Any] | None = None, secret_ref: str | None = None,
             ack_window_seconds: int | None = None, budget: dict[str, int] | None = None,
@@ -177,7 +186,7 @@ def declare(rendezvous: Any, actor: str, wake_class: str, adapter: str, *, relay
         "relay": relay or relay_id(rendezvous.project),
         "params": dict(params or {}),
         "secret_ref": secret_ref,
-        "ack_window_seconds": DEFAULT_ACK_WINDOW.get(wake_class, 600) if ack_window_seconds is None else ack_window_seconds,
+        "ack_window_seconds": _default_window(wake_class, adapter, params) if ack_window_seconds is None else ack_window_seconds,
         "budget": dict(budget or DEFAULT_BUDGET.get(wake_class, {"runs": 6, "per_seconds": 3600})),
         "order": order,
     })
@@ -196,12 +205,16 @@ def declare(rendezvous: Any, actor: str, wake_class: str, adapter: str, *, relay
 # run when its command-line tool is installed on this machine, and a desktop
 # notification to the principal as the last resort.  (A live-session binding
 # is declared by session activation, which knows the session.)
+SELF_POLL_SECONDS = 120
+SELF_POLL_HOSTS = {"cowork"}
 HEADLESS_BY_HOST = {"codex": ("codex-exec", "codex"), "claude": ("claude-print", "claude"),
                     "claude-code": ("claude-print", "claude"), "gemini": ("gemini-print", "gemini")}
 
 
 def automatic_bindings(host: str | None, which: Callable[[str], str | None] = shutil.which) -> list[tuple[str, str]]:
     result = []
+    if (host or "").lower() in SELF_POLL_HOSTS:
+        result.append(("W1", "self-poll"))
     headless = HEADLESS_BY_HOST.get((host or "").lower())
     if headless and which(headless[1]):
         result.append(("W2", headless[0]))
@@ -219,7 +232,8 @@ def enter(rendezvous: Any, actor: str, host: str | None = None,
     """
     declared = []
     for wake_class, adapter in automatic_bindings(host, which):
-        result = declare(rendezvous, actor, wake_class, adapter)
+        params = {"interval_seconds": SELF_POLL_SECONDS} if adapter == "self-poll" else None
+        result = declare(rendezvous, actor, wake_class, adapter, params=params)
         declared.append({"class": wake_class, "adapter": adapter, "binding_id": result["binding"]["binding_id"],
                          "new": not result["deduplicated"]})
     best = reach(rendezvous._events(), actor)["participants"].get(actor, {}).get("best")
@@ -563,6 +577,53 @@ class NotifyAdapter(HostAdapter):
         return activation_result("accepted", receipt="notifications.log")
 
 
+class SelfPollAdapter(HostAdapter):
+    """The recipient checks the ledger itself on a timer; nothing is sent.
+
+    The relay still records the attempt and waits the binding's window (the
+    poll interval plus a margin) for the recipient's receipt, then escalates.
+    """
+
+    def deliver_many(self, envelopes: Sequence[dict[str, Any]]) -> dict[str, Any]:
+        return activation_result("accepted", receipt="awaiting-recipient-poll")
+
+    def deliver(self, envelope: dict[str, Any]) -> dict[str, Any]:
+        return self.deliver_many([envelope])
+
+    def probe(self) -> dict[str, Any]:
+        return activation_result("accepted", receipt="awaiting-recipient-poll")
+
+
+def pending(events: list[dict[str, Any]], actor: str, now: datetime | None = None) -> list[dict[str, Any]]:
+    """Items addressed to ``actor`` that still need its receipt, oldest first."""
+    now = now or utc_now()
+    acked = {event["payload"].get("tickle_id") for event in events if event["kind"] == "coop2.tickle.acked"}
+    closed = {event["payload"].get("interaction_id") for event in events
+              if event["kind"] == "coop2.interaction.withdrawn"
+              or (event["kind"] in {"coop2.interaction.observed", "coop2.interaction.accepted", "coop2.interaction.refused",
+                                    "coop2.interaction.responded"} and event.get("actor") == actor)}
+    result = []
+    for event in events:
+        payload = event.get("payload", {})
+        if payload.get("recipient") != actor:
+            continue
+        if event["kind"] == "coop2.tickle.sent" and payload.get("tickle_id") not in acked:
+            sent = parse_time(event.get("occurred_at"))
+            if sent and now > sent + timedelta(seconds=int(payload.get("ttl_seconds", 90))):
+                continue
+            result.append({"event_id": event["event_id"], "kind": "probe", "from": payload.get("sender")})
+        elif event["kind"] == "coop2.interaction.requested" and payload.get("interaction_id") not in closed:
+            result.append({"event_id": event["event_id"], "kind": "consultation", "from": payload.get("sender"),
+                           "interaction_id": payload.get("interaction_id"), "subject": payload.get("subject")})
+    return result
+
+
+def suggested_ttl(events: list[dict[str, Any]], recipient: str, minimum: int = 90) -> int:
+    """A probe TTL long enough for the recipient's first wake rung to answer."""
+    rungs = [item for item in ladder(active_bindings(events), recipient) if item["class"] != "W5"]
+    return max(minimum, int(rungs[0]["ack_window_seconds"]) + 30) if rungs else minimum
+
+
 WINDOWS_TOAST = (
     "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] > $null;"
     "$t = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02);"
@@ -609,6 +670,8 @@ def adapter_for(binding: dict[str, Any], project: Path, profiles: dict[str, dict
         return RoutineAdapter(binding, environment)
     if kind == "notify":
         return NotifyAdapter(project)
+    if kind == "self-poll":
+        return SelfPollAdapter()
     raise WakeError(f"adapter kind {kind!r} is not supported by this relay")
 
 
@@ -641,6 +704,8 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("--order", type=int)
     item = commands.add_parser("enter", help="declare this agent's automatic wake bindings (run on project entry)")
     item.add_argument("--actor", required=True); item.add_argument("--host")
+    item = commands.add_parser("pending", help="items waiting for an agent's receipt; --ack records receipt for each")
+    item.add_argument("--actor", required=True); item.add_argument("--ack", action="store_true")
     item = commands.add_parser("retire"); item.add_argument("--actor", required=True); item.add_argument("--binding", required=True)
     item.add_argument("--reason", default="retired by participant")
     item = commands.add_parser("list"); item.add_argument("--actor")
@@ -677,6 +742,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                              ack_window_seconds=args.ack_window_seconds, budget=budget, order=args.order)
         elif args.command == "enter":
             result = enter(rendezvous, args.actor, args.host)
+        elif args.command == "pending":
+            items = pending(rendezvous._events(), args.actor)
+            if args.ack and items:
+                from tools.awp_ingress import handle as ingress
+
+                for item in items:
+                    item["receipt"] = ingress(rendezvous.project, args.actor, item["event_id"])["state"]
+            result = {"actor": args.actor, "pending": items}
         elif args.command == "retire":
             result = retire(rendezvous, args.actor, args.binding, args.reason)
         elif args.command == "list":

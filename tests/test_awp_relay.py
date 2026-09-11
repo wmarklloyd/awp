@@ -104,9 +104,26 @@ class AutomaticBindingTests(RelayFixture):
         self.assertTrue(all(item["new"] for item in first["declared"]))
         again = wake.enter(self.rendezvous, "actor:codex", "codex", which=lambda name: "/bin/" + name)
         self.assertFalse(any(item["new"] for item in again["declared"]))  # idempotent
-        hosted = wake.enter(self.rendezvous, "actor:claude", "cowork", which=lambda name: None)
-        self.assertEqual([item["class"] for item in hosted["declared"]], ["W5"])
-        self.assertEqual(hosted["best"]["state"], "principal-notification")
+        other = wake.enter(self.rendezvous, "actor:claude", "unknown-host", which=lambda name: None)
+        self.assertEqual([item["class"] for item in other["declared"]], ["W5"])
+        self.assertEqual(other["best"]["state"], "principal-notification")
+
+    def test_hosted_agent_polls_itself_and_the_relay_waits_its_window(self) -> None:
+        entered = wake.enter(self.rendezvous, "actor:claude", "cowork", which=lambda name: None)
+        self.assertEqual([item["class"] for item in entered["declared"]], ["W1", "W5"])
+        binding = next(b for b in wake.active_bindings(self.rendezvous._events()).values() if b["adapter"] == "self-poll")
+        self.assertEqual(binding["ack_window_seconds"], wake.SELF_POLL_SECONDS + 120)
+        self.assertGreater(wake.suggested_ttl(self.rendezvous._events(), "actor:claude"), binding["ack_window_seconds"])
+        self.relay.adapter_factory = lambda b: wake.adapter_for(b, self.project)
+        self.settle()
+        probe = next(e for e in self.rendezvous._events() if e["kind"] == "coop2.tickle.sent")
+        waiting = wake.pending(self.rendezvous._events(), "actor:claude")
+        self.assertEqual([item["event_id"] for item in waiting], [probe["event_id"]])
+        self.ingress("actor:claude", probe["event_id"], via="agent-ingress")
+        self.settle(1)
+        self.assertEqual(wake.pending(self.rendezvous._events(), "actor:claude"), [])
+        best = wake.reach(self.rendezvous._events())["participants"]["actor:claude"]["best"]
+        self.assertEqual(best["state"], "wake-verified")
 
     def test_notification_tells_the_principal_what_to_do(self) -> None:
         text = wake._notification_text([{"recipient_actor": "actor:claude"}])

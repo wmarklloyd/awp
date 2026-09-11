@@ -813,7 +813,7 @@ def parser() -> argparse.ArgumentParser:
     commands.add_parser("status")
     commands.add_parser("doorbell-status")
     commands.add_parser("inventory")
-    tickle = commands.add_parser("tickle"); tickle.add_argument("--actor", required=True); tickle.add_argument("--to", required=True); tickle.add_argument("--ttl-seconds", type=int, default=90); tickle.add_argument("--idempotency-key")
+    tickle = commands.add_parser("tickle"); tickle.add_argument("--actor", required=True); tickle.add_argument("--to", required=True); tickle.add_argument("--ttl-seconds", type=int, help="default: long enough for the recipient's first wake rung (at least 90)"); tickle.add_argument("--idempotency-key")
     tickle_ack = commands.add_parser("tickle-ack"); tickle_ack.add_argument("--actor", required=True); tickle_ack.add_argument("--tickle", required=True)
     tickles = commands.add_parser("tickles"); tickles.add_argument("--actor")
     join = commands.add_parser("join"); join.add_argument("--actor", required=True); join.add_argument("--capability", action="append", default=[]); join.add_argument("--observation", choices=list(OBSERVATION_MODES), default="on-entry-only", help="how this actor observes signals: a live watcher, or only on project entry")
@@ -836,7 +836,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "status": result = rendezvous.status()
         elif args.command == "doorbell-status": result = rendezvous.doorbell.status(project_id=rendezvous.project_id, workstate_id=rendezvous.workstate_id, binding_id=rendezvous.ledger.binding_id())
         elif args.command == "inventory": result = {"binding": rendezvous.status(), "participants": rendezvous.participant_inventory()}
-        elif args.command == "tickle": result = rendezvous.tickle(args.actor, args.to, args.ttl_seconds, args.idempotency_key)
+        elif args.command == "tickle":
+            from tools.awp_wake import suggested_ttl
+
+            ttl = args.ttl_seconds or suggested_ttl(rendezvous._events(), args.to)
+            result = rendezvous.tickle(args.actor, args.to, ttl, args.idempotency_key)
         elif args.command == "tickle-ack": result = rendezvous.tickle_ack(args.actor, args.tickle)
         elif args.command == "tickles": result = {"binding": rendezvous.status(), "tickles": rendezvous.tickles(args.actor)}
         elif args.command == "join": result = rendezvous.join(args.actor, args.capability, args.observation)
