@@ -563,6 +563,21 @@ class RelayProcessTests(unittest.TestCase):
             with mock.patch("tools.awp_wake._git_config", return_value="false"):
                 self.assertEqual(awp_relay.ensure_autostart(home, runner=fake)["state"], "disabled")
 
+    def test_relay_breaks_away_from_the_starting_hosts_job_on_windows(self) -> None:
+        from tools import awp_relay
+
+        calls = []
+        def fake_popen(command, **kwargs):
+            calls.append(kwargs.get("creationflags", 0))
+            if kwargs.get("creationflags", 0) & awp_relay.CREATE_BREAKAWAY_FROM_JOB and len(calls) == 1:
+                raise PermissionError("job forbids breakaway")
+            return mock.Mock(pid=1)
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch("tools.awp_relay.subprocess.Popen", side_effect=fake_popen):
+            awp_relay._detached_popen(["relay"], Path(directory), windows=True)
+        self.assertTrue(calls[0] & awp_relay.CREATE_BREAKAWAY_FROM_JOB)
+        self.assertFalse(calls[1] & awp_relay.CREATE_BREAKAWAY_FROM_JOB)  # falls back, never fails to start
+
     def test_spool_prunes_old_answered_requests(self) -> None:
         import time as _time
         from tools.awp_request_spool import RequestSpool

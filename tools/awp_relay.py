@@ -646,20 +646,40 @@ def relay_command(project: Path, generation: str, interval_seconds: float) -> li
             "--generation", generation, "--interval-seconds", str(interval_seconds)]
 
 
+def _detached_popen(command: list[str], project: Path, windows: bool | None = None) -> subprocess.Popen:
+    """Start a relay that outlives whoever started it.
+
+    On Windows a host (Codex, for one) may run its hooks inside a job object
+    that kills every child when the host session exits; that is how a relay
+    started from a hook died with its Codex session.  The relay therefore asks
+    to break away from the job, and falls back only if the job forbids it.
+    """
+    windows = os.name == "nt" if windows is None else windows
+    flags = 0
+    if windows:
+        flags = (getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200) | getattr(subprocess, "DETACHED_PROCESS", 0x8)
+                 | getattr(subprocess, "CREATE_NO_WINDOW", 0x8000000))
+    runtime(project).mkdir(parents=True, exist_ok=True)
+    with (runtime(project) / "awp-relay.out.log").open("ab") as output, (runtime(project) / "awp-relay.err.log").open("ab") as error:
+        options = dict(cwd=Path(__file__).resolve().parent.parent, stdin=subprocess.DEVNULL, stdout=output, stderr=error,
+                       close_fds=True, start_new_session=not windows)
+        if windows:
+            try:
+                return subprocess.Popen(command, creationflags=flags | CREATE_BREAKAWAY_FROM_JOB, **options)
+            except OSError:
+                pass  # the job does not allow breakaway; the watchdog covers this case
+        return subprocess.Popen(command, creationflags=flags, **options)
+
+
+CREATE_BREAKAWAY_FROM_JOB = 0x01000000
+
+
 def spawn(project: Path, interval_seconds: float = 5.0, started_by: str = "session") -> dict[str, Any]:
     generation = uuid.uuid4().hex
     control = {"profile": PROFILE, "generation": generation, "desired_state": "running", "state": "starting",
                "started_at": wake.iso(wake.utc_now()), "started_by": started_by}
     atomic_json(control_path(project), control)
-    flags = 0
-    if os.name == "nt":
-        flags = (getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
-                 | getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    runtime(project).mkdir(parents=True, exist_ok=True)
-    with (runtime(project) / "awp-relay.out.log").open("ab") as output, (runtime(project) / "awp-relay.err.log").open("ab") as error:
-        process = subprocess.Popen(relay_command(project, generation, interval_seconds), cwd=Path(__file__).resolve().parent.parent,
-                                   stdin=subprocess.DEVNULL, stdout=output, stderr=error, close_fds=True,
-                                   creationflags=flags, start_new_session=os.name != "nt")
+    process = _detached_popen(relay_command(project, generation, interval_seconds), project)
     control.update({"pid": process.pid, "state": "waiting_for_status"})
     atomic_json(control_path(project), control)
     return control
@@ -755,14 +775,7 @@ def _code_fingerprint() -> tuple:
 
 def _relaunch(argv: Sequence[str], project: Path) -> None:
     """Replace this process with one running the current code, same generation."""
-    flags = 0
-    if os.name == "nt":
-        flags = (getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
-                 | getattr(subprocess, "CREATE_NO_WINDOW", 0))
-    with (runtime(project) / "awp-relay.out.log").open("ab") as output, (runtime(project) / "awp-relay.err.log").open("ab") as error:
-        subprocess.Popen([sys.executable, "-m", "tools.awp_relay", *argv], cwd=Path(__file__).resolve().parent.parent,
-                         stdin=subprocess.DEVNULL, stdout=output, stderr=error, close_fds=True, creationflags=flags,
-                         start_new_session=os.name != "nt")
+    _detached_popen([sys.executable, "-m", "tools.awp_relay", *argv], project)
 
 
 def _claim(control: Path, generation: str) -> None:
