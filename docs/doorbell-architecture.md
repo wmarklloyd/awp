@@ -131,9 +131,8 @@ Built, with tests (`tests/test_awp_relay.py`):
 
 Not yet verified live: W2 on each host, and the W3 routine experiment. W4 has no adapter yet. The LAN relay is future work.
 
-### Setting up a hosted Claude session (W3)
+### No setup by default
 
-1. In Claude, create a routine bound to the computer that holds the project, with a prompt that tells the woken session to find the AWP project folder, run the `[AWP doorbell]` ingress command the fired text names, and then read its inbox. Add an API trigger to the routine and copy its token.
-2. On the relay's computer, save the token in `~/.awp/secrets/claude-routine` (or an environment variable the relay can see). Never commit it or paste it into the ledger.
-3. Declare the binding as the Claude participant: `python -m tools.awp_wake declare --actor actor:claude --class W3 --adapter claude-routine --param routine_id=<routine id> --secret-ref file:~/.awp/secrets/claude-routine`. Optionally also declare `--class W5 --adapter desktop-notify`.
-4. The relay probes the new binding. `python -m tools.awp_wake reach --actor actor:claude` shows the result. The acceptance test is a probe from Codex acknowledged by the woken Claude session.
+Entering the project declares every wake path the agent's environment offers, with nothing asked of the user (`awp_wake.enter`, called by re-entry and session activation): the live session where the host exposes one, a headless run when the agent's command-line tool is installed on the relay's machine, and a desktop notification to the principal. The relay probes each and the reach report discloses the result.
+
+Claude in the desktop app (Cowork) currently gets only the notification rung: a Cowork session has no local endpoint, and the scheduled task a Cowork session can create for itself is not listed on the Routines screen, so it cannot be given an API trigger (checked 2026-09-11). The notification tells the principal to open Claude and ask it to check its AWP inbox, and entry recovery delivers the item on that turn. A hosted wake (W3) remains available as an opt-in for an agent whose vendor offers an API trigger and whose woken session can reach the ledger (a private remote), and is not required for anything to work.

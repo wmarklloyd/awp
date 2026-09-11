@@ -321,7 +321,8 @@ def _self_observation(binding: dict[str, Any], actor: str, registration: dict[st
     return result
 
 
-def coordination_entry_view(project: Path, actor: str, register_observation: str | None = None) -> dict[str, Any]:
+def coordination_entry_view(project: Path, actor: str, register_observation: str | None = None,
+                            host: str | None = None) -> dict[str, Any]:
     """Read the durable COOP-2 mailbox and doorbell during project entry.
 
     This is intentionally a read-only safety net.  The doorbell watcher remains
@@ -340,6 +341,17 @@ def coordination_entry_view(project: Path, actor: str, register_observation: str
             # Explicit publication requested by the entering session; the check
             # itself stays read-only.  Joining is idempotent per declared mode.
             registration = rendezvous.join(actor, [], observation=register_observation)
+        wake = None
+        if register_observation:
+            # Entering also declares the wake paths this environment offers
+            # (section 12), so no agent needs setting up to be reachable.
+            try:
+                from tools.awp_wake import enter as wake_enter
+
+                entered = wake_enter(rendezvous, actor, host)
+                wake = {"best": entered["best"], "declared": [item["class"] for item in entered["declared"]]}
+            except Exception as error:  # reach is best effort; entry recovery is not
+                wake = {"state": "unavailable", "reason": str(error)[:200]}
         inbox = rendezvous.inbox(actor)
         binding = inbox.get("binding", {})
         observation = binding.get("observation", {})
@@ -371,6 +383,7 @@ def coordination_entry_view(project: Path, actor: str, register_observation: str
             "open_items": open_items,
             "response_count": len(inbox.get("responses", [])),
             "self": _self_observation(binding, actor, registration),
+            **({"wake": wake} if wake else {}),
         }
     except (CoordinationError, OSError, ValueError, sqlite3.Error) as error:
         return {
@@ -393,6 +406,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["watcher", "on-entry-only"],
         help="also publish this actor's observation mode to the rendezvous (explicit; the entry check itself stays read-only)",
     )
+    parser.add_argument("--host", help="agent host (codex, claude, gemini, cowork, ...) for automatic wake bindings")
     parser.add_argument("--max-output-bytes", type=int, default=24_000)
     return parser
 
@@ -409,7 +423,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         view = build_reentry_view(capsule, brief_only=args.brief_only)
         if not args.brief_only:
             view["coordination"] = (
-                coordination_entry_view(project, args.actor, args.register_observation)
+                coordination_entry_view(project, args.actor, args.register_observation, args.host)
                 if args.actor
                 else {
                     "state": "skipped",

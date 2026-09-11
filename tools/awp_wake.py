@@ -192,6 +192,40 @@ def declare(rendezvous: Any, actor: str, wake_class: str, adapter: str, *, relay
             "deduplicated": False, "receipt": receipt}
 
 
+# Wake paths an agent gets without anyone configuring anything: a new headless
+# run when its command-line tool is installed on this machine, and a desktop
+# notification to the principal as the last resort.  (A live-session binding
+# is declared by session activation, which knows the session.)
+HEADLESS_BY_HOST = {"codex": ("codex-exec", "codex"), "claude": ("claude-print", "claude"),
+                    "claude-code": ("claude-print", "claude"), "gemini": ("gemini-print", "gemini")}
+
+
+def automatic_bindings(host: str | None, which: Callable[[str], str | None] = shutil.which) -> list[tuple[str, str]]:
+    result = []
+    headless = HEADLESS_BY_HOST.get((host or "").lower())
+    if headless and which(headless[1]):
+        result.append(("W2", headless[0]))
+    result.append(("W5", "desktop-notify"))
+    return result
+
+
+def enter(rendezvous: Any, actor: str, host: str | None = None,
+          which: Callable[[str], str | None] = shutil.which) -> dict[str, Any]:
+    """Declare this agent's automatic wake bindings on project entry (idempotent).
+
+    Nothing is asked of the user: whatever this environment offers is declared,
+    the relay verifies it by probe, and whatever cannot wake the agent is
+    disclosed in the reach report.
+    """
+    declared = []
+    for wake_class, adapter in automatic_bindings(host, which):
+        result = declare(rendezvous, actor, wake_class, adapter)
+        declared.append({"class": wake_class, "adapter": adapter, "binding_id": result["binding"]["binding_id"],
+                         "new": not result["deduplicated"]})
+    best = reach(rendezvous._events(), actor)["participants"].get(actor, {}).get("best")
+    return {"profile": PROFILE, "actor": actor, "declared": declared, "best": best}
+
+
 def retire(rendezvous: Any, actor: str, binding: str, reason: str = "retired by participant") -> dict[str, Any]:
     current = active_bindings(rendezvous._events()).get(binding)
     if current is None:
@@ -490,11 +524,11 @@ class RoutineAdapter(HostAdapter):
 
 
 def _notification_text(envelopes: Sequence[dict[str, Any]]) -> str:
-    actor = envelopes[0]["recipient_actor"]
-    kinds = sorted({envelope["event_kind"].split(".")[-2] if envelope["event_kind"].count(".") >= 2 else envelope["event_kind"]
-                    for envelope in envelopes})
-    return (f"{actor} has {len(envelopes)} pending AWP item(s) ({', '.join(kinds)}) that no agent wake reached. "
-            f"Open that agent in the project; it will pick them up on entry.")
+    agent = envelopes[0]["recipient_actor"].split(":", 1)[-1].capitalize()
+    count = len(envelopes)
+    what = "a consultation" if count == 1 else f"{count} items"
+    return (f"{agent} has {what} waiting in this AWP project and could not be woken automatically. "
+            f"Open {agent} in the project and say: check your AWP inbox.")
 
 
 @dataclass
@@ -605,6 +639,8 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("--budget-runs", type=int)
     item.add_argument("--budget-per-seconds", type=int)
     item.add_argument("--order", type=int)
+    item = commands.add_parser("enter", help="declare this agent's automatic wake bindings (run on project entry)")
+    item.add_argument("--actor", required=True); item.add_argument("--host")
     item = commands.add_parser("retire"); item.add_argument("--actor", required=True); item.add_argument("--binding", required=True)
     item.add_argument("--reason", default="retired by participant")
     item = commands.add_parser("list"); item.add_argument("--actor")
@@ -639,6 +675,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = declare(rendezvous, args.actor, args.wake_class, args.adapter, relay=args.relay,
                              params=_params(args.param), secret_ref=args.secret_ref,
                              ack_window_seconds=args.ack_window_seconds, budget=budget, order=args.order)
+        elif args.command == "enter":
+            result = enter(rendezvous, args.actor, args.host)
         elif args.command == "retire":
             result = retire(rendezvous, args.actor, args.binding, args.reason)
         elif args.command == "list":

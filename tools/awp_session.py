@@ -353,6 +353,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.actor,
                 "--register-observation",
                 observation,
+                "--host",
+                args.host,
                 "--max-output-bytes",
                 str(args.max_output_bytes),
             ]

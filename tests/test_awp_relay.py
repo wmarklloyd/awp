@@ -97,6 +97,22 @@ class DeclarationTests(RelayFixture):
         self.assertIsInstance(adapter, wake.HeadlessAdapter)
 
 
+class AutomaticBindingTests(RelayFixture):
+    def test_entry_declares_what_the_environment_offers_without_configuration(self) -> None:
+        first = wake.enter(self.rendezvous, "actor:codex", "codex", which=lambda name: "/bin/" + name)
+        self.assertEqual([item["class"] for item in first["declared"]], ["W2", "W5"])
+        self.assertTrue(all(item["new"] for item in first["declared"]))
+        again = wake.enter(self.rendezvous, "actor:codex", "codex", which=lambda name: "/bin/" + name)
+        self.assertFalse(any(item["new"] for item in again["declared"]))  # idempotent
+        hosted = wake.enter(self.rendezvous, "actor:claude", "cowork", which=lambda name: None)
+        self.assertEqual([item["class"] for item in hosted["declared"]], ["W5"])
+        self.assertEqual(hosted["best"]["state"], "principal-notification")
+
+    def test_notification_tells_the_principal_what_to_do(self) -> None:
+        text = wake._notification_text([{"recipient_actor": "actor:claude"}])
+        self.assertIn("Open Claude in the project and say: check your AWP inbox.", text)
+
+
 class LadderTests(RelayFixture):
     def test_declaration_is_probed_and_reach_is_measured(self) -> None:
         binding = self.declare("actor:codex", "W1", "codex-queue", params={"session_ref": "t1"})
@@ -317,9 +333,9 @@ class AdapterTests(unittest.TestCase):
             result = adapter.deliver(self.envelope())
             log = (project / ".awp-runtime" / "notifications.log").read_text(encoding="utf-8")
         self.assertEqual(result["endpoint_receipt"], "desktop-notification")
-        self.assertIn("actor:claude", log)
+        self.assertIn("Claude has a consultation waiting", log)
         self.assertEqual(calls[0][0], ["notify"])
-        self.assertIn("actor:claude", calls[0][1]["env"]["AWP_NOTICE"])
+        self.assertIn("Claude has a consultation waiting", calls[0][1]["env"]["AWP_NOTICE"])
 
 
 if __name__ == "__main__":
