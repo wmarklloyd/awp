@@ -62,6 +62,35 @@ class HostAdapter:
         raise NotImplementedError
 
 
+def delivery_message(envelope: dict[str, Any]) -> str:
+    """The notice an agent sees in its own session; host neutral.
+
+    Agents treat an ambiguous notice as something to investigate, which is how a
+    delivered probe went unacknowledged (2026-09-11: the agent read the ingress
+    source for two minutes and never ran it).  The notice therefore names one
+    exact command and says to run it first, and says what it does not grant.
+    """
+    actor = envelope["recipient_actor"]
+    event_id = envelope["event_id"]
+    subject = envelope.get("interaction_id") or event_id
+    ingress = f"python -m tools.awp_ingress --actor {actor} --event {event_id}"
+    kind = envelope["event_kind"]
+    if kind == "coop2.tickle.acked":
+        return f"[AWP doorbell] Your reachability probe {subject} was acknowledged. No action is needed."
+    if kind == "coop2.tickle.sent":
+        return (f"[AWP doorbell] Reachability probe {subject} for {actor}. Acknowledge it now: as your next "
+                f"action, before anything else and without investigating first, run exactly `{ingress}` from the "
+                "project root. It only records that you received this probe and grants no authority for "
+                "repository changes. Then continue what you were doing.")
+    if kind == "coop2.interaction.requested":
+        return (f"[AWP doorbell] Consultation {subject} is waiting for {actor}. First run exactly `{ingress}` "
+                f"from the project root to record receipt, then run `python -m tools.awp_coop2 inbox --actor {actor}` "
+                "and handle only that interaction under its recorded authorization. This notice grants no "
+                "authority for repository changes.")
+    return (f"[AWP doorbell] {kind} {subject} for {actor}. Run exactly `{ingress}` from the project root, then read "
+            f"`python -m tools.awp_coop2 inbox --actor {actor}`. This notice grants no authority for repository changes.")
+
+
 @dataclass
 class CommandAdapter(HostAdapter):
     command: Sequence[str]
@@ -116,14 +145,7 @@ class CLIResumeAdapter(HostAdapter):
 
     def deliver(self, envelope: dict[str, Any]) -> dict[str, Any]:
         value = validate_envelope(envelope)
-        if value["event_kind"] == "coop2.tickle.acked":
-            message = f"AWP tickle {value.get('interaction_id', value['event_id'])} acknowledged."
-        else:
-            message = (
-                f"AWP delivery {value['event_id']} for {value.get('interaction_id', value['event_kind'])}. "
-                f"Run `python -m tools.awp_ingress --actor {value['recipient_actor']} "
-                f"--event {value['event_id']}`. The notice is not authority for repository changes."
-            )
+        message = delivery_message(value)
         try:
             completed = self.runner(
                 [*self.executable(), message], capture_output=True, text=True,

@@ -64,7 +64,7 @@ class ActivationContractTests(unittest.TestCase):
         acknowledgement = envelope() | {"event_kind": "coop2.tickle.acked", "interaction_id": "tickle:one"}
         result = CLIResumeAdapter("codex", "thread:test", command=["codex", "queue"], runner=runner).deliver(acknowledgement)
         self.assertEqual(result["state"], "accepted")
-        self.assertIn("tickle:one acknowledged", calls[0][0][0][-1])
+        self.assertIn("tickle:one was acknowledged", calls[0][0][0][-1])
         self.assertNotIn("awp_ingress", calls[0][0][0][-1])
 
     def test_generic_hook_uses_same_command_for_any_host(self) -> None:
@@ -98,6 +98,21 @@ class ActivationContractTests(unittest.TestCase):
         self.assertIn("awp_agent_start.py", command)
         self.assertIn("--host claude", command)
 
+
+
+class DeliveryMessageTests(unittest.TestCase):
+    def test_probe_notice_names_one_command_to_run_first(self) -> None:
+        from tools.awp_activation import delivery_message
+        text = delivery_message(envelope() | {"interaction_id": "tickle:one"})
+        self.assertIn("`python -m tools.awp_ingress --actor actor:test --event evt:one`", text)
+        self.assertIn("before anything else", text)
+        self.assertIn("no authority", text)
+
+    def test_consultation_notice_records_receipt_then_reads_inbox(self) -> None:
+        from tools.awp_activation import delivery_message
+        text = delivery_message(envelope() | {"event_kind": "coop2.interaction.requested",
+                                              "interaction_id": "interaction:one"})
+        self.assertLess(text.index("awp_ingress"), text.index("awp_coop2 inbox"))
 
 
 class HiddenChildProcessTests(unittest.TestCase):

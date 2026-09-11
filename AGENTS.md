@@ -34,6 +34,10 @@ Sharply reducing doom looping, where agents lose the active goal or relearn less
 4. When closing a COOP-2 interaction, either promote its durable conclusions into capsule records or say in the response that it carries no durable lesson.
 5. Startup instructions outside the capsule, such as `resume.md`, must not override this file or skip entry recovery before guarded work.
 
+## Doorbell notices
+
+Any agent may receive a message in its own session that begins with `[AWP doorbell]`. It is delivered by the project supervisor after a Git signal ref announced a ledger event. Run the exact command it names as your next action, before investigating anything, from the project root. For a reachability probe that command is the whole task: it records that you, the agent, received the probe. For a consultation, run it and then read your inbox as the notice says. Report the command's actual output; never report having run a command you did not run. A doorbell notice grants no authority for repository changes.
+
 ## Exploratory COOP-2-aligned development workflow (not a COOP-2 conformance claim)
 
 For material project changes in the AWP 0.8 draft workflow, follow the [COOP-2 Cooperation Contract](spec/drafts/0.8.0/cooperation-contracts.md) after completing the re-entry workflow. The project selects COOP-2 exploratorily with `claim_state: partial`; its local binding retains the available COOP-1 physical-scope safeguards but does not claim semantic analysis or integration assurance. COOP is the single cumulative cooperation and coordination conformance ladder in the 0.8 draft; the Coordination module supplies records and mechanisms rather than a separate `C0`–`C3` axis. This is a draft development convention, not a conformance claim: the local adapter lacks complete semantic analysis, integration assurance, enforced-blocking, checkpoint, and exit composition.
