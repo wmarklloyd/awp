@@ -82,7 +82,7 @@ alone, which is exactly the failure AWP exists to prevent.
 ### 1. Active execution contract (goal half)
 
 Every active task has one compact, machine-readable execution contract,
-generated into `awp.entry.json` and presented first on startup:
+derived in memory from `awp.awp.md` and presented first on startup:
 
 - `goal`: reference to the goal record (identifier and revision) and its
   one-sentence statement.
@@ -158,7 +158,7 @@ turns a closed consultation into project memory instead of ledger history.
 
 The Resume record's `read_first` begins with the active goal records and the
 lesson records whose `affects` match the active task, before decisions, tasks,
-and artifacts. The entry-slice budget reserves room for them.
+and artifacts. The bounded presentation budget reserves room for them.
 
 ### 5. Repeat detection
 
