@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import hashlib
 import json
 from pathlib import Path
@@ -109,6 +110,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             _log_invocation(None, {"host": args.host, "outcome": "invalid-hook-input", "detail": str(error)[:200]})
             print(json.dumps(hook_result(f"AWP activation skipped: invalid hook input ({error}).")))
             return 0
+    if os.environ.get("AWP_HEADLESS_RUN"):
+        # A run the relay started (W2) is not a live session: registering it
+        # would point the agent's live-session binding at a run about to end.
+        _log_invocation(payload.get("cwd") if isinstance(payload, dict) else None,
+                        {"host": args.host, "actor": args.actor, "outcome": "skipped: relay-started headless run"})
+        print(json.dumps(hook_result("AWP activation skipped: this is a headless run started by the AWP relay.")))
+        return 0
     result = run_hook(payload, host=args.host, actor=args.actor, adapter_command=args.adapter_command)
     _log_invocation(payload.get("cwd") if isinstance(payload, dict) else None, {
         "host": args.host, "actor": args.actor, "source": payload.get("source") if isinstance(payload, dict) else None,

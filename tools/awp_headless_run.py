@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -51,8 +52,11 @@ def run(project: Path, spec: dict[str, Any], timeout_seconds: float = 900.0,
         runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run) -> dict[str, Any]:
     started = time.monotonic()
     try:
+        # AWP_HEADLESS_RUN tells the agent's own startup hook not to register
+        # this run as a live session (it would hijack the live binding).
         completed = runner(list(spec["command"]), cwd=project, stdin=subprocess.DEVNULL, capture_output=True,
                            text=True, encoding="utf-8", errors="replace", timeout=timeout_seconds, check=False,
+                           env={**os.environ, "AWP_HEADLESS_RUN": str(spec.get("run_id", "1"))},
                            **hidden_process_options())
         code, output, error = completed.returncode, completed.stdout or "", completed.stderr or ""
     except subprocess.TimeoutExpired as expired:

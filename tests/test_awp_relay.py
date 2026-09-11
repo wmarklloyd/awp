@@ -496,6 +496,28 @@ class ReviewFindingTests(RelayFixture):
         self.assertEqual(count, "1")
 
 
+class HeadlessRunIdentityTests(unittest.TestCase):
+    def test_headless_run_is_marked_and_the_start_hook_skips_it(self) -> None:
+        import io, contextlib
+        from tools import awp_agent_start
+        from tools.awp_headless_run import run
+
+        seen = {}
+        with tempfile.TemporaryDirectory() as directory:
+            def runner(command, **kwargs):
+                seen.update(kwargs.get("env") or {})
+                return mock.Mock(returncode=1, stdout="", stderr="")
+            run(Path(directory), {"run_id": "run:9", "actor": "actor:x", "events": [], "command": ["x"]}, runner=runner)
+        self.assertEqual(seen.get("AWP_HEADLESS_RUN"), "run:9")
+        output = io.StringIO()
+        with mock.patch.dict(os.environ, {"AWP_HEADLESS_RUN": "run:9"}), \
+                mock.patch("sys.stdin", io.StringIO(json.dumps({"hook_event_name": "SessionStart", "session_id": "s", "cwd": "."}))), \
+                mock.patch("tools.awp_agent_start.run_hook") as run_hook, contextlib.redirect_stdout(output):
+            awp_agent_start.main(["--host", "codex", "--actor", "actor:codex"])
+        run_hook.assert_not_called()
+        self.assertIn("headless run", output.getvalue())
+
+
 class RelayProcessTests(unittest.TestCase):
     def test_only_one_relay_holds_the_clone_lock(self) -> None:
         from tools.awp_relay import SingletonLock
