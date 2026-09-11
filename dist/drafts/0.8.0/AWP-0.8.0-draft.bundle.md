@@ -3406,6 +3406,28 @@ A supervisor, adapter, or other delivering component MUST NOT publish a recipien
 
 **Acceptance.** A reachability probe used as the publication-to-wake fixture passes only when the ledger holds, within the probe's time-to-live, the probe publication, a transport receipt for the recipient's current route, and a recipient receipt whose provenance is `direct`, `agent-ingress`, or `host-prompt-hook`. A binding claiming host-neutral startup doorbells SHOULD demonstrate a passing probe with at least two different agent hosts, in each direction that both hosts can wake. A host with no endpoint through which a local supervisor can wake it MAY participate through entry recovery only, and MUST be disclosed as such rather than counted as woken.
 
+## 10. Git ledger profile `git-ledger-v1`
+
+`git-ledger-v1` stores a managed-collaboration rendezvous ledger in Git itself, so that the Git event that wakes a participant and the durable event it announces are the same object. It is the reference ledger profile for startup doorbells; the SQLite store of Section 5.1.1 remains a pilot profile. This section is appended at the end of the document so that adding it leaves existing requirement identifiers unchanged.
+
+**Profile selection.** A binding MAY select a ledger profile per clone. Every ledger profile MUST preserve the interaction, receipt, probe, and failure semantics of Sections 5 and 9, MUST be disclosed in the binding descriptor, and MUST NOT change what counts as delivery. Another store, including one built on another version-control system, MAY be added as a further profile if it meets the obligations below with equivalent mechanisms.
+
+**Per-actor append-only refs.** Each actor's events MUST be commits on a ref dedicated to that actor within the workstate's namespace (the reference binding uses `refs/awp/ledger/<workstate>/<actor>`, with collision-resistant ref components). Only the participant acting as that actor writes the ref. Each commit MUST carry exactly one event document and nothing else, and MUST have as its only parent the actor's previous event, or no parent for the actor's first event. Ref updates MUST be compare-and-swap against the value read before the commit was built and MUST NOT be forced; a writer whose update lost a race MUST rebuild the commit on the new head and retry. A reader MUST reject a ledger commit that does not carry the event document.
+
+**Event documents and identity.** The event document MUST be the canonical JSON serialization of the event, including its event identifier, kind, actor, occurrence time, parents, and payload, so that the commit's content address fixes the event's bytes. Event identifiers are unchanged by the profile. The binding identity MUST be stored once, as a document referenced by a binding ref created with compare-and-swap (the reference binding uses `refs/awp/binding/<project>`); the first writer wins, and every clone MUST use the stored identity.
+
+**Order and cursors.** Within an actor, commit ancestry is the event order and MUST be preserved. Across actors, a binding MAY present a deterministic total order, but correctness MUST NOT depend on cross-actor order beyond what event payloads reference. A consumer cursor MUST be a map from ledger ref to the last commit that has a durable disposition; replay from a cursor MUST return exactly the events after it, and a consumer MUST also deduplicate by event identifier so that a lost or reset cursor cannot deliver an event twice.
+
+**The ref update is the signal.** A binding using this profile MUST NOT require a separate signal ref: the ledger ref update is the Git event. A supervisor SHOULD use a change in the local ledger namespace, or in the remote's advertised ledger heads, as its wake trigger under Section 9, and MUST still read events only from ledger history.
+
+**Remote synchronization.** A binding MAY synchronize ledger refs with a Git remote so that participants on other machines and operating systems share one ledger without a shared filesystem. Pushes MUST only fast-forward; a push rejected for a ref owned by another clone that is ahead is expected and MUST NOT be treated as failure of the clone's own refs. A fetch MUST NOT force-update a ref that the local clone has advanced beyond the remote. Two clones MUST NOT write the same actor ref; an agent that runs on several machines MUST use a distinct actor identity on each, or a binding that serializes its writes. A participant that cannot reach the remote MUST disclose `AWP-COORD-LEDGER-UNAVAILABLE` for remote state and MUST NOT claim delivery to participants it cannot sync with.
+
+**Privacy.** Every event pushed to a remote is readable by everyone who can read that remote. A binding MUST disclose the visibility of any configured remote and MUST NOT push ledger refs to a remote whose readers exceed the audience of the interactions it carries without the principal's recorded authorization. With no remote configured, the ledger stays in the local repository.
+
+**Migration.** Migrating a ledger from another profile MUST preserve every event identifier and event document and the binding identity, and MUST be idempotent.
+
+**Limits.** The profile does not authenticate actors: commit authorship is not an identity claim, and an actor remains self-asserted as elsewhere in this draft. It does not encrypt events. Heartbeats and ingress requests remain local to each machine.
+
 ---
 
 # Machine-readable assets
@@ -3416,7 +3438,7 @@ Identified by digest; reproduced verbatim in `dist/drafts/0.8.0/AWP-0.8.0-draft.
 |---|---|---:|---|
 | Silo profile schema | `schemas/awp-silo-0.1.schema.json` | 9670 | `bc736a67a6c57ddd53e01168de1cbc193323290f65f50bfbeac675f3c4a88b5c` |
 | Module registry | `spec/drafts/0.8.0/modules.json` | 3341 | `233d381de6cac801971f93879e7db16def0f405d6fee8fc10c6f9f730e982e89` |
-| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 203384 | `de3c8f85d0e07614890673922614489f98daf8eef979f1cb5a08cc256a1c7a53` |
+| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 208462 | `bc3fb9b125af2209431e3888ec2914431502d66fda334c35fc118a74802348cc` |
 | Core schema | `schemas/awp-core-0.8.schema.json` | 14661 | `bd212815e521fefbd9757c0e3dc7c18890e936146f7065dd3ef7c54e2206454e` |
 | Cooperation schema | `schemas/awp-cooperation-0.1.schema.json` | 25432 | `3124bf5c6fdd173a97f49ac835db67ce7ddb7c0ae0d0fb9b4b857c32d5839f41` |
 | Capsule schema | `schemas/awp-capsule-0.5.schema.json` | 1289 | `8d33f83d815faf9ad7fa0b4b0823ae15b041b1d236e8c7153b60e886b18a080a` |

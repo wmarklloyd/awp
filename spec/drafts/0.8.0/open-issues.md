@@ -72,3 +72,9 @@ These questions are intentionally unresolved. A module must not imply that an op
 ## Requirement identifier questions
 
 35. How should requirement identifiers be anchored in the source text before 0.8 is released? Identifiers are currently positional per source file, so normative text inserted mid-file silently reassigns existing identifiers to unrelated statements (observed with section 5.2 on 2026-09-10); until they are anchored, new normative text is appended at the end of its source file.
+
+## Git ledger questions
+
+36. Which mechanism should authenticate the actor behind a `git-ledger-v1` ref (for example signed commits, forge-side push rules, or per-actor deploy keys), so that ref ownership becomes verifiable rather than self-asserted?
+37. What remote-sync trigger should replace polling of advertised heads where a forge offers webhooks or push notifications, and what latency bound should a remote profile declare?
+

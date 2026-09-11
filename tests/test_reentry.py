@@ -161,7 +161,9 @@ class ReentryTests(unittest.TestCase):
         view = self.module.build_reentry_view(ROOT / "awp.awp.md")
         view["coordination"] = {"state": "available", "read_verified": True, "open_count": 0}
         found = False
-        for pad in range(0, 400):
+        # The search depends on the live capsule's size, which changes with every
+        # checkpoint; a tie recurs every few hundred bytes, so search widely.
+        for pad in range(0, 4000):
             trial = json.loads(json.dumps(view))
             trial["briefing"] = view["briefing"] + ("x" * pad)
             trial["selection"].pop("output_bytes", None)
@@ -181,7 +183,7 @@ class ReentryTests(unittest.TestCase):
                 self.assertLessEqual(abs(payload["selection"]["output_bytes"] - len(rendered.encode("utf-8"))), 1)
                 self.assertTrue(complete)
                 break
-        self.assertTrue(found, "no rounding tie found within 400 bytes of padding; widen the search")
+        self.assertTrue(found, "no rounding tie found within 4000 bytes of padding; widen the search")
 
     def test_skipped_coordination_never_claims_complete(self) -> None:
         view = self.module.build_reentry_view(ROOT / "awp.awp.md")

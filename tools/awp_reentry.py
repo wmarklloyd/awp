@@ -358,7 +358,7 @@ def coordination_entry_view(project: Path, actor: str, register_observation: str
             "actor": actor,
             "binding": {
                 key: binding[key]
-                for key in ("binding_id", "profile", "project_id", "workstate_id", "reach", "delivery_mode", "operational_mode", "read_only_reason")
+                for key in ("binding_id", "profile", "ledger_profile", "project_id", "workstate_id", "reach", "delivery_mode", "operational_mode", "read_only_reason")
                 if binding.get(key) is not None
             },
             "frontier": observation.get("frontier", []),

@@ -58,6 +58,21 @@ class SupervisorTests(unittest.TestCase):
         self.assertEqual(result["acknowledged"], [])
         self.assertTrue(all(item["kind"] == "coop2.tickle.transport_queued" for item in rendezvous.receipts))
 
+    def test_fresh_replay_marks_historical_acknowledgements_seen(self):
+        old_ack = {"event_id": "evt:old", "kind": "coop2.tickle.acked", "occurred_at": "2000-01-01T00:00:00Z",
+                   "payload": {"tickle_id": "tickle:old", "recipient": "actor:test"}}
+        with tempfile.TemporaryDirectory() as directory:
+            rendezvous = FakeRendezvous([old_ack])
+            adapter = Adapter()
+            supervisor = Supervisor(rendezvous, "actor:test", "fake", "session", "generation",
+                                    adapter, Path(directory) / "state.json")
+            result = supervisor.step()
+            self.assertEqual(adapter.calls, [])
+            self.assertEqual(result["cursor"], 1)
+            new_ack = dict(old_ack, event_id="evt:new", occurred_at="2999-01-01T00:00:00Z")
+            rendezvous.ledger.events.append(new_ack)
+            self.assertEqual(supervisor.step()["delivered"], ["evt:new"])
+
     def test_expired_probe_is_not_delivered(self):
         expired = tickle(0) | {"occurred_at": "2000-01-01T00:00:00Z"}
         expired["payload"] = expired["payload"] | {"ttl_seconds": 90}
@@ -119,7 +134,7 @@ class SupervisorTests(unittest.TestCase):
 
     def test_delivers_tickle_acknowledgement_to_the_sender_endpoint(self):
         acknowledgement = {
-            "event_id": "evt:ack", "kind": "coop2.tickle.acked",
+            "event_id": "evt:ack", "kind": "coop2.tickle.acked", "occurred_at": "2999-01-01T00:00:00Z",
             "payload": {"tickle_id": "tickle:one", "recipient": "actor:test"},
         }
         with tempfile.TemporaryDirectory() as directory:

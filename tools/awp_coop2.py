@@ -22,6 +22,7 @@ from typing import Any, Sequence
 
 from .awp_coordination import CoordinationError, CoordinationLedger, discover_workstate, find_project, stable_project_id
 from .awp_runtime import hidden_process_options
+from .awp_git_ledger import GitLedger, PROFILE as GIT_LEDGER_PROFILE
 
 
 PROFILE = "local-coop2-rendezvous-v1"
@@ -287,14 +288,41 @@ class Heartbeat:
         }
 
 
+def _git_config(project: Path, key: str) -> str | None:
+    try:
+        completed = subprocess.run(["git", "config", "--get", key], cwd=project, capture_output=True, text=True,
+                                   check=False, timeout=15, **hidden_process_options())
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    value = completed.stdout.strip()
+    return value or None
+
+
+def ledger_profile(project: Path) -> str:
+    """The rendezvous ledger profile for this clone.
+
+    ``AWP_COOP2_LEDGER`` overrides; otherwise ``git config awp.coop2.ledger``;
+    otherwise the SQLite pilot profile.  New profiles register here.
+    """
+    return os.environ.get("AWP_COOP2_LEDGER") or _git_config(project, "awp.coop2.ledger") or "local-coop2-rendezvous-v1"
+
+
 class Rendezvous:
     def __init__(self, project: Path, ledger_path: Path | None = None) -> None:
         self.project = find_project(project)
         self.workstate_id, _ = discover_workstate(self.project)
         self.project_id = stable_project_id(self.project)
         selected_ledger = ledger_path or self.project / ".awp-runtime" / "coop2-rendezvous.sqlite3"
+        profile = ledger_profile(self.project)
+        if profile == GIT_LEDGER_PROFILE:
+            # The Git profile is selected per clone (git config awp.coop2.ledger)
+            # and then applies to every tool, whatever ledger path it was given.
+            self.ledger = GitLedger(self.project, remote=_git_config(self.project, "awp.coop2.remote"))
+        else:
+            self.ledger = None
         try:
-            self.ledger = CoordinationLedger(selected_ledger)
+            if self.ledger is None:
+                self.ledger = CoordinationLedger(selected_ledger)
         except (OSError, sqlite3.Error) as error:
             # Entry recovery must still read a durable store when the host
             # cannot acquire SQLite's normal lock/journal sidecars.  The
@@ -331,7 +359,10 @@ class Rendezvous:
     def _append(self, actor: str, kind: str, payload: dict) -> dict:
         with self.ledger._transaction() as connection:
             event, _ = self.ledger._append(connection, workstate_id=self.workstate_id, actor=actor, kind=kind, payload=payload, occurred_at=now())
-            return {"event_id": event["event_id"], "frontier": self.ledger._frontier(connection, self.workstate_id)}
+            receipt = {"event_id": event["event_id"], "frontier": self.ledger._frontier(connection, self.workstate_id)}
+            if event.get("_ref"):
+                receipt["ref"] = event["_ref"]
+            return receipt
 
     def _signal(self, receipt: dict, interaction_id: str, kind: str) -> dict:
         filesystem = self.doorbell.publish(
@@ -343,6 +374,12 @@ class Rendezvous:
             interaction_id=interaction_id,
             kind=kind,
         )
+        if getattr(self.ledger, "profile", None) == GIT_LEDGER_PROFILE:
+            # Under the Git ledger the ref update that stored the event is the
+            # Git event; no second signal ref is written or pruned.
+            return {"filesystem": filesystem, "git_ref": {
+                "profile": GIT_LEDGER_PROFILE, "ref": receipt.get("ref"), "event_id": receipt["event_id"],
+                "content": "the ledger ref update that stored the event", "state": "current"}}
         recent = [event["event_id"] for event in self._events()[-MAX_SIGNAL_REFS:]]
         return {
             "filesystem": filesystem,
@@ -469,6 +506,7 @@ class Rendezvous:
         doorbell["watcher_liveness"] = liveness_summary
         result = {
             "profile": PROFILE,
+            "ledger_profile": getattr(self.ledger, "profile", "sqlite-rendezvous"),
             "project_id": self.project_id,
             "workstate_id": self.workstate_id,
             "binding_id": self.ledger.binding_id(),

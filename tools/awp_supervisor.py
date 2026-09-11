@@ -62,7 +62,10 @@ class Supervisor:
         if event["kind"] == "coop2.interaction.requested":
             terminal = {"coop2.interaction.responded", "coop2.interaction.withdrawn", "coop2.interaction.refused"}
             return not any(item["kind"] in terminal and item.get("payload", {}).get("interaction_id") == payload.get("interaction_id") for item in all_events)
-        return event["kind"] in {"coop2.tickle.acked", "coop2.interaction.responded"}
+        if event["kind"] in {"coop2.tickle.acked", "coop2.interaction.responded"}:
+            floor = getattr(self, "_informational_floor", None)
+            return not floor or str(event.get("occurred_at", "")) >= floor
+        return False
 
     def _envelope(self, event: dict[str, Any]) -> dict[str, Any]:
         payload = event.get("payload", {})
@@ -110,13 +113,30 @@ class Supervisor:
             accept=lambda envelope: envelope.get("client_id") == self.actor,
         )
         state = self.state()
-        page = self.rendezvous.ledger.events_after(self.rendezvous.workstate_id, int(state["cursor"]), limit)
+        ledger = self.rendezvous.ledger
+        cursor = state.get("cursor", 0)
+        profile = getattr(ledger, "profile", "sqlite")
+        if state.get("ledger_profile", profile) != profile:
+            cursor = None  # a new store: replay it; jobs below keep delivery idempotent
+        if not cursor:
+            # Replaying from the beginning (first start, lost state, or a new
+            # store) must still deliver open requests and live probes, but
+            # historical acknowledgements and responses are marked seen rather
+            # than re-announced to the agent (Section 5.1.1's first-start rule).
+            state["informational_floor"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        if profile == "git-ledger-v1":
+            cursor = cursor if isinstance(cursor, dict) else {}
+        else:
+            cursor = int(cursor) if isinstance(cursor, (int, str)) and str(cursor).isdigit() else 0
+        state["ledger_profile"] = profile
+        self._informational_floor = state.get("informational_floor")
+        page = ledger.events_after(self.rendezvous.workstate_id, cursor, limit)
         all_events = self.rendezvous._events()
         delivered, deferred, unavailable = [], [], []
         acknowledged = []
         for event in page["events"]:
             sequence = event.pop("_ledger_sequence")
-            if self._is_actionable(event, all_events):
+            if event["event_id"] not in state["jobs"] and self._is_actionable(event, all_events):
                 # Every actionable event, reachability probes included, goes to
                 # the recipient agent through the host adapter.  The supervisor
                 # records only a transport receipt as actor:awp-supervisor; an
@@ -177,7 +197,7 @@ class SignalWatch:
     def __init__(self, project: Path, actor: str) -> None:
         self.project = project.resolve()
         common = self._git_common_dir(self.project)
-        self.paths = [common / "refs" / "awp" / "signal", common / "packed-refs",
+        self.paths = [common / "refs" / "awp" / "signal", common / "refs" / "awp" / "ledger", common / "packed-refs",
                       self.project / ".awp-runtime" / "requests" / safe_token(actor)]
 
     @staticmethod
@@ -200,8 +220,18 @@ class SignalWatch:
             except OSError:
                 parts.append((str(path), None))
                 continue
-            names = tuple(sorted(os.listdir(path))) if path.is_dir() else ()
-            parts.append((str(path), stat.st_mtime_ns, stat.st_size, names))
+            entries: tuple = ()
+            if path.is_dir():
+                found = []
+                for root, _dirs, files in os.walk(path):
+                    for name in files:
+                        try:
+                            item = os.stat(os.path.join(root, name))
+                        except OSError:
+                            continue
+                        found.append((os.path.relpath(os.path.join(root, name), path), item.st_mtime_ns, item.st_size))
+                entries = tuple(sorted(found))
+            parts.append((str(path), stat.st_mtime_ns, stat.st_size, entries))
         return tuple(parts)
 
 

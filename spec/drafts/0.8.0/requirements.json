@@ -2163,6 +2163,54 @@
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 305,
       "statement": "**Acceptance.** A reachability probe used as the publication-to-wake fixture passes only when the ledger holds, within the probe's time-to-live, the probe publication, a transport receipt for the recipient's current route, and a recipient receipt whose provenance is `direct`, `agent-ingress`, or `host-prompt-hook`. A binding claiming host-neutral startup doorbells SHOULD demonstrate a passing probe with at least two different agent hosts, in each direction that both hosts can wake. A host with no endpoint through which a local supervisor can wake it MAY participate through entry recovery only, and MUST be disclosed as such rather than counted as woken."
+    },
+    {
+      "id": "AWP-COOP-078",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 311,
+      "statement": "**Profile selection.** A binding MAY select a ledger profile per clone. Every ledger profile MUST preserve the interaction, receipt, probe, and failure semantics of Sections 5 and 9, MUST be disclosed in the binding descriptor, and MUST NOT change what counts as delivery. Another store, including one built on another version-control system, MAY be added as a further profile if it meets the obligations below with equivalent mechanisms."
+    },
+    {
+      "id": "AWP-COOP-079",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 313,
+      "statement": "**Per-actor append-only refs.** Each actor's events MUST be commits on a ref dedicated to that actor within the workstate's namespace (the reference binding uses `refs/awp/ledger/<workstate>/<actor>`, with collision-resistant ref components). Only the participant acting as that actor writes the ref. Each commit MUST carry exactly one event document and nothing else, and MUST have as its only parent the actor's previous event, or no parent for the actor's first event. Ref updates MUST be compare-and-swap against the value read before the commit was built and MUST NOT be forced; a writer whose update lost a race MUST rebuild the commit on the new head and retry. A reader MUST reject a ledger commit that does not carry the event document."
+    },
+    {
+      "id": "AWP-COOP-080",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 315,
+      "statement": "**Event documents and identity.** The event document MUST be the canonical JSON serialization of the event, including its event identifier, kind, actor, occurrence time, parents, and payload, so that the commit's content address fixes the event's bytes. Event identifiers are unchanged by the profile. The binding identity MUST be stored once, as a document referenced by a binding ref created with compare-and-swap (the reference binding uses `refs/awp/binding/<project>`); the first writer wins, and every clone MUST use the stored identity."
+    },
+    {
+      "id": "AWP-COOP-081",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 317,
+      "statement": "**Order and cursors.** Within an actor, commit ancestry is the event order and MUST be preserved. Across actors, a binding MAY present a deterministic total order, but correctness MUST NOT depend on cross-actor order beyond what event payloads reference. A consumer cursor MUST be a map from ledger ref to the last commit that has a durable disposition; replay from a cursor MUST return exactly the events after it, and a consumer MUST also deduplicate by event identifier so that a lost or reset cursor cannot deliver an event twice."
+    },
+    {
+      "id": "AWP-COOP-082",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 319,
+      "statement": "**The ref update is the signal.** A binding using this profile MUST NOT require a separate signal ref: the ledger ref update is the Git event. A supervisor SHOULD use a change in the local ledger namespace, or in the remote's advertised ledger heads, as its wake trigger under Section 9, and MUST still read events only from ledger history."
+    },
+    {
+      "id": "AWP-COOP-083",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 321,
+      "statement": "**Remote synchronization.** A binding MAY synchronize ledger refs with a Git remote so that participants on other machines and operating systems share one ledger without a shared filesystem. Pushes MUST only fast-forward; a push rejected for a ref owned by another clone that is ahead is expected and MUST NOT be treated as failure of the clone's own refs. A fetch MUST NOT force-update a ref that the local clone has advanced beyond the remote. Two clones MUST NOT write the same actor ref; an agent that runs on several machines MUST use a distinct actor identity on each, or a binding that serializes its writes. A participant that cannot reach the remote MUST disclose `AWP-COORD-LEDGER-UNAVAILABLE` for remote state and MUST NOT claim delivery to participants it cannot sync with."
+    },
+    {
+      "id": "AWP-COOP-084",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 323,
+      "statement": "**Privacy.** Every event pushed to a remote is readable by everyone who can read that remote. A binding MUST disclose the visibility of any configured remote and MUST NOT push ledger refs to a remote whose readers exceed the audience of the interactions it carries without the principal's recorded authorization. With no remote configured, the ledger stays in the local repository."
+    },
+    {
+      "id": "AWP-COOP-085",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 325,
+      "statement": "**Migration.** Migrating a ledger from another profile MUST preserve every event identifier and event document and the binding identity, and MUST be idempotent."
     }
   ]
 }
