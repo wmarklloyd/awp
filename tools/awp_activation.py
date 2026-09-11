@@ -18,6 +18,8 @@ except ImportError:  # executed as a script from tools/
 
 
 PROFILE = "awp-host-activation-v1"
+SAFE_ACTOR = __import__("re").compile(r"^[a-z][a-z0-9_.:@+-]{0,99}$")
+SAFE_EVENT = __import__("re").compile(r"^evt:[0-9a-zA-Z-]{1,64}$")
 RESULTS = {"accepted", "deferred", "unavailable"}
 
 
@@ -72,6 +74,10 @@ def delivery_message(envelope: dict[str, Any]) -> str:
     """
     actor = envelope["recipient_actor"]
     event_id = envelope["event_id"]
+    # Identifiers are pasted into a command the agent is asked to run, so only
+    # strict tokens are allowed; anything else could smuggle in shell syntax.
+    if not SAFE_ACTOR.match(str(actor)) or not SAFE_EVENT.match(str(event_id)):
+        raise ActivationError("refusing a doorbell notice with an unsafe actor or event identifier")
     subject = envelope.get("interaction_id") or event_id
     ingress = f"python -m tools.awp_ingress --actor {actor} --event {event_id}"
     kind = envelope["event_kind"]

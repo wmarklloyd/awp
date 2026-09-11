@@ -164,7 +164,8 @@ class CodexQueueWatcherTests(unittest.TestCase):
 
     def test_windows_queue_uses_hidden_process_options(self) -> None:
         watcher = CodexQueueWatcher(FakeRendezvous([]), "actor:codex", "thread:test", None, self.state)
-        with patch("tools.awp_codex_wake.os.name", "nt"), patch("tools.awp_codex_wake.subprocess.STARTUPINFO") as info:
+        with patch("tools.awp_codex_wake.os.name", "nt"), patch("tools.awp_codex_wake.subprocess.STARTUPINFO", create=True) as info, \
+                patch("tools.awp_codex_wake.subprocess.STARTF_USESHOWWINDOW", 1, create=True):
             options = watcher._hidden_process_options()
         self.assertIn("creationflags", options)
         self.assertIn("startupinfo", options)

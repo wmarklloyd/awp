@@ -83,3 +83,9 @@ These questions are intentionally unresolved. A module must not imply that an op
 38. Does a Claude routine with an API trigger, bound to the principal's computer, give hosted Claude sessions a dependable `W3` wake (latency, daily caps, research-preview stability), and what is the equivalent for other hosted agents?
 39. Where should the relay run for teams whose participants include sleeping laptops and hosted agents, and how should several relays divide bindings without double waking?
 
+
+## Notification architecture review questions (2026-09-11)
+
+40. How can a relay address the open conversation of an agent desktop app whose sessions expose no thread identifier (for example the Codex app), so that its `W1` reaches the session the principal is watching instead of a new `W2` run?
+41. What signal transport lets a hosted agent's subscription be woken without polling a Git remote, given sandboxes that block third-party push services, and should that transport be standardized as a binding profile?
+42. How should a hosted agent re-arm its subscription automatically after its vendor recycles the workspace, rather than on its next entry?

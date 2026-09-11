@@ -207,11 +207,16 @@ def start_watcher(
     binding = (declared or {}).get("binding", {})
     _stop_legacy_supervisor(project, actor)
     relay = awp_relay.ensure(project, interval_seconds, startup_timeout_seconds)
+    try:
+        autostart = awp_relay.ensure_autostart(project)
+    except Exception as error:  # the watchdog is hardening; activation does not depend on it
+        autostart = {"state": "unavailable", "reason": str(error)[:200]}
     control = {
         "profile": PROFILE, "actor": actor, "host": host, "thread": thread, "remote": remote,
         "ledger": str(ledger), "started_at": started_at, "desired_state": "running",
         "binding_id": binding.get("binding_id"), "binding_event": binding.get("event_id"),
         "relay_generation": (relay.get("status") or {}).get("generation"), "relay_state": relay["state"],
+        "relay_autostart": autostart.get("state"),
     }
     watcher = {"actor": actor, "watcher_liveness": "none"}
     if relay["state"] in {"attached", "started"} and binding:

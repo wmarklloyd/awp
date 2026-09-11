@@ -82,7 +82,8 @@ BUILTIN_PROFILES: dict[str, dict[str, Any]] = {
                      "command": ["claude", "-p", "{prompt}", "--permission-mode", "default",
                                  "--allowedTools", *CLAUDE_MINIMAL_TOOLS]},
     "codex-exec": {"class": "W2", "kind": "headless",
-                   "command": ["codex", "exec", "--sandbox", "workspace-write", "--cd", "{project}", "{prompt}"]},
+                   "command": ["codex", "exec", "--sandbox", "workspace-write", "--cd", "{project}", "{prompt}"],
+                   "probe_command": ["codex", "exec", "--sandbox", "read-only", "--cd", "{project}", "{prompt}"]},
     "gemini-print": {"class": "W2", "kind": "headless", "command": ["gemini", "-p", "{prompt}"]},
     "claude-routine": {"class": "W3", "kind": "claude-routine"},
     "desktop-notify": {"class": "W5", "kind": "notify"},
@@ -97,6 +98,9 @@ BUILTIN_PROFILES: dict[str, dict[str, Any]] = {
 ROUTINE_ENDPOINT = "https://api.anthropic.com/v1/claude_code/routines/"
 ROUTINE_BETA = "experimental-cc-routine-2026-04-01"
 SECRET_REF = re.compile(r"^(env:[A-Za-z_][A-Za-z0-9_]{0,63}|file:~/\.awp/secrets/[A-Za-z0-9._-]{1,64})$")
+ACTOR_TOKEN = re.compile(r"^[a-z][a-z0-9_.:@+-]{0,99}$")
+EVENT_TOKEN = re.compile(r"^evt:[0-9a-f-]{36}$")
+SUBJECT_TOKEN = re.compile(r"^(tickle|interaction):[0-9a-f]{24}$")
 PARAM_KEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 TOKEN_LIKE = re.compile(r"(sk-ant-|Bearer\s|ghp_|github_pat_|xox[abp]-)", re.IGNORECASE)
 
@@ -266,8 +270,18 @@ def enter(rendezvous: Any, actor: str, host: str | None = None,
         result = declare(rendezvous, actor, wake_class, adapter, params=params)
         declared.append({"class": wake_class, "adapter": adapter, "binding_id": result["binding"]["binding_id"],
                          "new": not result["deduplicated"]})
-    best = reach(rendezvous._events(), actor)["participants"].get(actor, {}).get("best")
-    return {"profile": PROFILE, "actor": actor, "declared": declared, "best": best}
+    events = rendezvous._events()
+    best = reach(events, actor)["participants"].get(actor, {}).get("best")
+    result = {"profile": PROFILE, "actor": actor, "declared": declared, "best": best}
+    signal = next((b for b in active_bindings(events).values() if b["actor"] == actor and b["adapter"] == "git-signal"), None)
+    if signal:
+        # A hosted agent arms its own watcher in its own workspace, then asks
+        # for a probe so this session's path is verified, not assumed.
+        params = signal["params"]
+        result["arm_watcher"] = (f"python tools/awp_wake.py arm-hook --actor {actor} --url {params['remote_url']} "
+                                 f"--ref {params['signal_ref']}")
+        result["verify"] = f"python -m tools.awp_wake probe --binding {signal['binding_id']}"
+    return result
 
 
 def retire(rendezvous: Any, actor: str, binding: str, reason: str = "retired by participant") -> dict[str, Any]:
@@ -307,6 +321,19 @@ def ladder(bindings: dict[str, dict[str, Any]], actor: str, relay: str | None = 
 
 # -- reach --------------------------------------------------------------------
 
+REACH_TTL_SECONDS = 6 * 3600
+SUBSCRIBED_ADAPTERS = {"git-signal", "self-poll"}
+
+
+def reaches(binding: dict[str, Any]) -> str:
+    """What a rung actually reaches, stated for senders (review finding 5)."""
+    wake_class, adapter = binding["class"], binding["adapter"]
+    if wake_class == "W1":
+        return "the open session (subscribed)" if adapter in SUBSCRIBED_ADAPTERS else "the open session"
+    return {"W2": "a new run of the agent, not its open session", "W3": "a new hosted session",
+            "W4": "a forge-watching session", "W5": "the principal, not the agent"}.get(wake_class, "unknown")
+
+
 def reach(events: list[dict[str, Any]], actor: str | None = None, now: datetime | None = None) -> dict[str, Any]:
     """Measured reach per binding, and the best verified rung per participant.
 
@@ -327,7 +354,7 @@ def reach(events: list[dict[str, Any]], actor: str | None = None, now: datetime 
     for item in bindings.values():
         rows[item["binding_id"]] = {"binding_id": item["binding_id"], "actor": item["actor"], "class": item["class"],
                                     "adapter": item["adapter"], "relay": item["relay"], "order": item["order"],
-                                    "reach": "unverified", "declared_at": item.get("declared_at")}
+                                    "reaches": reaches(item), "reach": "unverified", "declared_at": item.get("declared_at")}
     for event in events:
         payload = event.get("payload", {})
         target = payload.get("probe_binding")
@@ -341,7 +368,8 @@ def reach(events: list[dict[str, Any]], actor: str | None = None, now: datetime 
         ack = acks.get(payload.get("tickle_id"))
         if ack:
             acked = parse_time(ack.get("occurred_at"))
-            row.update({"reach": "verified", "verified_at": ack.get("occurred_at"),
+            fresh = acked is not None and (now - acked).total_seconds() <= REACH_TTL_SECONDS
+            row.update({"reach": "verified" if fresh else "stale", "verified_at": ack.get("occurred_at"),
                         "latency_seconds": round((acked - sent).total_seconds(), 1) if acked and sent else None,
                         "acknowledged_via": ack["payload"].get("acknowledged_via")})
         elif sent and now > sent + timedelta(seconds=int(payload.get("ttl_seconds", 90))):
@@ -358,9 +386,15 @@ def reach(events: list[dict[str, Any]], actor: str | None = None, now: datetime 
             continue
         mine = [rows[item["binding_id"]] for item in ladder(bindings, name)]
         live = [row for row in mine if row["reach"] == "verified" and not row.get("suspended") and row["class"] != "W5"]
+        stale = [row for row in mine if row["reach"] == "stale" and not row.get("suspended") and row["class"] != "W5"]
         notify = [row for row in mine if row["class"] == "W5"]
         if live:
-            best = {"rung": live[0]["class"], "binding_id": live[0]["binding_id"], "state": "wake-verified"}
+            best = {"rung": live[0]["class"], "binding_id": live[0]["binding_id"], "state": "wake-verified",
+                    "reaches": live[0]["reaches"]}
+        elif stale:
+            best = {"rung": stale[0]["class"], "binding_id": stale[0]["binding_id"], "state": "wake-stale",
+                    "reaches": stale[0]["reaches"], "verified_at": stale[0].get("verified_at"),
+                    "note": f"last verified more than {REACH_TTL_SECONDS // 3600} h ago; the agent re-verifies on its next entry"}
         elif any(row["class"] != "W5" for row in mine):
             best = {"rung": "unverified", "state": "declared-unverified",
                     "note": "bindings are declared but none has passed a probe; delivery may still wake the recipient"}
@@ -470,16 +504,19 @@ class HeadlessAdapter(HostAdapter):
     binding: dict[str, Any]
     command: Sequence[str]
     launcher: Callable[..., Any] = subprocess.Popen
+    probe_command: Sequence[str] | None = None
 
     def deliver_many(self, envelopes: Sequence[dict[str, Any]]) -> dict[str, Any]:
         for envelope in envelopes:
             validate_envelope(envelope)
-        executable = shutil.which(self.command[0]) if self.command else None
+        only_probes = all(envelope["event_kind"] == "coop2.tickle.sent" for envelope in envelopes)
+        template = list(self.probe_command) if (only_probes and self.probe_command) else list(self.command)
+        executable = shutil.which(template[0]) if template else None
         if not executable:
-            return activation_result("unavailable", reason=f"{self.command[0] if self.command else 'command'} not found on PATH")
+            return activation_result("unavailable", reason=f"{template[0] if template else 'command'} not found on PATH")
         prompt = notice_for(envelopes, "W2")
         resolved = [executable] + [part.replace("{prompt}", prompt).replace("{project}", str(self.project))
-                                   for part in self.command[1:]]
+                                   for part in template[1:]]
         run_id = f"run:{uuid.uuid4().hex[:16]}"
         runtime = self.project / ".awp-runtime" / "headless"
         spec_path = runtime / f"{run_id.split(':')[1]}.json"
@@ -638,12 +675,9 @@ class GitSignalAdapter(HostAdapter):
         remote = _git_config(self.project, "awp.wake.remote") or "origin"
         try:
             tree = self._git("mktree", input_text="").stdout.strip()
-            parent = self._git("rev-parse", "--verify", "--quiet", ref)
+            # One parentless commit, force-updated: the ref never grows history.
             message = "AWP wake " + envelopes[0]["recipient_actor"] + " " + " ".join(e["event_id"] for e in envelopes)
-            arguments = ["commit-tree", tree, "-m", message]
-            if parent.returncode == 0 and parent.stdout.strip():
-                arguments[2:2] = ["-p", parent.stdout.strip()]
-            commit = self._git(*arguments)
+            commit = self._git("commit-tree", tree, "-m", message)
             if commit.returncode != 0 or not tree:
                 return activation_result("unavailable", reason=(commit.stderr or "could not create signal")[:300])
             sha = commit.stdout.strip()
@@ -677,6 +711,35 @@ class SelfPollAdapter(HostAdapter):
 
     def probe(self) -> dict[str, Any]:
         return activation_result("accepted", receipt="awaiting-recipient-poll")
+
+
+def arm_hook(actor: str, url: str, ref: str, settings: Path | None = None, directory: Path | None = None) -> dict[str, Any]:
+    """Install (idempotently) a Claude Code Stop hook that runs the wake watcher.
+
+    ``asyncRewake`` runs the hook in the background and wakes the idle session
+    when the watcher exits with code 2.  Written for Claude hosts; another host
+    wires tools/awp_wake_watch.sh into its own equivalent.
+    """
+    if not ACTOR_TOKEN.match(actor) or not SIGNAL_REF.match(ref) or not url.startswith("https://"):
+        raise WakeError("arm-hook needs a valid actor, an https remote URL, and a refs/awp/wake/ ref")
+    directory = directory or Path.home() / ".claude"
+    settings = settings or directory / "settings.json"
+    directory.mkdir(parents=True, exist_ok=True)
+    watcher = directory / "awp-wake-watch.sh"
+    watcher.write_text((Path(__file__).resolve().parent / "awp_wake_watch.sh").read_text(encoding="utf-8"), encoding="utf-8")
+    hook = directory / "awp-wake-hook.sh"
+    hook.write_text("#!/bin/sh\n# AWP wake subscription (asyncRewake Stop hook); written by awp_wake arm-hook.\n"
+                    f"exec sh '{watcher}' '{url}' '{ref}' '{actor}' '{directory / 'awp-wake-state'}' 15\n", encoding="utf-8")
+    os.chmod(watcher, 0o755); os.chmod(hook, 0o755)
+    try:
+        value = json.loads(settings.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        value = {}
+    stop = value.setdefault("hooks", {}).setdefault("Stop", [])
+    stop[:] = [entry for entry in stop if "awp-wake-hook" not in json.dumps(entry)]
+    stop.append({"hooks": [{"type": "command", "command": str(hook), "asyncRewake": True}]})
+    settings.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    return {"state": "armed", "settings": str(settings), "hook": str(hook), "actor": actor, "ref": ref}
 
 
 def pending(events: list[dict[str, Any]], actor: str, now: datetime | None = None) -> list[dict[str, Any]]:
@@ -750,7 +813,7 @@ def adapter_for(binding: dict[str, Any], project: Path, profiles: dict[str, dict
     if kind == "activation-command":
         return CommandAdapter(list(profile["command"]))
     if kind == "headless":
-        return HeadlessAdapter(project, binding, list(profile["command"]))
+        return HeadlessAdapter(project, binding, list(profile["command"]), probe_command=profile.get("probe_command"))
     if kind == "claude-routine":
         return RoutineAdapter(binding, environment)
     if kind == "notify":
@@ -791,6 +854,9 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("--order", type=int)
     item = commands.add_parser("enter", help="declare this agent's automatic wake bindings (run on project entry)")
     item.add_argument("--actor", required=True); item.add_argument("--host")
+    item = commands.add_parser("arm-hook", help="install the wake-watcher hook in this agent's own workspace (Claude hosts)")
+    item.add_argument("--actor", required=True); item.add_argument("--url", required=True); item.add_argument("--ref", required=True)
+    item.add_argument("--settings", type=Path)
     item = commands.add_parser("pending", help="items waiting for an agent's receipt; --ack records receipt for each")
     item.add_argument("--actor", required=True); item.add_argument("--ack", action="store_true")
     item = commands.add_parser("retire"); item.add_argument("--actor", required=True); item.add_argument("--binding", required=True)
@@ -814,6 +880,14 @@ def probe(rendezvous: Any, binding: str, ttl_seconds: int | None = None, key: st
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parser().parse_args(argv)
+    if args.command == "arm-hook":  # runs in the agent's own workspace; needs no ledger
+        try:
+            result = arm_hook(args.actor, args.url, args.ref, args.settings)
+        except WakeError as error:
+            print(json.dumps({"state": "refused", "reason": str(error)}, indent=2))
+            return 2
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0
     from tools.awp_coop2 import Rendezvous  # deferred: keeps adapters importable without a project
 
     rendezvous = Rendezvous(args.project.resolve())

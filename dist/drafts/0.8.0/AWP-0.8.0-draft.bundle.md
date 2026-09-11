@@ -3470,6 +3470,16 @@ This section generalizes the startup doorbell of Section 9 from agents whose ope
 
 **Wake records.** A relay MUST record each escalation, each principal notification, each suspension and resumption of a binding, and each ladder that ends without a recipient receipt, as ledger events published under the relay's own actor identity and naming the event or binding concerned. These records MUST NOT be counted as recipient receipts.
 
+**Subscribed sessions.** A `W1` binding MAY be a subscription rather than an injection: the recipient's host runs a watcher that wakes the idle session when a signal the relay publishes changes. A subscription's signal MUST carry identifiers only. A binding whose signal transport polls MUST disclose that it polls and at what interval, and an event-driven claim MUST NOT be made for the transport, only for the recipient session, which is woken only when a signal changes.
+
+**Engagement.** A recipient receipt proves that a notice entered a session, not that the recipient acted on it. For a consultation, when no acceptance, refusal, or response follows a recipient receipt within the interaction's delivery window, the relay MUST escalate to the principal where a `W5` binding exists and MUST record the outcome in either case.
+
+**Honest reach.** Reported reach MUST expire: a binding verified by a probe older than the relay's reach time-to-live MUST be reported as stale, not as verified. Liveness evidence for a recipient MUST come from that recipient's session or from a probe through its binding, never from the relay's own heartbeat alone. A reach report MUST state what each rung reaches, and in particular MUST NOT present a new run of an agent as its open session.
+
+**Identifier safety.** Actor, event, and interaction identifiers that a notice asks an agent to use in a command MUST match a strict token grammar; a relay MUST NOT deliver a notice built from an identifier that does not.
+
+**Relay supervision.** At most one relay MUST serve a given clone at a time. A relay deployment SHOULD start the relay without waiting for any agent, for example through a per-user scheduled job that starts it at login and restarts it if it stops, and MUST NOT require administrator rights to do so.
+
 ---
 
 # Machine-readable assets
@@ -3480,7 +3490,7 @@ Identified by digest; reproduced verbatim in `dist/drafts/0.8.0/AWP-0.8.0-draft.
 |---|---|---:|---|
 | Silo profile schema | `schemas/awp-silo-0.1.schema.json` | 9670 | `bc736a67a6c57ddd53e01168de1cbc193323290f65f50bfbeac675f3c4a88b5c` |
 | Module registry | `spec/drafts/0.8.0/modules.json` | 3341 | `233d381de6cac801971f93879e7db16def0f405d6fee8fc10c6f9f730e982e89` |
-| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 217776 | `b70182b203a7e0b9607f1721ed9f6677524e50acaa53b7a6be892b473366a958` |
+| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 220288 | `716d12bb679c4449917a4dbab453a01315b7b8622986102efce5999cac4d28a6` |
 | Core schema | `schemas/awp-core-0.8.schema.json` | 14661 | `bd212815e521fefbd9757c0e3dc7c18890e936146f7065dd3ef7c54e2206454e` |
 | Cooperation schema | `schemas/awp-cooperation-0.1.schema.json` | 25432 | `3124bf5c6fdd173a97f49ac835db67ce7ddb7c0ae0d0fb9b4b857c32d5839f41` |
 | Capsule schema | `schemas/awp-capsule-0.5.schema.json` | 1289 | `8d33f83d815faf9ad7fa0b4b0823ae15b041b1d236e8c7153b60e886b18a080a` |

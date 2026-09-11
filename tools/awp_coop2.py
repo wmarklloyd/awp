@@ -551,6 +551,8 @@ class Rendezvous:
         return result
 
     def join(self, actor: str, capabilities: list[str], observation: str = "on-entry-only") -> dict:
+        if not re.match(r"^[a-z][a-z0-9_.:@+-]{0,99}$", actor or ""):
+            raise CoordinationError("actor must be a lowercase token (letters, digits, and _ . : @ + -)")
         if observation not in OBSERVATION_MODES:
             raise CoordinationError(f"observation must be one of {', '.join(OBSERVATION_MODES)}")
         for event in reversed(self._events()):

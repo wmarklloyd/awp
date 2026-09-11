@@ -4,6 +4,7 @@
 - [Architecture](architecture.md)
 - [Model participation architecture and implementation plan](model-participation-architecture.md)
 - [Any-agent doorbell architecture](doorbell-architecture.md)
+- [Notification architecture review, 2026-09-11](reviews/2026-09-11-notification-architecture.md)
 - [Experimental Cooperation Contracts (COOP-1, COOP-2, and COOP-3 work ladder with optional consultation)](../spec/drafts/0.8.0/cooperation-contracts.md)
 - [Model participation responsibility matrix](model-participation-matrix.md)
 - [Model participation operation state machines](model-participation-state-machines.md)

@@ -2656,6 +2656,36 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 369,
       "statement": "**Wake records.** A relay MUST record each escalation, each principal notification, each suspension and resumption of a binding, and each ladder that ends without a recipient receipt, as ledger events published under the relay's own actor identity and naming the event or binding concerned. These records MUST NOT be counted as recipient receipts."
+    },
+    {
+      "id": "AWP-COOP-103",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 371,
+      "statement": "**Subscribed sessions.** A `W1` binding MAY be a subscription rather than an injection: the recipient's host runs a watcher that wakes the idle session when a signal the relay publishes changes. A subscription's signal MUST carry identifiers only. A binding whose signal transport polls MUST disclose that it polls and at what interval, and an event-driven claim MUST NOT be made for the transport, only for the recipient session, which is woken only when a signal changes."
+    },
+    {
+      "id": "AWP-COOP-104",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 373,
+      "statement": "**Engagement.** A recipient receipt proves that a notice entered a session, not that the recipient acted on it. For a consultation, when no acceptance, refusal, or response follows a recipient receipt within the interaction's delivery window, the relay MUST escalate to the principal where a `W5` binding exists and MUST record the outcome in either case."
+    },
+    {
+      "id": "AWP-COOP-105",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 375,
+      "statement": "**Honest reach.** Reported reach MUST expire: a binding verified by a probe older than the relay's reach time-to-live MUST be reported as stale, not as verified. Liveness evidence for a recipient MUST come from that recipient's session or from a probe through its binding, never from the relay's own heartbeat alone. A reach report MUST state what each rung reaches, and in particular MUST NOT present a new run of an agent as its open session."
+    },
+    {
+      "id": "AWP-COOP-106",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 377,
+      "statement": "**Identifier safety.** Actor, event, and interaction identifiers that a notice asks an agent to use in a command MUST match a strict token grammar; a relay MUST NOT deliver a notice built from an identifier that does not."
+    },
+    {
+      "id": "AWP-COOP-107",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 379,
+      "statement": "**Relay supervision.** At most one relay MUST serve a given clone at a time. A relay deployment SHOULD start the relay without waiting for any agent, for example through a per-user scheduled job that starts it at login and restarts it if it stops, and MUST NOT require administrator rights to do so."
     }
   ]
 }

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -41,14 +42,14 @@ if __package__ in {None, ""}:
     from tools.awp_coop2 import Rendezvous
     from tools.awp_coordination import CoordinationError
     from tools.awp_request_spool import RequestSpool
-    from tools.awp_runtime import atomic_json, control_is_current
+    from tools.awp_runtime import atomic_json, control_is_current, hidden_process_options
     from tools.awp_supervisor import SignalWatch
 else:
     from . import awp_wake as wake
     from .awp_coop2 import Rendezvous
     from .awp_coordination import CoordinationError
     from .awp_request_spool import RequestSpool
-    from .awp_runtime import atomic_json, control_is_current
+    from .awp_runtime import atomic_json, control_is_current, hidden_process_options
     from .awp_supervisor import SignalWatch
 
 
@@ -59,10 +60,13 @@ PROBE_BACKOFF_SECONDS = 1800
 COALESCE_SECONDS = 5
 HISTORY_SECONDS = 3600
 DONE_RETENTION_SECONDS = 7 * 86400
+SPOOL_RETENTION_SECONDS = 7 * 86400
 RECEIPT_VIA = {"agent-ingress", "host-prompt-hook", "host-launch"}
 RECIPIENT_RECEIPTS = {"coop2.interaction.observed", "coop2.interaction.accepted", "coop2.interaction.refused",
                       "coop2.interaction.responded"}
-FINAL = {"received", "closed", "expired", "failed", "principal-notified", "done"}
+FINAL = {"received", "closed", "expired", "failed", "principal-notified", "done", "engaged", "engagement-escalated"}
+ENGAGEMENT_KINDS = {"coop2.interaction.accepted", "coop2.interaction.refused", "coop2.interaction.responded"}
+PROBE_BACKOFF_CAP_SECONDS = 86400
 
 
 def runtime(project: Path) -> Path:
@@ -105,6 +109,7 @@ class _Index:
         self.received: dict[str, dict[str, Any]] = {}
         self.withdrawn: set[str] = set()
         self.outcomes: set[str] = set()
+        self.engaged: set[str] = set()
         for event in events:
             payload = event.get("payload", {})
             kind = event["kind"]
@@ -112,6 +117,8 @@ class _Index:
                 self.acked.setdefault(payload.get("tickle_id"), event)
             elif kind in RECIPIENT_RECEIPTS:
                 self.received.setdefault(f"{payload.get('interaction_id')}\0{event.get('actor')}", event)
+                if kind in ENGAGEMENT_KINDS:
+                    self.engaged.add(f"{payload.get('interaction_id')}\0{event.get('actor')}")
             elif kind == "coop2.interaction.withdrawn":
                 self.withdrawn.add(payload.get("interaction_id"))
             elif kind == wake.OUTCOME:
@@ -235,7 +242,10 @@ class Relay:
 
         # Liveness first: a slow wake adapter below must not make the relay look dead.
         heartbeats = []
-        for actor in sorted({item["actor"] for item in mine.values() if item["class"] == "W1"}):
+        # Only a binding that injects into a session kept open on this machine
+        # earns a heartbeat; a subscribed hosted agent's liveness is its probes.
+        for actor in sorted({item["actor"] for item in mine.values()
+                             if item["class"] == "W1" and item["adapter"] not in wake.SUBSCRIBED_ADAPTERS}):
             try:
                 self.rendezvous.heartbeat(actor, PROFILE)
                 heartbeats.append(actor)
@@ -258,6 +268,10 @@ class Relay:
         if not recipient or recipient == RELAY_ACTOR or event_id in state["jobs"] or event_id in handled:
             return False
         subject = payload.get("tickle_id") or payload.get("interaction_id")
+        if (not wake.ACTOR_TOKEN.match(str(recipient)) or not wake.EVENT_TOKEN.match(str(event_id))
+                or not wake.SUBJECT_TOKEN.match(str(subject))):
+            self.notes.append(f"skipped malformed event {str(event_id)[:60]}")
+            return False
         job = {"event_id": event_id, "event_kind": kind, "recipient": recipient, "subject": subject,
                "occurred_at": event.get("occurred_at"), "created_at": wake.iso(now), "tried": [], "current": None,
                "state": "open"}
@@ -275,6 +289,10 @@ class Relay:
         elif kind == "coop2.interaction.requested":
             if subject in index.withdrawn or index.receipt(job):
                 return False
+            try:
+                job["delivery_window"] = max(60, int(payload.get("delivery_window_seconds", 300)))
+            except (TypeError, ValueError):
+                job["delivery_window"] = 300
         elif kind in {"coop2.tickle.acked", "coop2.interaction.responded"}:
             floor = state.get("informational_floor")
             if floor and str(event.get("occurred_at", "")) < floor:
@@ -301,9 +319,12 @@ class Relay:
             if entry.get("probed_declaration") != binding["event_id"]:
                 key = f"probe:{binding['event_id']}"
             elif entry.get("suspended"):
+                # Exponential backoff: a W2 or W3 probe is a paid agent run.
                 last = wake.parse_time(entry.get("last_probe_at"))
-                if last is None or (now - last).total_seconds() >= PROBE_BACKOFF_SECONDS:
+                wait = min(PROBE_BACKOFF_SECONDS * (2 ** int(entry.get("probe_attempts", 0))), PROBE_BACKOFF_CAP_SECONDS)
+                if last is None or (now - last).total_seconds() >= wait:
                     key = f"probe:{binding['event_id']}:{int(now.timestamp())}"
+                    entry["probe_attempts"] = int(entry.get("probe_attempts", 0)) + 1
             if key is None:
                 continue
             try:
@@ -340,6 +361,7 @@ class Relay:
     def _succeed(self, state: dict[str, Any], binding: dict[str, Any]) -> None:
         entry = self._binding_state(state, binding)
         entry["failures"] = 0
+        entry["probe_attempts"] = 0
         if entry.get("suspended"):
             entry["suspended"] = None
             self._record(wake.RESUMED, {"binding_id": binding["binding_id"], "actor": binding["actor"],
@@ -395,9 +417,25 @@ class Relay:
                     binding = by_id.get(job["probe_binding"])
                 if binding is not None and (current or job.get("probe_binding")):
                     self._succeed(state, binding)
-                job.update({"state": "received", "current": None, "received_at": receipt.get("occurred_at"),
-                            "via": (receipt.get("payload") or {}).get("acknowledged_via") or (receipt.get("payload") or {}).get("observed_via")})
-                finished.append(job["event_id"])
+                via = (receipt.get("payload") or {}).get("acknowledged_via") or (receipt.get("payload") or {}).get("observed_via")
+                if job["event_kind"] == "coop2.interaction.requested" and job["state"] != "engagement-watch":
+                    # Receipt proves the notice entered a session, not that the
+                    # agent took it up.  Watch for accept, refuse, or respond.
+                    received_at = wake.parse_time(receipt.get("occurred_at")) or now
+                    job.update({"state": "engagement-watch", "current": None, "received_at": receipt.get("occurred_at"),
+                                "via": via, "engage_by": wake.iso(received_at + timedelta(seconds=job.get("delivery_window", 300)))})
+                elif job["event_kind"] != "coop2.interaction.requested":
+                    job.update({"state": "received", "current": None, "received_at": receipt.get("occurred_at"), "via": via})
+                    finished.append(job["event_id"])
+                    continue
+            if job["state"] == "engagement-watch":
+                key = f"{job['subject']}\0{job['recipient']}"
+                if key in index.engaged or job["subject"] in index.withdrawn:
+                    job["state"] = "engaged"
+                    finished.append(job["event_id"])
+                elif now > (wake.parse_time(job.get("engage_by")) or now):
+                    self._engagement_lapsed(state, job, mine, index, now)
+                    finished.append(job["event_id"])
                 continue
             if job["event_kind"] == "coop2.interaction.requested" and job["subject"] in index.withdrawn:
                 job.update({"state": "closed", "current": None})
@@ -459,6 +497,11 @@ class Relay:
                     self._transport(member, binding, result)
                     member["tried"].append(self._key(binding))
                     delivered.append(member["event_id"])
+                if (result.get("state") == "accepted" and binding["class"] in {"W2", "W3"}
+                        and job["event_kind"] == "coop2.interaction.requested" and not job.get("notified")):
+                    # A new run, not the session the principal is watching,
+                    # is handling a consultation: tell the principal as well.
+                    self._notify(state, job, mine, now, f"handled by {wake.reaches(binding)}")
                 if result.get("state") == "accepted":
                     for member in group:
                         deadline = now + timedelta(seconds=window)
@@ -493,18 +536,9 @@ class Relay:
             return
         notify = [item for item in wake.ladder(mine, job["recipient"]) if item["class"] == "W5"]
         if job["event_kind"] == "coop2.interaction.requested" and notify and not job.get("notified"):
-            binding = notify[0]
-            reason = self._skip_reason(state, binding, job, now)
-            if reason is None:
-                result = self._deliver(binding, [job])
-                self._binding_state(state, binding).setdefault("runs", []).append(wake.iso(now))
-                self._record(wake.PRINCIPAL_NOTIFIED, {"event_id": job["event_id"], "interaction_id": job["subject"],
-                                                       "recipient": job["recipient"], "binding_id": binding["binding_id"],
-                                                       "channel": result.get("endpoint_receipt"), "outcome": "principal-notified",
-                                                       "tried": [item.split("@")[0] for item in job["tried"]]})
-                job.update({"state": "principal-notified", "notified": True})
+            if self._notify(state, job, mine, now, "no wake binding produced a recipient receipt"):
+                job["state"] = "principal-notified"
                 return
-            self._escalate(job, binding, f"skipped: {reason}")
         if job["tried"]:
             reason = "no wake binding produced a recipient receipt"
         elif notify and job["event_kind"] == "coop2.tickle.sent":
@@ -514,6 +548,34 @@ class Relay:
         self._finish(job, "entry-only", reason, index)
         # Parked, not closed: a later declaration (a new live session) resumes it.
         job["state"] = "parked"
+
+    def _notify(self, state: dict[str, Any], job: dict[str, Any], mine: dict[str, dict[str, Any]], now: datetime,
+                reason: str) -> bool:
+        """Tell the principal through the recipient's W5 binding; record it either way."""
+        notify = [item for item in wake.ladder(mine, job["recipient"]) if item["class"] == "W5"]
+        if not notify:
+            return False
+        binding = notify[0]
+        skip = self._skip_reason(state, binding, job, now)
+        if skip:
+            self._escalate(job, binding, f"skipped: {skip}")
+            return False
+        result = self._deliver(binding, [job])
+        self._binding_state(state, binding).setdefault("runs", []).append(wake.iso(now))
+        self._record(wake.PRINCIPAL_NOTIFIED, {"event_id": job["event_id"], "interaction_id": job["subject"],
+                                               "recipient": job["recipient"], "binding_id": binding["binding_id"],
+                                               "channel": result.get("endpoint_receipt"), "outcome": "principal-notified",
+                                               "reason": reason[:200], "tried": [item.split("@")[0] for item in job["tried"]]})
+        job["notified"] = True
+        return True
+
+    def _engagement_lapsed(self, state: dict[str, Any], job: dict[str, Any], mine: dict[str, dict[str, Any]],
+                           index: _Index, now: datetime) -> None:
+        reason = "received but not accepted, refused, or answered within the delivery window"
+        notified = (not job.get("notified")) and self._notify(state, job, mine, now, reason)
+        if not notified:
+            self._finish(job, "received-not-engaged", reason, index)
+        job["state"] = "engagement-escalated"
 
     def _deliver_info(self, job: dict[str, Any], mine: dict[str, dict[str, Any]]) -> None:
         # Informational notices (a probe was acknowledged, a response arrived)
@@ -627,6 +689,65 @@ def stop(project: Path) -> dict[str, Any]:
     return {"state": "stopping", "control": control}
 
 
+class SingletonLock:
+    """One relay per clone: an exclusive OS lock held for the relay's lifetime.
+
+    A second relay (a racing activation, the autostart watchdog, a manual
+    run) fails to take the lock and exits.  A relaunch after a code change
+    releases the lock first and the new process waits briefly to take it.
+    """
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.handle: Any = None
+
+    def acquire(self, timeout_seconds: float = 0.0) -> bool:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        deadline = time.monotonic() + max(timeout_seconds, 0.0)
+        while True:
+            handle = open(self.path, "a+")
+            try:
+                if os.name == "nt":
+                    import msvcrt
+
+                    handle.seek(0)
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                handle.close()
+                if time.monotonic() >= deadline:
+                    return False
+                time.sleep(0.25)
+                continue
+            self.handle = handle
+            return True
+
+    def release(self) -> None:
+        if self.handle is None:
+            return
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                self.handle.seek(0)
+                msvcrt.locking(self.handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(self.handle.fileno(), fcntl.LOCK_UN)
+        except OSError:
+            pass
+        self.handle.close()
+        self.handle = None
+
+
+def lock_path(project: Path) -> Path:
+    return runtime(project) / "awp-relay.lock"
+
+
 def _code_fingerprint() -> tuple:
     tools = Path(__file__).resolve().parent
     return tuple(sorted((item.name, item.stat().st_mtime_ns) for item in tools.glob("awp_*.py")))
@@ -653,15 +774,27 @@ def _claim(control: Path, generation: str) -> None:
 
 def run_loop(relay: Relay, control: Path, generation: str, argv: Sequence[str], *, interval_seconds: float = 5.0,
              signal_poll_seconds: float = 0.25, once: bool = False) -> int:
+    lock = SingletonLock(lock_path(relay.project))
+    if not lock.acquire(timeout_seconds=15.0):
+        print(json.dumps({"relay": "not started", "reason": "another relay holds this clone's lock"}), flush=True)
+        return 0
     watch = SignalWatch(relay.project, RELAY_ACTOR)
     watch.paths[-1] = runtime(relay.project) / "requests"  # every served actor's ingress spool
     code = _code_fingerprint()
     _claim(control, generation)
+    last_prune = 0.0
     trigger = "start"
     while True:
         if not control_is_current(control, generation):
+            lock.release()
             return 0
         seen = watch.fingerprint()
+        if time.monotonic() - last_prune > 3600:
+            last_prune = time.monotonic()
+            try:
+                relay.spool.prune(SPOOL_RETENTION_SECONDS)
+            except OSError:
+                pass
         try:
             output = relay.step()
         except Exception as error:  # keep relaying; the next pass replays from the cursor
@@ -670,19 +803,121 @@ def run_loop(relay: Relay, control: Path, generation: str, argv: Sequence[str], 
         if once or output.get("delivered") or output.get("escalated") or output.get("error"):
             print(json.dumps(output, sort_keys=True), flush=True)
         if once:
+            lock.release()
             return 0
         deadline = time.monotonic() + max(interval_seconds, 0.1)
         trigger = "replay"
         while time.monotonic() < deadline:
             if not control_is_current(control, generation):
+                lock.release()
                 return 0
             if watch.fingerprint() != seen:
                 trigger = "git-signal"
                 break
             time.sleep(max(signal_poll_seconds, 0.05))
         if _code_fingerprint() != code:
+            lock.release()
             _relaunch(argv, relay.project)
             return 0
+
+
+# -- autostart watchdog ------------------------------------------------------------
+#
+# The relay must be running after a reboot before any agent starts.  A per-user
+# scheduled job runs ``awp_relay.py ensure`` at login and every five minutes:
+# ensure attaches to a live relay (a no-op) or starts one.  It needs no
+# administrator rights and is removed with ``awp_relay uninstall-autostart``.
+
+def _task_name(project: Path) -> str:
+    return "AWP relay " + hashlib.sha256(str(project).encode()).hexdigest()[:8]
+
+
+def _ensure_command(project: Path) -> list[str]:
+    executable = Path(sys.executable)
+    if os.name == "nt":
+        windowless = executable.with_name("pythonw.exe")
+        if windowless.exists():
+            executable = windowless
+    return [str(executable), str(Path(__file__).resolve()), "ensure", "--project", str(project)]
+
+
+def autostart_plan(project: Path, platform: str | None = None, home: Path | None = None) -> dict[str, Any]:
+    """What install_autostart would do on this platform (no side effects)."""
+    platform = platform or ("windows" if os.name == "nt" else "macos" if sys.platform == "darwin" else "linux")
+    home = home or Path.home()
+    name = _task_name(project)
+    command = _ensure_command(project)
+    if platform == "windows":
+        line = " ".join(f'"{part}"' if " " in part or "\\" in part else part for part in command)
+        return {"platform": platform, "name": name, "commands": [
+            ["schtasks", "/Create", "/TN", name, "/TR", line, "/SC", "MINUTE", "/MO", "5", "/F"]],
+            "remove": [["schtasks", "/Delete", "/TN", name, "/F"]], "files": {}}
+    slug = name.lower().replace(" ", "-")
+    if platform == "macos":
+        plist = home / "Library" / "LaunchAgents" / f"com.awp.{slug}.plist"
+        arguments = "".join(f"<string>{part}</string>" for part in command)
+        body = ('<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>'
+                f"<key>Label</key><string>com.awp.{slug}</string><key>ProgramArguments</key><array>{arguments}</array>"
+                "<key>RunAtLoad</key><true/><key>StartInterval</key><integer>300</integer></dict></plist>\n")
+        return {"platform": platform, "name": name, "files": {str(plist): body},
+                "commands": [["launchctl", "load", "-w", str(plist)]], "remove": [["launchctl", "unload", "-w", str(plist)]]}
+    unit_dir = home / ".config" / "systemd" / "user"
+    service = unit_dir / f"{slug}.service"
+    timer = unit_dir / f"{slug}.timer"
+    exec_line = " ".join(f"'{part}'" for part in command)
+    return {"platform": "linux", "name": name, "files": {
+        str(service): f"[Unit]\nDescription={name}\n[Service]\nType=oneshot\nExecStart={exec_line}\n",
+        str(timer): f"[Unit]\nDescription={name} watchdog\n[Timer]\nOnBootSec=1min\nOnUnitActiveSec=5min\n[Install]\nWantedBy=timers.target\n"},
+        "commands": [["systemctl", "--user", "daemon-reload"], ["systemctl", "--user", "enable", "--now", timer.name]],
+        "remove": [["systemctl", "--user", "disable", "--now", timer.name]]}
+
+
+def autostart_marker(project: Path) -> Path:
+    return runtime(project) / "awp-relay-autostart.json"
+
+
+def install_autostart(project: Path, runner: Callable[..., Any] = subprocess.run,
+                      plan: dict[str, Any] | None = None) -> dict[str, Any]:
+    plan = plan or autostart_plan(project)
+    for path, body in plan["files"].items():
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_text(body, encoding="utf-8")
+    for command in plan["commands"]:
+        try:
+            completed = runner(command, capture_output=True, text=True, timeout=30, check=False, **hidden_process_options())
+        except (OSError, subprocess.TimeoutExpired) as error:
+            return {"state": "unavailable", "platform": plan["platform"], "reason": str(error)[:300]}
+        if completed.returncode != 0:
+            return {"state": "unavailable", "platform": plan["platform"],
+                    "reason": (completed.stderr or completed.stdout or "failed").strip()[:300]}
+    record = {"state": "installed", "platform": plan["platform"], "name": plan["name"], "at": wake.iso(wake.utc_now()),
+              "remove": plan["remove"]}
+    atomic_json(autostart_marker(project), record)
+    return record
+
+
+def uninstall_autostart(project: Path, runner: Callable[..., Any] = subprocess.run) -> dict[str, Any]:
+    record = _read(autostart_marker(project)) or autostart_plan(project)
+    for command in record.get("remove", []):
+        try:
+            runner(command, capture_output=True, text=True, timeout=30, check=False, **hidden_process_options())
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    try:
+        autostart_marker(project).unlink()
+    except OSError:
+        pass
+    return {"state": "removed", "name": record.get("name")}
+
+
+def ensure_autostart(project: Path, runner: Callable[..., Any] = subprocess.run) -> dict[str, Any]:
+    """Install the watchdog once per clone unless ``git config awp.relay.autostart false``."""
+    if (wake._git_config(project, "awp.relay.autostart") or "").lower() in {"false", "no", "0", "off"}:
+        return {"state": "disabled"}
+    marker = _read(autostart_marker(project))
+    if marker.get("state") == "installed":
+        return {"state": "present", "name": marker.get("name")}
+    return install_autostart(project, runner)
 
 
 LIVE_SESSION_PROFILES = {"codex": "codex-queue"}
@@ -734,7 +969,7 @@ def adopt_legacy(args: argparse.Namespace) -> int:
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    result.add_argument("command", nargs="?", default="run", choices=["run", "status", "ensure", "stop"])
+    result.add_argument("command", nargs="?", default="run", choices=["run", "status", "ensure", "stop", "install-autostart", "uninstall-autostart"])
     result.add_argument("--project", type=Path, default=Path.cwd())
     result.add_argument("--relay-id")
     result.add_argument("--control", type=Path)
@@ -759,6 +994,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0 if result["state"] in {"attached", "started"} else 2
     if args.command == "stop":
         print(json.dumps(stop(project), indent=2, sort_keys=True))
+        return 0
+    if args.command == "install-autostart":
+        result = install_autostart(project)
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return 0 if result["state"] == "installed" else 2
+    if args.command == "uninstall-autostart":
+        print(json.dumps(uninstall_autostart(project), indent=2, sort_keys=True))
         return 0
     rendezvous = Rendezvous(project)
     control = args.control or control_path(project)

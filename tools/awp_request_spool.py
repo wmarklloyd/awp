@@ -61,6 +61,25 @@ class RequestSpool:
         except FileNotFoundError:
             return None
 
+    def prune(self, max_age_seconds: float) -> int:
+        """Remove answered requests and their responses older than ``max_age_seconds``."""
+        import time as _time
+
+        cutoff = _time.time() - max_age_seconds
+        removed = 0
+        for response in list(self.responses.glob("*/*.response")):
+            try:
+                if response.stat().st_mtime >= cutoff:
+                    continue
+                request = self.requests / response.parent.name / (response.stem + ".request")
+                for path in (request, response):
+                    if path.exists():
+                        path.unlink()
+                removed += 1
+            except OSError:
+                continue
+        return removed
+
     def process(self, handler: Callable[[dict[str, Any]], dict[str, Any]], limit: int = 100,
                 accept: Callable[[dict[str, Any]], bool] | None = None) -> list[Path]:
         processed = []

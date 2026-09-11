@@ -31,12 +31,10 @@ current() {
   GIT_TERMINAL_PROMPT=0 git ls-remote "$url" "$ref" 2>/dev/null | cut -f1
 }
 
+# A first run (a new workspace has no memory of the last signal) treats any
+# existing signal as pending: one cheap check beats a silently missed doorbell.
 last=$(cat "$seen" 2>/dev/null || true)
-if [ -z "$last" ]; then
-  last=$(current)
-  [ -n "$last" ] || last=none
-  echo "$last" > "$seen"
-fi
+[ -n "$last" ] || last=none
 
 while :; do
   now=$(current)
