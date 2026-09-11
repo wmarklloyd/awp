@@ -17,6 +17,54 @@ def notice(kind: str = "coop2.tickle.sent") -> str:
                              "event_kind": kind, "interaction_id": "tickle:abc"})
 
 
+_KICK = None
+
+
+def setUpModule() -> None:
+    # Tests must never start a real relay from the repository they run in.
+    global _KICK
+    from unittest import mock
+    _KICK = mock.patch("tools.awp_prompt_receipt.keep_relay_running")
+    _KICK.start()
+
+
+def tearDownModule() -> None:
+    _KICK.stop()
+
+
+class RelayKickTests(unittest.TestCase):
+    def test_every_prompt_starts_a_dead_relay_and_installs_the_watchdog_once(self) -> None:
+        from unittest import mock
+        from tools import awp_relay
+        import tools.awp_prompt_receipt as receipt
+
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            (project / ".awp.json").write_text("{}", encoding="utf-8")
+            with mock.patch.object(awp_relay, "relay_status", return_value={"live": False}), \
+                    mock.patch.object(awp_relay, "spawn") as spawn, \
+                    mock.patch.object(awp_relay, "ensure_autostart", return_value={"state": "installed"}) as autostart:
+                self.assertEqual(awp_relay.kick(project), {"relay": "started", "autostart": "installed"})
+            spawn.assert_called_once()
+            autostart.assert_called_once()
+            with mock.patch.object(awp_relay, "relay_status", return_value={"live": True}), \
+                    mock.patch.object(awp_relay, "spawn") as spawn, \
+                    mock.patch.object(awp_relay, "_read", return_value={"state": "installed"}):
+                self.assertEqual(awp_relay.kick(project), {"relay": "live"})
+            spawn.assert_not_called()
+            # The real hook calls kick, and a relay-started headless run does not.
+            _KICK.stop()
+            try:
+                with mock.patch.object(awp_relay, "kick", return_value={"relay": "live"}) as kick:
+                    receipt.keep_relay_running({"cwd": str(project)})
+                    kick.assert_called_once()
+                    with mock.patch.dict("os.environ", {"AWP_HEADLESS_RUN": "run:1"}):
+                        receipt.keep_relay_running({"cwd": str(project)})
+                    kick.assert_called_once()
+            finally:
+                _KICK.start()
+
+
 class PromptReceiptTests(unittest.TestCase):
     def test_parses_every_notice_the_supervisor_sends(self) -> None:
         for kind in ("coop2.tickle.sent", "coop2.interaction.requested", "coop2.interaction.responded"):

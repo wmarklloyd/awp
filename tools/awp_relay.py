@@ -933,6 +933,24 @@ def ensure_autostart(project: Path, runner: Callable[..., Any] = subprocess.run)
     return install_autostart(project, runner)
 
 
+def kick(project: Path, interval_seconds: float = 5.0) -> dict[str, Any]:
+    """Keep the relay and its watchdog in place from any host hook, cheaply.
+
+    Called on every prompt a local agent host processes: when the relay is
+    live this is two small file reads; when it is not, it starts the relay
+    without waiting and installs the watchdog once.  Any agent use therefore
+    repairs the doorbell, and no person has to.
+    """
+    result: dict[str, Any] = {"relay": "live"}
+    if not relay_status(project, interval_seconds)["live"]:
+        spawn(project, interval_seconds, started_by="host-hook")
+        result["relay"] = "started"
+    marker = _read(autostart_marker(project))
+    if marker.get("state") != "installed":
+        result["autostart"] = ensure_autostart(project).get("state")
+    return result
+
+
 LIVE_SESSION_PROFILES = {"codex": "codex-queue"}
 
 

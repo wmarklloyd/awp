@@ -55,8 +55,36 @@ def _log(project: Path, record: dict[str, Any]) -> None:
         pass
 
 
+def keep_relay_running(payload: dict[str, Any]) -> None:
+    """Every prompt a local host processes repairs the doorbell if it is down.
+
+    This needs no user action and costs two file reads when the relay is live.
+    Headless runs the relay itself started are skipped.
+    """
+    import os
+
+    if os.environ.get("AWP_HEADLESS_RUN"):
+        return
+    try:
+        project = find_project(Path(payload.get("cwd") or Path.cwd()))
+    except (CoordinationError, OSError):
+        return
+    try:
+        if __package__ in {None, ""}:
+            from tools.awp_relay import kick
+        else:
+            from .awp_relay import kick
+        result = kick(project)
+    except Exception as error:  # the prompt always goes through
+        _log(project, {"outcome": "relay-kick-failed", "detail": str(error)[:200]})
+        return
+    if result.get("relay") != "live" or result.get("autostart"):
+        _log(project, {"outcome": "relay-kick", **result})
+
+
 def handle(payload: dict[str, Any], wait_seconds: float = 10.0) -> str | None:
     """Return developer context for the host, or None for an ordinary prompt."""
+    keep_relay_running(payload)
     parsed = parse_notice(str(payload.get("prompt") or ""))
     if parsed is None:
         return None
