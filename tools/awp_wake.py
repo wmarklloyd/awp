@@ -89,6 +89,10 @@ BUILTIN_PROFILES: dict[str, dict[str, Any]] = {
     # A hosted agent that cannot be woken from outside but can schedule its own
     # wake-ups (Claude in Cowork) checks the ledger itself while it is active.
     "self-poll": {"class": "W1", "kind": "self-poll"},
+    # Event-driven wake for a hosted agent: the relay publishes a content-free
+    # signal ref to a remote the agent's own workspace can read, and a
+    # background watcher there wakes the agent when that ref changes.
+    "git-signal": {"class": "W1", "kind": "git-signal"},
 }
 ROUTINE_ENDPOINT = "https://api.anthropic.com/v1/claude_code/routines/"
 ROUTINE_BETA = "experimental-cc-routine-2026-04-01"
@@ -206,19 +210,46 @@ def declare(rendezvous: Any, actor: str, wake_class: str, adapter: str, *, relay
 # notification to the principal as the last resort.  (A live-session binding
 # is declared by session activation, which knows the session.)
 SELF_POLL_SECONDS = 120
-SELF_POLL_HOSTS = {"cowork"}
+HOSTED_HOSTS = {"cowork"}
+SIGNAL_REF = re.compile(r"^refs/awp/wake/[a-z0-9-]{4,64}$")
 HEADLESS_BY_HOST = {"codex": ("codex-exec", "codex"), "claude": ("claude-print", "claude"),
                     "claude-code": ("claude-print", "claude"), "gemini": ("gemini-print", "gemini")}
 
 
-def automatic_bindings(host: str | None, which: Callable[[str], str | None] = shutil.which) -> list[tuple[str, str]]:
-    result = []
-    if (host or "").lower() in SELF_POLL_HOSTS:
-        result.append(("W1", "self-poll"))
+def signal_ref(actor: str) -> str:
+    return "refs/awp/wake/" + hashlib.sha256(actor.encode()).hexdigest()[:16]
+
+
+def signal_remote_url(project: Path | None) -> str | None:
+    """An https URL for the wake-signal remote, readable without credentials."""
+    if project is None:
+        return None
+    url = _git_config(project, "awp.wake.url")
+    if not url:
+        try:
+            completed = subprocess.run(["git", "remote", "get-url", "origin"], cwd=project, capture_output=True,
+                                       text=True, check=False, timeout=15, **hidden_process_options())
+            url = completed.stdout.strip() if completed.returncode == 0 else None
+        except (OSError, subprocess.TimeoutExpired):
+            url = None
+    if url and url.startswith("git@github.com:"):
+        url = "https://github.com/" + url.split(":", 1)[1]
+    return url if url and url.startswith("https://") else None
+
+
+def automatic_bindings(host: str | None, which: Callable[[str], str | None] = shutil.which,
+                       project: Path | None = None, actor: str | None = None) -> list[tuple[str, str, dict[str, Any] | None]]:
+    result: list[tuple[str, str, dict[str, Any] | None]] = []
+    if (host or "").lower() in HOSTED_HOSTS:
+        url = signal_remote_url(project)
+        if url and actor:
+            result.append(("W1", "git-signal", {"signal_ref": signal_ref(actor), "remote_url": url}))
+        else:
+            result.append(("W1", "self-poll", {"interval_seconds": SELF_POLL_SECONDS}))
     headless = HEADLESS_BY_HOST.get((host or "").lower())
     if headless and which(headless[1]):
-        result.append(("W2", headless[0]))
-    result.append(("W5", "desktop-notify"))
+        result.append(("W2", headless[0], None))
+    result.append(("W5", "desktop-notify", None))
     return result
 
 
@@ -231,8 +262,7 @@ def enter(rendezvous: Any, actor: str, host: str | None = None,
     disclosed in the reach report.
     """
     declared = []
-    for wake_class, adapter in automatic_bindings(host, which):
-        params = {"interval_seconds": SELF_POLL_SECONDS} if adapter == "self-poll" else None
+    for wake_class, adapter, params in automatic_bindings(host, which, Path(rendezvous.project), actor):
         result = declare(rendezvous, actor, wake_class, adapter, params=params)
         declared.append({"class": wake_class, "adapter": adapter, "binding_id": result["binding"]["binding_id"],
                          "new": not result["deduplicated"]})
@@ -577,6 +607,61 @@ class NotifyAdapter(HostAdapter):
         return activation_result("accepted", receipt="notifications.log")
 
 
+@dataclass
+class GitSignalAdapter(HostAdapter):
+    """W1 for hosted agents: publish a content-free wake signal to a Git remote.
+
+    The signal is a commit with an empty tree on ``refs/awp/wake/<actor
+    token>``; its message names only the recipient and event identifiers. The
+    push uses the relay machine's existing Git credentials and never prompts.
+    The remote is relay-local configuration (``git config awp.wake.remote``,
+    default ``origin``), never taken from the ledger.
+    """
+
+    project: Path
+    binding: dict[str, Any]
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run
+
+    def _git(self, *arguments: str, input_text: str | None = None, timeout: int = 30) -> subprocess.CompletedProcess[str]:
+        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never",
+               "GIT_AUTHOR_NAME": "AWP relay", "GIT_AUTHOR_EMAIL": "awp-relay@localhost",
+               "GIT_COMMITTER_NAME": "AWP relay", "GIT_COMMITTER_EMAIL": "awp-relay@localhost"}
+        return self.runner(["git", *arguments], cwd=self.project, input=input_text, capture_output=True, text=True,
+                           timeout=timeout, check=False, env=env, **hidden_process_options())
+
+    def deliver_many(self, envelopes: Sequence[dict[str, Any]]) -> dict[str, Any]:
+        for envelope in envelopes:
+            validate_envelope(envelope)
+        ref = str(self.binding.get("params", {}).get("signal_ref", ""))
+        if not SIGNAL_REF.match(ref):
+            return activation_result("unavailable", reason="git-signal binding needs params.signal_ref under refs/awp/wake/")
+        remote = _git_config(self.project, "awp.wake.remote") or "origin"
+        try:
+            tree = self._git("mktree", input_text="").stdout.strip()
+            parent = self._git("rev-parse", "--verify", "--quiet", ref)
+            message = "AWP wake " + envelopes[0]["recipient_actor"] + " " + " ".join(e["event_id"] for e in envelopes)
+            arguments = ["commit-tree", tree, "-m", message]
+            if parent.returncode == 0 and parent.stdout.strip():
+                arguments[2:2] = ["-p", parent.stdout.strip()]
+            commit = self._git(*arguments)
+            if commit.returncode != 0 or not tree:
+                return activation_result("unavailable", reason=(commit.stderr or "could not create signal")[:300])
+            sha = commit.stdout.strip()
+            self._git("update-ref", ref, sha)
+            pushed = self._git("push", "--quiet", remote, f"+{ref}:{ref}", timeout=60)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            return activation_result("deferred", reason=f"signal push failed: {str(error)[:200]}")
+        if pushed.returncode != 0:
+            return activation_result("deferred", reason=f"signal push failed: {(pushed.stderr or '').strip()[:300]}")
+        return activation_result("accepted", receipt=sha[:12])
+
+    def deliver(self, envelope: dict[str, Any]) -> dict[str, Any]:
+        return self.deliver_many([envelope])
+
+    def probe(self) -> dict[str, Any]:
+        return activation_result("accepted", receipt="git-signal")
+
+
 class SelfPollAdapter(HostAdapter):
     """The recipient checks the ledger itself on a timer; nothing is sent.
 
@@ -672,6 +757,8 @@ def adapter_for(binding: dict[str, Any], project: Path, profiles: dict[str, dict
         return NotifyAdapter(project)
     if kind == "self-poll":
         return SelfPollAdapter()
+    if kind == "git-signal":
+        return GitSignalAdapter(project, binding)
     raise WakeError(f"adapter kind {kind!r} is not supported by this relay")
 
 

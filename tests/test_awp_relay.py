@@ -125,6 +125,36 @@ class AutomaticBindingTests(RelayFixture):
         best = wake.reach(self.rendezvous._events())["participants"]["actor:claude"]["best"]
         self.assertEqual(best["state"], "wake-verified")
 
+    def test_hosted_agent_with_a_remote_gets_an_event_driven_signal(self) -> None:
+        import subprocess, time
+
+        bare = self.project / "signals.git"
+        subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+        subprocess.run(["git", "config", "awp.wake.remote", str(bare)], cwd=self.project, check=True)
+        with mock.patch("tools.awp_wake.signal_remote_url", return_value="https://example.invalid/repo.git"):
+            entered = wake.enter(self.rendezvous, "actor:claude", "cowork", which=lambda name: None)
+        self.assertEqual([(i["class"], i["adapter"]) for i in entered["declared"]], [("W1", "git-signal"), ("W5", "desktop-notify")])
+        binding = next(b for b in wake.active_bindings(self.rendezvous._events()).values() if b["adapter"] == "git-signal")
+        ref = binding["params"]["signal_ref"]
+        state = self.project / "watch-state"
+        watcher = subprocess.Popen(["sh", "tools/awp_wake_watch.sh", str(bare), ref, "actor:claude", str(state), "1"],
+                                   cwd=Path(__file__).resolve().parents[1], stderr=subprocess.PIPE, text=True)
+        time.sleep(1.5)
+        self.assertIsNone(watcher.poll())  # asleep: nothing to report, no model turns
+        adapter = wake.adapter_for(binding, self.project)
+        envelope = {"type": "cooperation_activation_envelope", "module": "urn:awp:cooperation",
+                    "profile": "awp-host-activation-v1", "operation_id": "op", "binding_id": "b", "project_id": "p",
+                    "workstate_id": "w", "recipient_actor": "actor:claude", "route_id": binding["binding_id"],
+                    "route_generation": "g", "event_id": "evt:1", "event_kind": "coop2.tickle.sent",
+                    "interaction_id": "tickle:1", "ledger_frontier": []}
+        self.assertEqual(adapter.deliver(envelope)["state"], "accepted")
+        _, err = watcher.communicate(timeout=10)
+        self.assertEqual(watcher.returncode, 2)
+        self.assertIn("awp_wake pending --actor actor:claude --ack", err)
+        message = subprocess.run(["git", "--git-dir", str(bare), "log", "-1", "--format=%s", ref],
+                                 capture_output=True, text=True, check=True).stdout
+        self.assertEqual(message.strip(), "AWP wake actor:claude evt:1")  # identifiers only
+
     def test_notification_tells_the_principal_what_to_do(self) -> None:
         text = wake._notification_text([{"recipient_actor": "actor:claude"}])
         self.assertIn("Open Claude in the project and say: check your AWP inbox.", text)
