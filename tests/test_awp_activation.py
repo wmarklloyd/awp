@@ -53,6 +53,20 @@ class ActivationContractTests(unittest.TestCase):
         self.assertEqual(result["state"], "accepted")
         self.assertIn("activation probe", calls[0][0][0][-1])
 
+    def test_tickle_acknowledgement_does_not_request_ingress(self) -> None:
+        calls = []
+        class Completed:
+            returncode = 0
+            stdout = "queued"
+            stderr = ""
+        def runner(*args, **kwargs):
+            calls.append((args, kwargs)); return Completed()
+        acknowledgement = envelope() | {"event_kind": "coop2.tickle.acked", "interaction_id": "tickle:one"}
+        result = CLIResumeAdapter("codex", "thread:test", command=["codex", "queue"], runner=runner).deliver(acknowledgement)
+        self.assertEqual(result["state"], "accepted")
+        self.assertIn("tickle:one acknowledged", calls[0][0][0][-1])
+        self.assertNotIn("awp_ingress", calls[0][0][0][-1])
+
     def test_generic_hook_uses_same_command_for_any_host(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             project = Path(directory); project.joinpath(".awp.json").write_text("{}", encoding="utf-8")

@@ -56,7 +56,7 @@ class Supervisor:
         if event["kind"] == "coop2.interaction.requested":
             terminal = {"coop2.interaction.responded", "coop2.interaction.withdrawn", "coop2.interaction.refused"}
             return not any(item["kind"] in terminal and item.get("payload", {}).get("interaction_id") == payload.get("interaction_id") for item in all_events)
-        return event["kind"] == "coop2.interaction.responded"
+        return event["kind"] in {"coop2.tickle.acked", "coop2.interaction.responded"}
 
     def _envelope(self, event: dict[str, Any]) -> dict[str, Any]:
         payload = event.get("payload", {})
@@ -79,7 +79,12 @@ class Supervisor:
 
     def _receipt(self, event: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
         payload = event.get("payload", {})
-        kind = "coop2.tickle.transport_queued" if event["kind"] == "coop2.tickle.sent" else "coop2.interaction.transport_queued"
+        if event["kind"] == "coop2.tickle.sent":
+            kind = "coop2.tickle.transport_queued"
+        elif event["kind"] == "coop2.tickle.acked":
+            kind = "coop2.tickle.ack.transport_queued"
+        else:
+            kind = "coop2.interaction.transport_queued"
         if result["state"] != "accepted":
             kind = kind.rsplit(".", 1)[0] + ".transport_" + result["state"]
         return self.rendezvous._append("actor:awp-supervisor", kind, {
@@ -102,21 +107,32 @@ class Supervisor:
         page = self.rendezvous.ledger.events_after(self.rendezvous.workstate_id, int(state["cursor"]), limit)
         all_events = self.rendezvous._events()
         delivered, deferred, unavailable = [], [], []
+        acknowledged = []
         for event in page["events"]:
             sequence = event.pop("_ledger_sequence")
             if self._is_actionable(event, all_events):
-                result = self.adapter.deliver(self._envelope(event))
-                receipt = self._receipt(event, result)
-                state["jobs"][event["event_id"]] = {"state": result["state"], "receipt": receipt["event_id"]}
-                {"accepted": delivered, "deferred": deferred, "unavailable": unavailable}[result["state"]].append(event["event_id"])
-                if result["state"] != "accepted":
-                    atomic_json(self.state_path, state)
-                    break
+                if event["kind"] == "coop2.tickle.sent":
+                    # A reachability probe is transport plumbing, not model work.
+                    # A live recipient supervisor acknowledges it immediately; the
+                    # acknowledgement event is then available to the sender's
+                    # supervisor without asking either model to run ingress.
+                    receipt = self.rendezvous.tickle_ack(self.actor, event["payload"]["tickle_id"])
+                    state["jobs"][event["event_id"]] = {"state": "acknowledged", "receipt": receipt["receipt"]["event_id"]}
+                    acknowledged.append(event["event_id"])
+                else:
+                    result = self.adapter.deliver(self._envelope(event))
+                    receipt = self._receipt(event, result)
+                    state["jobs"][event["event_id"]] = {"state": result["state"], "receipt": receipt["event_id"]}
+                    {"accepted": delivered, "deferred": deferred, "unavailable": unavailable}[result["state"]].append(event["event_id"])
+                    if result["state"] != "accepted":
+                        atomic_json(self.state_path, state)
+                        break
             state["cursor"] = sequence
             atomic_json(self.state_path, state)
         heartbeat = self.rendezvous.heartbeat(self.actor, PROFILE)
         return {"profile": PROFILE, "cursor": state["cursor"], "delivered": delivered,
                 "deferred": deferred, "unavailable": unavailable,
+                "acknowledged": acknowledged,
                 "ingress_processed": len(ingress), "heartbeat": heartbeat}
 
     def _handle_request(self, request: dict[str, Any]) -> dict[str, Any]:

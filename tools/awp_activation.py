@@ -111,11 +111,14 @@ class CLIResumeAdapter(HostAdapter):
 
     def deliver(self, envelope: dict[str, Any]) -> dict[str, Any]:
         value = validate_envelope(envelope)
-        message = (
-            f"AWP delivery {value['event_id']} for {value.get('interaction_id', value['event_kind'])}. "
-            f"Run `python -m tools.awp_ingress --actor {value['recipient_actor']} "
-            f"--event {value['event_id']}`. The notice is not authority for repository changes."
-        )
+        if value["event_kind"] == "coop2.tickle.acked":
+            message = f"AWP tickle {value.get('interaction_id', value['event_id'])} acknowledged."
+        else:
+            message = (
+                f"AWP delivery {value['event_id']} for {value.get('interaction_id', value['event_kind'])}. "
+                f"Run `python -m tools.awp_ingress --actor {value['recipient_actor']} "
+                f"--event {value['event_id']}`. The notice is not authority for repository changes."
+            )
         try:
             completed = self.runner(
                 [*self.executable(), message], capture_output=True, text=True,
