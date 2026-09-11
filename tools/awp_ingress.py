@@ -11,7 +11,7 @@ from typing import Sequence
 from .awp_request_spool import RequestSpool
 
 
-def handle(project: Path, actor: str, event_id: str, timeout_seconds: float = 15.0) -> dict:
+def handle(project: Path, actor: str, event_id: str, timeout_seconds: float = 30.0) -> dict:
     spool = RequestSpool(project)
     operation_id = f"ingress:{actor}:{event_id}"
     spool.submit(actor, operation_id, {"actor": actor, "event_id": event_id})
@@ -22,6 +22,12 @@ def handle(project: Path, actor: str, event_id: str, timeout_seconds: float = 15
             return {"profile": "awp-agent-ingress-v1", "actor": actor,
                     "source_event": event_id, "state": "accepted", "result": response["result"]}
         time.sleep(0.1)
+    # Do not report a timeout if the supervisor completed the response at the
+    # deadline boundary between the final poll and this return.
+    response = spool.response(actor, operation_id)
+    if response is not None:
+        return {"profile": "awp-agent-ingress-v1", "actor": actor,
+                "source_event": event_id, "state": "accepted", "result": response["result"]}
     return {"profile": "awp-agent-ingress-v1", "actor": actor,
             "source_event": event_id, "state": "deferred", "reason": "supervisor response timeout"}
 
@@ -31,7 +37,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--project", type=Path, default=Path.cwd())
     parser.add_argument("--actor", required=True)
     parser.add_argument("--event", required=True)
-    parser.add_argument("--timeout-seconds", type=float, default=15.0)
+    parser.add_argument("--timeout-seconds", type=float, default=30.0)
     args = parser.parse_args(argv)
     result = handle(args.project.resolve(), args.actor, args.event, args.timeout_seconds)
     print(json.dumps(result, indent=2, sort_keys=True))

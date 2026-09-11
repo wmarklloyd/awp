@@ -25,11 +25,13 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from tools.awp_runtime import atomic_json
     from tools.awp_supervisor import PROFILE as WATCHER_PROFILE
+    from tools.awp_activation import CLIResumeAdapter, CommandAdapter, parse_command
     from tools.awp_coop2 import Rendezvous
     from tools.awp_coordination import CoordinationError
 else:
     from .awp_runtime import atomic_json
     from .awp_supervisor import PROFILE as WATCHER_PROFILE
+    from .awp_activation import CLIResumeAdapter, CommandAdapter, parse_command
     from .awp_coop2 import Rendezvous
     from .awp_coordination import CoordinationError
 
@@ -166,6 +168,16 @@ def start_watcher(
     project = project.resolve()
     ledger = ledger if ledger.is_absolute() else (project / ledger)
     rendezvous = Rendezvous(project, ledger)
+    adapter = CommandAdapter(parse_command(adapter_command)) if adapter_command else CLIResumeAdapter(host, thread)
+    probe = adapter.probe()
+    if probe["state"] != "accepted":
+        return {
+            "profile": PROFILE,
+            "state": "unavailable",
+            "diagnostic": "AWP-HOST-ACTIVATION-UNAVAILABLE",
+            "reason": probe.get("reason", "host endpoint did not accept the startup probe"),
+            "probe": probe,
+        }
     control_file = control_path(project, actor)
     prior = read_json(control_file)
     observed = _watcher_row(rendezvous, actor)

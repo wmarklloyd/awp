@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tools.awp_activation import CommandAdapter, activation_result, validate_envelope
+from tools.awp_activation import CLIResumeAdapter, CommandAdapter, activation_result, validate_envelope
 from tools.awp_agent_start import bootstrap_command, opaque_session_ref, run_hook
 from tools.awp_request_spool import RequestSpool
 
@@ -40,6 +40,18 @@ class ActivationContractTests(unittest.TestCase):
         payload = json.loads(calls[0][1]["input"])
         self.assertEqual(payload["envelope"]["event_id"], "evt:one")
         self.assertNotIn("question", payload["envelope"])
+
+    def test_codex_probe_uses_the_actual_queue_endpoint(self) -> None:
+        calls = []
+        class Completed:
+            returncode = 0
+            stdout = "queued"
+            stderr = ""
+        def runner(*args, **kwargs):
+            calls.append((args, kwargs)); return Completed()
+        result = CLIResumeAdapter("codex", "thread:test", command=["codex", "queue", "--thread", "thread:test", "--message"], runner=runner).probe()
+        self.assertEqual(result["state"], "accepted")
+        self.assertIn("activation probe", calls[0][0][0][-1])
 
     def test_generic_hook_uses_same_command_for_any_host(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

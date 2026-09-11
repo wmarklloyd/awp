@@ -128,7 +128,27 @@ class CLIResumeAdapter(HostAdapter):
         return activation_result("accepted", receipt=value["operation_id"])
 
     def probe(self) -> dict[str, Any]:
-        return activation_result("accepted" if shutil.which(self.host) else "unavailable", reason=None if shutil.which(self.host) else f"{self.host} executable not found")
+        # A live-doorbell claim needs evidence from the same endpoint used for
+        # delivery. Merely locating an executable cannot establish that the
+        # host can accept a notification for this session.
+        if self.host != "codex":
+            return activation_result(
+                "unavailable",
+                reason=f"{self.host!r} requires an explicit activation adapter command",
+            )
+        try:
+            completed = self.runner(
+                [*self.executable(), "AWP activation probe. This notification carries no repository authority."],
+                capture_output=True,
+                text=True,
+                timeout=self.timeout_seconds,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            return activation_result("unavailable", reason=str(error))
+        if completed.returncode != 0:
+            return activation_result("deferred", reason=(completed.stderr or completed.stdout or "host rejected probe")[:500])
+        return activation_result("accepted", receipt=f"probe:{self.session_ref}")
 
 
 def parse_command(text: str | None) -> list[str] | None:
