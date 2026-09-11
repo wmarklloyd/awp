@@ -55,7 +55,7 @@ def _log(project: Path, record: dict[str, Any]) -> None:
         pass
 
 
-def handle(payload: dict[str, Any], wait_seconds: float = 5.0) -> str | None:
+def handle(payload: dict[str, Any], wait_seconds: float = 10.0) -> str | None:
     """Return developer context for the host, or None for an ordinary prompt."""
     parsed = parse_notice(str(payload.get("prompt") or ""))
     if parsed is None:
