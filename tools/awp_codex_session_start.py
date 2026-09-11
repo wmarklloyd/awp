@@ -17,8 +17,10 @@ from typing import Any, Callable, Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from tools.awp_coordination import CoordinationError, find_project
+    from tools.awp_runtime import hidden_process_options
 else:
     from .awp_coordination import CoordinationError, find_project
+    from .awp_runtime import hidden_process_options
 from tools.awp_agent_start import run_hook as run_generic_hook
 
 
@@ -81,6 +83,7 @@ def run_hook(
             text=True,
             timeout=20,
             check=False,
+            **hidden_process_options(),
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         return hook_result(f"AWP doorbell bootstrap unavailable: {error}")

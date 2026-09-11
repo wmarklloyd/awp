@@ -19,6 +19,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterator, Sequence
 
+try:
+    from .awp_runtime import hidden_process_options
+except ImportError:  # executed as a script from tools/
+    from awp_runtime import hidden_process_options
+
 
 PROFILE = "local-sqlite-presence-v1"
 DEFAULT_TTL_SECONDS = 90
@@ -47,6 +52,7 @@ def default_registry(project: Path) -> Path:
         check=False,
         capture_output=True,
         text=True,
+        **hidden_process_options(),
     )
     if result.returncode != 0:
         raise PresenceError("the default registry requires a Git repository")
@@ -63,6 +69,7 @@ def git_value(project: Path, *arguments: str) -> str:
         check=False,
         capture_output=True,
         text=True,
+        **hidden_process_options(),
     )
     if result.returncode != 0:
         raise PresenceError(f"git {' '.join(arguments)} failed: {result.stderr.strip()}")

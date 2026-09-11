@@ -23,13 +23,13 @@ from typing import Any, Sequence
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from tools.awp_runtime import atomic_json
+    from tools.awp_runtime import atomic_json, hidden_process_options
     from tools.awp_supervisor import PROFILE as WATCHER_PROFILE
     from tools.awp_activation import CLIResumeAdapter, CommandAdapter, parse_command
     from tools.awp_coop2 import Rendezvous
     from tools.awp_coordination import CoordinationError
 else:
-    from .awp_runtime import atomic_json
+    from .awp_runtime import atomic_json, hidden_process_options
     from .awp_supervisor import PROFILE as WATCHER_PROFILE
     from .awp_activation import CLIResumeAdapter, CommandAdapter, parse_command
     from .awp_coop2 import Rendezvous
@@ -378,7 +378,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "--max-output-bytes",
                 str(args.max_output_bytes),
             ]
-            reentry = subprocess.run(command, cwd=project, capture_output=True, text=True, check=False)
+            reentry = subprocess.run(command, cwd=project, capture_output=True, text=True, check=False,
+                                     **hidden_process_options())
             try:
                 entry = json.loads(reentry.stdout)
             except json.JSONDecodeError:
