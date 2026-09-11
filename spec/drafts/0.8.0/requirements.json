@@ -2247,6 +2247,60 @@
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 343,
       "statement": "**Limits.** The profile inherits Section 10's limits: actors are self-asserted, and history is not encrypted. Write contention on the single ref is expected to be low at `COOP-1` and `COOP-2` group sizes; a binding that observes sustained compare-and-swap retries SHOULD disclose it rather than silently degrading."
+    },
+    {
+      "id": "AWP-COOP-092",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 349,
+      "statement": "**Wake classes.** A wake binding MUST declare one class: `W1` live-session injection into an open conversation; `W2` a new non-interactive run of the agent in the project with the notice as its input; `W3` a hosted session started or continued through the agent vendor's API; `W4` a forge issue, pull-request, or mention event that the agent watches; or `W5` notification of the principal. Every participant is additionally reachable by entry recovery (`W0`), which no binding replaces."
+    },
+    {
+      "id": "AWP-COOP-093",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 351,
+      "statement": "**Binding declarations.** A participant that can be woken MUST publish one declaration per binding naming the actor, class, adapter profile, the relay that serves it, its acknowledgement window, and its budget. A declaration MUST reference any credential it needs by name only; credentials MUST NOT appear in the ledger, the repository, a notice, or an activation envelope. A relay MUST NOT execute a binding that names a different relay."
+    },
+    {
+      "id": "AWP-COOP-094",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 353,
+      "statement": "**Verified reach.** A relay MUST probe a binding when it is declared and after any failure, and the participant inventory MUST report reach per binding as `verified` (with time and observed latency), `failed`, or `unverified`. A declared binding that has not passed a probe MUST NOT be reported as reach."
+    },
+    {
+      "id": "AWP-COOP-095",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 355,
+      "statement": "**Delivery ladder.** For each addressed event a relay MUST try the recipient's bindings in declared order, MUST record a transport receipt as the relay for each attempt, and MUST wait for a recipient receipt within that binding's acknowledgement window before escalating to the next binding. Each escalation MUST be recorded. When no binding yields a recipient receipt, the relay MUST notify the principal where a `W5` binding exists and MUST record the outcome. Events for one recipient arriving within a short window MAY share one wake. A relay MUST respect each binding's budget and MUST stop using a binding that keeps failing, disclosing why, until a probe succeeds again. The ladder MUST NOT delay, replace, or hide entry recovery."
+    },
+    {
+      "id": "AWP-COOP-096",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 357,
+      "statement": "**Never silent.** Every addressed event MUST end in a recipient receipt, a recorded principal notification, or a disclosed entry-only status, and the sender MUST be able to read which. Before publishing, a sender's tools SHOULD report the best verified binding for the recipient."
+    },
+    {
+      "id": "AWP-COOP-097",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 359,
+      "statement": "**Receipts.** Section 9's provenance values are extended with `host-launch`: a host runner started a session whose first input was the notice and reported that session's identifier. Transport receipts and principal notifications MUST NOT be recorded or counted as recipient receipts."
+    },
+    {
+      "id": "AWP-COOP-098",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 361,
+      "statement": "**Bounded runs.** A `W2` or `W3` run MUST start with the minimum permissions needed to read the project and record receipt, and MUST acquire any further authority only from the interaction's recorded authorization. A binding MUST NOT rely on options that grant an agent unrestricted tool use outside a sandbox."
+    },
+    {
+      "id": "AWP-COOP-099",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 363,
+      "statement": "**Hosted and forge rungs.** A `W3` or `W4` binding MUST send identifiers only. A hosted session that has to read the ledger MUST reach it through a path whose audience matches the interaction's, such as a private remote or the vendor's link to the principal's own computer."
+    },
+    {
+      "id": "AWP-COOP-100",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 365,
+      "statement": "**Acceptance.** A binding claiming live wake MUST pass the reachability probe of Section 5.2 through that binding, including after a relay restart, a recipient restart, and a missed signal. A claim of any-agent support SHOULD be demonstrated across at least one local and one hosted wake class."
     }
   ]
 }

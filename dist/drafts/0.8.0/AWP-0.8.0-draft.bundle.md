@@ -3444,6 +3444,28 @@ A supervisor, adapter, or other delivering component MUST NOT publish a recipien
 
 **Limits.** The profile inherits Section 10's limits: actors are self-asserted, and history is not encrypted. Write contention on the single ref is expected to be low at `COOP-1` and `COOP-2` group sizes; a binding that observes sustained compare-and-swap retries SHOULD disclose it rather than silently degrading.
 
+## 12. Any-agent wake bindings and the delivery ladder
+
+This section generalizes the startup doorbell of Section 9 from agents whose open session a local process can inject into to every agent that exposes any way to be started or reached, local or hosted, and requires the remaining cases to be disclosed rather than silent. The informative design is `docs/doorbell-architecture.md`. This section is appended at the end of the document so that adding it leaves existing requirement identifiers unchanged.
+
+**Wake classes.** A wake binding MUST declare one class: `W1` live-session injection into an open conversation; `W2` a new non-interactive run of the agent in the project with the notice as its input; `W3` a hosted session started or continued through the agent vendor's API; `W4` a forge issue, pull-request, or mention event that the agent watches; or `W5` notification of the principal. Every participant is additionally reachable by entry recovery (`W0`), which no binding replaces.
+
+**Binding declarations.** A participant that can be woken MUST publish one declaration per binding naming the actor, class, adapter profile, the relay that serves it, its acknowledgement window, and its budget. A declaration MUST reference any credential it needs by name only; credentials MUST NOT appear in the ledger, the repository, a notice, or an activation envelope. A relay MUST NOT execute a binding that names a different relay.
+
+**Verified reach.** A relay MUST probe a binding when it is declared and after any failure, and the participant inventory MUST report reach per binding as `verified` (with time and observed latency), `failed`, or `unverified`. A declared binding that has not passed a probe MUST NOT be reported as reach.
+
+**Delivery ladder.** For each addressed event a relay MUST try the recipient's bindings in declared order, MUST record a transport receipt as the relay for each attempt, and MUST wait for a recipient receipt within that binding's acknowledgement window before escalating to the next binding. Each escalation MUST be recorded. When no binding yields a recipient receipt, the relay MUST notify the principal where a `W5` binding exists and MUST record the outcome. Events for one recipient arriving within a short window MAY share one wake. A relay MUST respect each binding's budget and MUST stop using a binding that keeps failing, disclosing why, until a probe succeeds again. The ladder MUST NOT delay, replace, or hide entry recovery.
+
+**Never silent.** Every addressed event MUST end in a recipient receipt, a recorded principal notification, or a disclosed entry-only status, and the sender MUST be able to read which. Before publishing, a sender's tools SHOULD report the best verified binding for the recipient.
+
+**Receipts.** Section 9's provenance values are extended with `host-launch`: a host runner started a session whose first input was the notice and reported that session's identifier. Transport receipts and principal notifications MUST NOT be recorded or counted as recipient receipts.
+
+**Bounded runs.** A `W2` or `W3` run MUST start with the minimum permissions needed to read the project and record receipt, and MUST acquire any further authority only from the interaction's recorded authorization. A binding MUST NOT rely on options that grant an agent unrestricted tool use outside a sandbox.
+
+**Hosted and forge rungs.** A `W3` or `W4` binding MUST send identifiers only. A hosted session that has to read the ledger MUST reach it through a path whose audience matches the interaction's, such as a private remote or the vendor's link to the principal's own computer.
+
+**Acceptance.** A binding claiming live wake MUST pass the reachability probe of Section 5.2 through that binding, including after a relay restart, a recipient restart, and a missed signal. A claim of any-agent support SHOULD be demonstrated across at least one local and one hosted wake class.
+
 ---
 
 # Machine-readable assets
@@ -3454,7 +3476,7 @@ Identified by digest; reproduced verbatim in `dist/drafts/0.8.0/AWP-0.8.0-draft.
 |---|---|---:|---|
 | Silo profile schema | `schemas/awp-silo-0.1.schema.json` | 9670 | `bc736a67a6c57ddd53e01168de1cbc193323290f65f50bfbeac675f3c4a88b5c` |
 | Module registry | `spec/drafts/0.8.0/modules.json` | 3341 | `233d381de6cac801971f93879e7db16def0f405d6fee8fc10c6f9f730e982e89` |
-| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 211929 | `f088261156eaf0c232334de366bf96c0dc38ce31aedaad35b27658c84e6325a1` |
+| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 216629 | `ffda35c576951478933f6d10b10c437e09caa09a148384df84999a5706ee31cb` |
 | Core schema | `schemas/awp-core-0.8.schema.json` | 14661 | `bd212815e521fefbd9757c0e3dc7c18890e936146f7065dd3ef7c54e2206454e` |
 | Cooperation schema | `schemas/awp-cooperation-0.1.schema.json` | 25432 | `3124bf5c6fdd173a97f49ac835db67ce7ddb7c0ae0d0fb9b4b857c32d5839f41` |
 | Capsule schema | `schemas/awp-capsule-0.5.schema.json` | 1289 | `8d33f83d815faf9ad7fa0b4b0823ae15b041b1d236e8c7153b60e886b18a080a` |

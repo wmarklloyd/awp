@@ -78,3 +78,8 @@ These questions are intentionally unresolved. A module must not imply that an op
 36. Which mechanism should authenticate the actor behind a `git-ledger-v1` ref (for example signed commits, forge-side push rules, or per-actor deploy keys), so that ref ownership becomes verifiable rather than self-asserted?
 37. What remote-sync trigger should replace polling of advertised heads where a forge offers webhooks or push notifications, and what latency bound should a remote profile declare?
 
+## Any-agent wake questions
+
+38. Does a Claude routine with an API trigger, bound to the principal's computer, give hosted Claude sessions a dependable `W3` wake (latency, daily caps, research-preview stability), and what is the equivalent for other hosted agents?
+39. Where should the relay run for teams whose participants include sleeping laptops and hosted agents, and how should several relays divide bindings without double waking?
+
