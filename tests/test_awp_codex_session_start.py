@@ -69,6 +69,10 @@ class CodexSessionStartHookTests(unittest.TestCase):
         self.assertIn("awp_agent_start.py", handler["command"])
         self.assertIn("awp_agent_start.py", handler["commandWindows"])
         self.assertIn("--host codex", handler["command"])
+        receipt = configuration["hooks"]["UserPromptSubmit"][0]["hooks"][0]
+        self.assertIn("awp_prompt_receipt.py", receipt["command"])
+        self.assertIn("awp_prompt_receipt.py", receipt["commandWindows"])
+        self.assertFalse(receipt.get("async", False))
 
 
 if __name__ == "__main__":

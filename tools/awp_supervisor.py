@@ -145,8 +145,10 @@ class Supervisor:
         if event is None or event.get("payload", {}).get("recipient") != self.actor:
             raise ValueError("unknown or misaddressed ingress event")
         payload = event["payload"]
+        via = request.get("via") if request.get("via") in {"agent-ingress", "host-prompt-hook"} else "agent-ingress"
+        evidence = request.get("evidence") if isinstance(request.get("evidence"), dict) else None
         if event["kind"] == "coop2.tickle.sent":
-            return self.rendezvous.tickle_ack(self.actor, payload["tickle_id"], via="agent-ingress")
+            return self.rendezvous.tickle_ack(self.actor, payload["tickle_id"], via=via, evidence=evidence)
         if event["kind"] == "coop2.interaction.requested":
             return self.rendezvous.observe(self.actor, payload["interaction_id"])
         return {"publication": "not-required", "event_id": event_id}

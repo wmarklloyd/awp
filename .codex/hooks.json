@@ -14,6 +14,18 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/tools/awp_prompt_receipt.py\"",
+            "commandWindows": "powershell -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& python (Join-Path (git rev-parse --show-toplevel) 'tools\\awp_prompt_receipt.py')\"",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   }
 }

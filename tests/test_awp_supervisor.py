@@ -72,11 +72,24 @@ class SupervisorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             rendezvous = FakeRendezvous([tickle(0)])
             calls = []
-            rendezvous.tickle_ack = lambda actor, tickle_id, via="direct": calls.append(via) or {"ok": True}
+            rendezvous.tickle_ack = lambda actor, tickle_id, via="direct", evidence=None: calls.append(via) or {"ok": True}
             supervisor = Supervisor(rendezvous, "actor:test", "fake", "session", "generation",
                                     Adapter(), Path(directory) / "state.json")
             supervisor._handle_request({"actor": "actor:test", "event_id": "evt:0"})
         self.assertEqual(calls, ["agent-ingress"])
+
+    def test_host_prompt_hook_receipt_keeps_its_provenance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rendezvous = FakeRendezvous([tickle(0)])
+            seen = []
+            rendezvous.tickle_ack = lambda actor, tickle_id, via="direct", evidence=None: seen.append((via, evidence)) or {}
+            Supervisor(rendezvous, "actor:test", "fake", "session", "generation", Adapter(),
+                       Path(directory) / "state.json")._handle_request(
+                {"actor": "actor:test", "event_id": "evt:0", "via": "host-prompt-hook", "evidence": {"session_id": "s"}})
+            Supervisor(rendezvous, "actor:test", "fake", "session", "generation", Adapter(),
+                       Path(directory) / "state.json")._handle_request(
+                {"actor": "actor:test", "event_id": "evt:0", "via": "supervisor"})
+        self.assertEqual(seen, [("host-prompt-hook", {"session_id": "s"}), ("agent-ingress", None)])
 
     def test_signal_watch_fires_on_new_signal_ref(self):
         import subprocess
