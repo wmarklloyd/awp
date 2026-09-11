@@ -505,9 +505,13 @@ class Relay:
                 job.update({"state": "principal-notified", "notified": True})
                 return
             self._escalate(job, binding, f"skipped: {reason}")
-        tried = bool(job["tried"])
-        self._finish(job, "entry-only", "no wake binding produced a recipient receipt" if tried
-                     else "recipient has no wake binding on this relay", index)
+        if job["tried"]:
+            reason = "no wake binding produced a recipient receipt"
+        elif notify and job["event_kind"] == "coop2.tickle.sent":
+            reason = "recipient can only be reached by principal notification, which probes do not use"
+        else:
+            reason = "recipient has no wake binding on this relay"
+        self._finish(job, "entry-only", reason, index)
         # Parked, not closed: a later declaration (a new live session) resumes it.
         job["state"] = "parked"
 
