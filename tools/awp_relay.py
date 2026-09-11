@@ -516,7 +516,11 @@ class Relay:
         job["state"] = "parked"
 
     def _deliver_info(self, job: dict[str, Any], mine: dict[str, dict[str, Any]]) -> None:
-        live = [item for item in wake.ladder(mine, job["recipient"]) if item["class"] == "W1"]
+        # Informational notices (a probe was acknowledged, a response arrived)
+        # go only to open sessions; waking a hosted agent for them would spend
+        # a turn on news it reads anyway on its next action.
+        live = [item for item in wake.ladder(mine, job["recipient"])
+                if item["class"] == "W1" and item["adapter"] not in {"git-signal", "self-poll"}]
         if live:
             result = self._deliver(live[0], [job])
             self._transport(job, live[0], result)
