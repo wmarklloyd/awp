@@ -9,8 +9,7 @@
             "type": "command",
             "command": "python3 \"$(git rev-parse --show-toplevel)/tools/awp_agent_start.py\" --host codex --actor actor:codex",
             "commandWindows": "powershell -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& python (Join-Path (git rev-parse --show-toplevel) 'tools\\awp_agent_start.py') --host codex --actor actor:codex\"",
-            "async": true,
-            "timeout": 30,
+            "timeout": 45,
             "statusMessage": "Starting AWP doorbell"
           }
         ]

@@ -61,7 +61,11 @@ class CodexSessionStartHookTests(unittest.TestCase):
         session_start = configuration["hooks"]["SessionStart"][0]
         handler = session_start["hooks"][0]
         self.assertEqual(session_start["matcher"], "^(startup|resume)$")
-        self.assertTrue(handler["async"])
+        # Some Codex releases skip async command hooks entirely, which left the
+        # doorbell unarmed after every fresh start; activation must run
+        # synchronously within its timeout.
+        self.assertFalse(handler.get("async", False))
+        self.assertGreaterEqual(handler["timeout"], 30)
         self.assertIn("awp_agent_start.py", handler["command"])
         self.assertIn("awp_agent_start.py", handler["commandWindows"])
         self.assertIn("--host codex", handler["command"])

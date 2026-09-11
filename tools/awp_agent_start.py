@@ -70,6 +70,27 @@ def run_hook(payload: dict[str, Any], *, host: str, actor: str | None = None,
     )
 
 
+def _log_invocation(project_hint: str | None, record: dict[str, Any]) -> None:
+    """Leave evidence that the shim ran at all, even when it skips.
+
+    A hook that a host silently skips and a hook that runs but bails out look
+    identical from outside unless the shim records every invocation.
+    """
+    try:
+        project = find_project(Path(project_hint or Path.cwd()))
+    except (CoordinationError, OSError):
+        return
+    try:
+        from datetime import datetime, timezone
+        line = json.dumps({"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), **record}, sort_keys=True)
+        runtime = project / ".awp-runtime"
+        runtime.mkdir(parents=True, exist_ok=True)
+        with (runtime / "agent-start.log").open("a", encoding="utf-8") as stream:
+            stream.write(line + "\n")
+    except OSError:
+        pass
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", required=True)
@@ -85,10 +106,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             payload = json.load(sys.stdin)
         except (json.JSONDecodeError, OSError, TypeError, ValueError) as error:
+            _log_invocation(None, {"host": args.host, "outcome": "invalid-hook-input", "detail": str(error)[:200]})
             print(json.dumps(hook_result(f"AWP activation skipped: invalid hook input ({error}).")))
             return 0
-    print(json.dumps(run_hook(payload, host=args.host, actor=args.actor,
-                              adapter_command=args.adapter_command), sort_keys=True))
+    result = run_hook(payload, host=args.host, actor=args.actor, adapter_command=args.adapter_command)
+    _log_invocation(payload.get("cwd") if isinstance(payload, dict) else None, {
+        "host": args.host, "actor": args.actor, "source": payload.get("source") if isinstance(payload, dict) else None,
+        "session_id": payload.get("session_id") if isinstance(payload, dict) else None,
+        "outcome": result["hookSpecificOutput"]["additionalContext"][:300],
+    })
+    print(json.dumps(result, sort_keys=True))
     return 0
 
 
