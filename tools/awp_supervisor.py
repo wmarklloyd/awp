@@ -150,7 +150,7 @@ class Supervisor:
         if event["kind"] == "coop2.tickle.sent":
             return self.rendezvous.tickle_ack(self.actor, payload["tickle_id"], via=via, evidence=evidence)
         if event["kind"] == "coop2.interaction.requested":
-            return self.rendezvous.observe(self.actor, payload["interaction_id"])
+            return self.rendezvous.observe(self.actor, payload["interaction_id"], via=via, evidence=evidence)
         return {"publication": "not-required", "event_id": event_id}
 
 

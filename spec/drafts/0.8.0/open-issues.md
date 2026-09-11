@@ -63,3 +63,12 @@ These questions are intentionally unresolved. A module must not imply that an op
 30. Which first `silo-v1` binding will demonstrate pinned derivation, explicit base updates, dependency-complete adoption, scoped approval, and crash recovery across separate workstates? The normative profile is in [silos.md](silos.md); the current schema fixtures establish structure only.
 31. What common physical-resource binding can atomically coordinate several semantic workstates, including aliases and shared external resources, without merging their independent event histories?
 32. Which dependency walkers and provenance mappings can safely preserve required references across the first supported module set? Unknown required dependency semantics must block adoption; automatic reconciliation, multiple inheritance, and cross-project adoption remain deferred.
+
+## Startup doorbell questions
+
+33. Which second agent host will demonstrate that the startup doorbell of Cooperation Contracts section 9 is host neutral in practice, and how should a host that fires its startup hook only on the first input meet the no-manual-step acceptance rule?
+34. What wake binding, if any, should a cloud-hosted agent session without a local endpoint expose so that it can be woken rather than reached only through entry recovery?
+
+## Requirement identifier questions
+
+35. How should requirement identifiers be anchored in the source text before 0.8 is released? Identifiers are currently positional per source file, so normative text inserted mid-file silently reassigns existing identifiers to unrelated statements (observed with section 5.2 on 2026-09-10); until they are anchored, new normative text is appended at the end of its source file.

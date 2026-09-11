@@ -96,7 +96,7 @@ python tools/validate_conformance.py
 python -m unittest discover -s tests -v
 ```
 
-Keep generated bundles, recorded artifact digests, and the workstate briefing consistent. Do not commit Python bytecode or local virtual environments; `.gitignore` covers these files.
+Keep generated bundles, recorded artifact digests, and the workstate briefing consistent. Requirement identifiers are positional per source file until they are anchored (open issue 35 in `spec/drafts/0.8.0/open-issues.md`): append new normative text at the end of its source file, and after regenerating `requirements.json` confirm that no existing identifier changed its statement. Do not commit Python bytecode or local virtual environments; `.gitignore` covers these files.
 
 ## Current implementation direction
 

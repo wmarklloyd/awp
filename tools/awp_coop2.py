@@ -608,7 +608,7 @@ class Rendezvous:
         receipt = self._append(actor, "coop2.interaction.requested", payload)
         return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "doorbell": self._signal(receipt, interaction_id, "coop2.interaction.requested")}
 
-    def observe(self, actor: str, interaction_id: str) -> dict:
+    def observe(self, actor: str, interaction_id: str, via: str = "direct", evidence: dict | None = None) -> dict:
         request = self._request_event(interaction_id)["payload"]
         if request["recipient"] != actor:
             raise CoordinationError("only the named recipient may observe an interaction")
@@ -616,7 +616,10 @@ class Rendezvous:
         if prior:
             return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": True, "receipt": {"event_id": prior["event_id"]}}
         frontier = self.ledger.refresh(self.workstate_id)["frontier"]
-        receipt = self._append(actor, "coop2.interaction.observed", {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": frontier, "disposition": "observed"})
+        observed = {"interaction_id": interaction_id, "observing_actor": actor, "observed_at": now(), "binding_frontier": frontier, "disposition": "observed", "observed_via": via}
+        if evidence:
+            observed["receipt_evidence"] = {key: str(value)[:200] for key, value in evidence.items()}
+        receipt = self._append(actor, "coop2.interaction.observed", observed)
         return {"interaction_id": interaction_id, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "doorbell": self._signal(receipt, interaction_id, "coop2.interaction.observed")}
 
     def accept(self, actor: str, interaction_id: str, response_window_seconds: int) -> dict:
