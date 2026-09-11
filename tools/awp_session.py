@@ -1,8 +1,9 @@
 """Enter an AWP project and make its host-neutral doorbell operational.
 
-The bootstrap discovers the project-local COOP-2 rendezvous, binds the current
-host session, starts or replaces a detached supervisor, waits for an observed
-heartbeat, and then runs the ordinary AWP re-entry check.  It reports success
+The bootstrap discovers the project-local COOP-2 rendezvous, declares the
+current host session as a W1 wake binding, attaches to or starts the clone's
+single relay (``tools/awp_relay.py``), waits for an observed heartbeat, and
+then runs the ordinary AWP re-entry check.  It reports success
 only when the watcher is actually live; durable entry-only recovery remains
 available through ``awp_reentry.py``.
 """
@@ -28,12 +29,14 @@ if __package__ in {None, ""}:
     from tools.awp_activation import CLIResumeAdapter, CommandAdapter, parse_command
     from tools.awp_coop2 import Rendezvous
     from tools.awp_coordination import CoordinationError
+    from tools import awp_relay, awp_wake
 else:
     from .awp_runtime import atomic_json, hidden_process_options
     from .awp_supervisor import PROFILE as WATCHER_PROFILE
     from .awp_activation import CLIResumeAdapter, CommandAdapter, parse_command
     from .awp_coop2 import Rendezvous
     from .awp_coordination import CoordinationError
+    from . import awp_relay, awp_wake
 
 
 PROFILE = "awp-agent-session-bootstrap-v1"
@@ -153,6 +156,16 @@ def _watcher_row(rendezvous: Rendezvous, actor: str) -> dict[str, Any]:
     )
 
 
+def _stop_legacy_supervisor(project: Path, actor: str) -> None:
+    """Retire a per-actor supervisor started by older code; the relay replaces it."""
+    path = control_path(project, actor)
+    prior = read_json(path)
+    if prior.get("desired_state") == "running" and prior.get("profile") == PROFILE and "relay_generation" not in prior:
+        prior.update({"desired_state": "stopped", "generation": uuid.uuid4().hex, "state": "superseded-by-relay",
+                      "stopped_at": utc_now()})
+        atomic_json(path, prior)
+
+
 def start_watcher(
     project: Path,
     ledger: Path,
@@ -165,10 +178,18 @@ def start_watcher(
     host: str = "codex",
     adapter_command: str | None = None,
 ) -> dict[str, Any]:
+    """Bind this session as a W1 wake binding and make sure the clone's relay runs.
+
+    The relay (``tools/awp_relay.py``) serves every declared binding in the
+    clone, for every agent, so there is one watcher process however many
+    agents are active.  Success is reported only after the relay's heartbeat
+    for this actor has been observed.
+    """
     project = project.resolve()
     ledger = ledger if ledger.is_absolute() else (project / ledger)
     rendezvous = Rendezvous(project, ledger)
-    adapter = CommandAdapter(parse_command(adapter_command)) if adapter_command else CLIResumeAdapter(host, thread)
+    command = parse_command(adapter_command)
+    adapter = CommandAdapter(command) if command else CLIResumeAdapter(host, thread)
     probe = adapter.probe()
     if probe["state"] != "accepted":
         return {
@@ -178,129 +199,86 @@ def start_watcher(
             "reason": probe.get("reason", "host endpoint did not accept the startup probe"),
             "probe": probe,
         }
-    control_file = control_path(project, actor)
-    prior = read_json(control_file)
-    observed = _watcher_row(rendezvous, actor)
-    if (
-        prior.get("profile") == PROFILE
-        and prior.get("desired_state") == "running"
-        and prior.get("thread") == thread
-        and prior.get("host") == host
-        and process_is_running(prior.get("pid"))
-        and observed.get("watcher_liveness") == "active"
-    ):
-        return {"profile": PROFILE, "state": "attached", "control": prior, "watcher": observed}
-
     # Register the safe fallback before attempting a live claim.  A later join
     # promotes the same actor only after a fresh heartbeat has been observed.
     rendezvous.join(actor, ["managed-collaboration", "git-ref-doorbell"], "on-entry-only")
-    generation = uuid.uuid4().hex
     started_at = utc_now()
+    declared = awp_relay.declare_live_session(rendezvous, actor, host, thread, command)
+    binding = (declared or {}).get("binding", {})
+    _stop_legacy_supervisor(project, actor)
+    relay = awp_relay.ensure(project, interval_seconds, startup_timeout_seconds)
     control = {
-        "profile": PROFILE,
-        "generation": generation,
-        "desired_state": "running",
-        "state": "starting",
-        "actor": actor,
-        "host": host,
-        "thread": thread,
-        "remote": remote,
-        "ledger": str(ledger),
-        "started_at": started_at,
+        "profile": PROFILE, "actor": actor, "host": host, "thread": thread, "remote": remote,
+        "ledger": str(ledger), "started_at": started_at, "desired_state": "running",
+        "binding_id": binding.get("binding_id"), "binding_event": binding.get("event_id"),
+        "relay_generation": (relay.get("status") or {}).get("generation"), "relay_state": relay["state"],
     }
-    atomic_json(control_file, control)
-
-    runtime = project / ".awp-runtime"
-    runtime.mkdir(parents=True, exist_ok=True)
-    output_path = runtime / f"awp-supervisor-{actor_token(actor)}.out.log"
-    error_path = runtime / f"awp-supervisor-{actor_token(actor)}.err.log"
-    command = watcher_command(project, ledger, actor, thread, generation, interval_seconds, remote, host, adapter_command)
-    creationflags = 0
-    start_new_session = False
-    if os.name == "nt":
-        creationflags = (
-            getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-            | getattr(subprocess, "DETACHED_PROCESS", 0)
-            | getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        )
-    else:
-        start_new_session = True
-    with output_path.open("ab") as output, error_path.open("ab") as error:
-        process = subprocess.Popen(
-            command,
-            cwd=project,
-            stdin=subprocess.DEVNULL,
-            stdout=output,
-            stderr=error,
-            close_fds=True,
-            creationflags=creationflags,
-            start_new_session=start_new_session,
-        )
-    control.update({"pid": process.pid, "state": "waiting_for_heartbeat"})
-    atomic_json(control_file, control)
-
-    deadline = time.monotonic() + max(startup_timeout_seconds, 0.1)
     watcher = {"actor": actor, "watcher_liveness": "none"}
-    while time.monotonic() < deadline:
-        if not process_is_running(process.pid):
-            break
-        watcher = _watcher_row(rendezvous, actor)
-        if watcher.get("watcher_liveness") == "active" and watcher.get("last_seen", "") >= started_at:
-            rendezvous.join(actor, ["managed-collaboration", "git-ref-doorbell"], "watcher")
-            control.update({"state": "active", "heartbeat_observed_at": watcher.get("last_seen")})
-            atomic_json(control_file, control)
-            return {"profile": PROFILE, "state": "active", "control": control, "watcher": watcher}
-        time.sleep(min(interval_seconds, 0.25))
-
-    control.update({"desired_state": "stopped", "state": "unavailable", "failed_at": utc_now()})
-    atomic_json(control_file, control)
+    if relay["state"] in {"attached", "started"} and binding:
+        deadline = time.monotonic() + max(startup_timeout_seconds, 0.1)
+        while time.monotonic() < deadline:
+            watcher = _watcher_row(rendezvous, actor)
+            if watcher.get("watcher_liveness") == "active" and watcher.get("last_seen", "") >= started_at[:19]:
+                rendezvous.join(actor, ["managed-collaboration", "git-ref-doorbell"], "watcher")
+                control.update({"state": "active", "heartbeat_observed_at": watcher.get("last_seen")})
+                atomic_json(control_path(project, actor), control)
+                return {"profile": PROFILE, "state": "attached" if relay["state"] == "attached" else "active",
+                        "control": control, "watcher": watcher, "relay": relay["state"]}
+            time.sleep(min(interval_seconds, 0.25))
+    control.update({"state": "unavailable", "failed_at": utc_now()})
+    atomic_json(control_path(project, actor), control)
     rendezvous.join(actor, ["managed-collaboration", "git-ref-doorbell"], "on-entry-only")
     return {
         "profile": PROFILE,
         "state": "unavailable",
-        "diagnostic": "AWP-SIGNAL-UNVERIFIED",
+        "diagnostic": "AWP-SIGNAL-UNVERIFIED" if binding else "AWP-NO-LIVE-SESSION-BINDING",
         "control": control,
         "watcher": watcher,
-        "logs": {"stdout": str(output_path), "stderr": str(error_path)},
+        "relay": relay,
+        "logs": {"stdout": str(project / ".awp-runtime" / "awp-relay.out.log"),
+                 "stderr": str(project / ".awp-runtime" / "awp-relay.err.log")},
     }
 
 
 def stop_watcher(project: Path, ledger: Path, actor: str, timeout_seconds: float = 10.0) -> dict[str, Any]:
+    """Stop waking this actor's open session: retire its W1 binding.
+
+    The relay keeps serving other bindings; ``python -m tools.awp_relay stop``
+    stops the relay itself.
+    """
     project = project.resolve()
     ledger = ledger if ledger.is_absolute() else (project / ledger)
+    rendezvous = Rendezvous(project, ledger)
+    retired = []
+    for binding in awp_wake.active_bindings(rendezvous._events()).values():
+        if binding["actor"] == actor and binding["class"] == "W1":
+            awp_wake.retire(rendezvous, actor, binding["binding_id"], "session stopped")
+            retired.append(binding["binding_id"])
+    _stop_legacy_supervisor(project, actor)
     path = control_path(project, actor)
     control = read_json(path)
-    pid = control.get("pid")
-    control.update(
-        {
-            "profile": PROFILE,
-            "generation": uuid.uuid4().hex,
-            "desired_state": "stopped",
-            "state": "stopping",
-            "stopped_at": utc_now(),
-        }
-    )
+    control.update({"profile": PROFILE, "desired_state": "stopped", "state": "stopped", "stopped_at": utc_now(),
+                    "retired_bindings": retired})
     atomic_json(path, control)
-    deadline = time.monotonic() + timeout_seconds
-    while process_is_running(pid) and time.monotonic() < deadline:
-        time.sleep(0.1)
-    control["state"] = "stopped" if not process_is_running(pid) else "stop_pending"
-    atomic_json(path, control)
-    Rendezvous(project, ledger).join(actor, ["managed-collaboration", "git-ref-doorbell"], "on-entry-only")
-    return {"profile": PROFILE, "state": control["state"], "control": control}
+    rendezvous.join(actor, ["managed-collaboration", "git-ref-doorbell"], "on-entry-only")
+    return {"profile": PROFILE, "state": "stopped", "control": control}
 
 
 def session_status(project: Path, ledger: Path, actor: str) -> dict[str, Any]:
     project = project.resolve()
     ledger = ledger if ledger.is_absolute() else (project / ledger)
     control = read_json(control_path(project, actor))
-    watcher = _watcher_row(Rendezvous(project, ledger), actor)
-    live = process_is_running(control.get("pid")) and watcher.get("watcher_liveness") == "active"
+    rendezvous = Rendezvous(project, ledger)
+    watcher = _watcher_row(rendezvous, actor)
+    relay = awp_relay.relay_status(project)
+    running = bool(relay.get("live")) or process_is_running(control.get("pid"))
+    live = running and watcher.get("watcher_liveness") == "active"
     return {
         "profile": PROFILE,
         "state": "active" if live else "unavailable",
         "diagnostic": None if live else "AWP-SIGNAL-UNVERIFIED",
-        "process_running": process_is_running(control.get("pid")),
+        "process_running": running,
+        "relay": {key: relay.get(key) for key in ("live", "age_seconds")},
         "control": control,
         "watcher": watcher,
     }

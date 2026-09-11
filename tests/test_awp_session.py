@@ -88,6 +88,40 @@ class SessionBootstrapTests(unittest.TestCase):
         self.assertIn("AWP-COORD-LEDGER-UNAVAILABLE", output)
         self.assertIn("read-only ledger fallback is unsafe", output)
 
+    def test_start_declares_the_live_session_and_attaches_to_one_relay(self) -> None:
+        from tools.awp_session import start_watcher
+
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            with patch("tools.awp_session.Rendezvous") as rendezvous, patch(
+                "tools.awp_session.CLIResumeAdapter"
+            ) as adapter, patch("tools.awp_session.awp_relay.declare_live_session",
+                                return_value={"binding": {"binding_id": "wake:1", "event_id": "evt:1"}}) as declare, patch(
+                "tools.awp_session.awp_relay.ensure", return_value={"state": "started", "status": {"generation": "g"}}
+            ) as ensure, patch("tools.awp_session._watcher_row",
+                               return_value={"actor": "actor:codex", "watcher_liveness": "active", "last_seen": "2999-01-01T00:00:00Z"}):
+                adapter.return_value.probe.return_value = {"state": "accepted"}
+                result = start_watcher(project, Path("ledger"), "actor:codex", "thread:t")
+            self.assertEqual(result["state"], "active")
+            self.assertEqual(result["control"]["binding_id"], "wake:1")
+            declare.assert_called_once_with(rendezvous.return_value, "actor:codex", "codex", "thread:t", None)
+            ensure.assert_called_once()
+
+    def test_relaunched_legacy_supervisor_declares_and_defers_to_a_live_relay(self) -> None:
+        from tools import awp_relay
+        from tools.awp_supervisor import parser as supervisor_parser
+
+        args = supervisor_parser().parse_args(["--project", ".", "--actor", "actor:codex", "--host", "codex",
+                                               "--session-ref", "thread:t", "--generation", "g"])
+        with patch("tools.awp_relay.Rendezvous") as rendezvous, patch(
+            "tools.awp_relay.declare_live_session"
+        ) as declare, patch("tools.awp_relay.relay_status", return_value={"live": True}), patch(
+            "tools.awp_relay.run_loop"
+        ) as loop:
+            self.assertEqual(awp_relay.adopt_legacy(args), 0)
+        declare.assert_called_once_with(rendezvous.return_value, "actor:codex", "codex", "thread:t")
+        loop.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

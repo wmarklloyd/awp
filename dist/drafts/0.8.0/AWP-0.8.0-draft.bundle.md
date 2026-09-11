@@ -3466,6 +3466,10 @@ This section generalizes the startup doorbell of Section 9 from agents whose ope
 
 **Acceptance.** A binding claiming live wake MUST pass the reachability probe of Section 5.2 through that binding, including after a relay restart, a recipient restart, and a missed signal. A claim of any-agent support SHOULD be demonstrated across at least one local and one hosted wake class.
 
+**Adapter configuration.** A relay MUST obtain every executable command, command template, and network endpoint it uses for a binding from its own local configuration or built-in adapter profiles. A binding declaration MUST name an adapter profile and MAY carry non-secret parameters such as a session or routine identifier; a relay MUST NOT execute a command or contact an endpoint taken from the ledger. A relay that does not recognize a declared profile MUST treat the binding as unavailable and disclose why.
+
+**Wake records.** A relay MUST record each escalation, each principal notification, each suspension and resumption of a binding, and each ladder that ends without a recipient receipt, as ledger events published under the relay's own actor identity and naming the event or binding concerned. These records MUST NOT be counted as recipient receipts.
+
 ---
 
 # Machine-readable assets
@@ -3476,7 +3480,7 @@ Identified by digest; reproduced verbatim in `dist/drafts/0.8.0/AWP-0.8.0-draft.
 |---|---|---:|---|
 | Silo profile schema | `schemas/awp-silo-0.1.schema.json` | 9670 | `bc736a67a6c57ddd53e01168de1cbc193323290f65f50bfbeac675f3c4a88b5c` |
 | Module registry | `spec/drafts/0.8.0/modules.json` | 3341 | `233d381de6cac801971f93879e7db16def0f405d6fee8fc10c6f9f730e982e89` |
-| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 216629 | `ffda35c576951478933f6d10b10c437e09caa09a148384df84999a5706ee31cb` |
+| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 217776 | `b70182b203a7e0b9607f1721ed9f6677524e50acaa53b7a6be892b473366a958` |
 | Core schema | `schemas/awp-core-0.8.schema.json` | 14661 | `bd212815e521fefbd9757c0e3dc7c18890e936146f7065dd3ef7c54e2206454e` |
 | Cooperation schema | `schemas/awp-cooperation-0.1.schema.json` | 25432 | `3124bf5c6fdd173a97f49ac835db67ce7ddb7c0ae0d0fb9b4b857c32d5839f41` |
 | Capsule schema | `schemas/awp-capsule-0.5.schema.json` | 1289 | `8d33f83d815faf9ad7fa0b4b0823ae15b041b1d236e8c7153b60e886b18a080a` |

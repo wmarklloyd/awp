@@ -574,8 +574,13 @@ class Rendezvous:
         recipient: str,
         ttl_seconds: int = 90,
         idempotency_key: str | None = None,
+        probe_binding: str | None = None,
     ) -> dict:
-        """Publish a decision-free reachability probe over the normal signal path."""
+        """Publish a decision-free reachability probe over the normal signal path.
+
+        ``probe_binding`` names one wake binding (section 12): the relay then
+        tries only that binding, and the acknowledgement verifies it.
+        """
         if ttl_seconds < 1:
             raise CoordinationError("probe TTL must be at least one second")
         if idempotency_key is not None and not idempotency_key:
@@ -595,6 +600,8 @@ class Rendezvous:
         payload = {"tickle_id": tickle_id, "sender": actor, "recipient": recipient, "binding_id": self.ledger.binding_id(), "frontier": frontier, "ttl_seconds": ttl_seconds, "status": "open"}
         if idempotency_key is not None:
             payload["idempotency_key"] = idempotency_key
+        if probe_binding is not None:
+            payload["probe_binding"] = probe_binding
         receipt = self._append(actor, "coop2.tickle.sent", payload)
         return {"tickle_id": tickle_id, "publication": "confirmed", "deduplicated": False, "receipt": receipt, "doorbell": self._signal(receipt, tickle_id, "coop2.tickle.sent")}
 

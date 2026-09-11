@@ -120,3 +120,20 @@ Capabilities change often; each binding is verified by probe rather than assumed
 6. **Remote relay deployment** on an always-on LAN host with a private remote (the remote sync of Cooperation Contracts section 10 and the remote compare-and-swap of section 11).
 
 Acceptance is a matrix: for each class, a probe from each other participant passes (or, for W5 and W0, is recorded and disclosed as such), including after a restart of the relay, a restart of the recipient, and a missed signal.
+
+## 11. Implementation status (2026-09-11)
+
+Built, with tests (`tests/test_awp_relay.py`):
+
+- **Relay** (`tools/awp_relay.py`): one per clone, a singleton by control file and status heartbeat. It serves every binding that names it, runs the ladder with acknowledgement windows, escalation records, per-binding budgets, a circuit breaker (three consecutive failures suspend a binding; a probe after a 30-minute backoff can resume it), coalescing of W2 and W3 wakes for one recipient, principal notification, and a recorded `entry-only` outcome. A parked item is woken again when the recipient declares a new binding, such as a new live session. On a first start it does not re-wake items older than an hour. Session activation (`tools/awp_session.py`) declares the agent's W1 binding and attaches to or starts the relay; an older per-actor supervisor that relaunches itself hands over to the relay.
+- **Bindings** (`tools/awp_wake.py`): `coop2.binding.declared` and `coop2.binding.retired` events, published by the participant itself. Adapter commands and endpoints come only from built-in profiles or relay-local configuration (`.awp-runtime/wake-adapters.json`, `~/.awp/wake-adapters.json`). Each declaration is probed once by the relay; `reach` reports verified, failed, or unverified per binding and the best verified rung per participant; `outcome` reports how one event ended.
+- **W1** `codex-queue`. **W2** `claude-print`, `codex-exec`, and `gemini-print`, launched through `tools/awp_headless_run.py`, which records a `host-launch` receipt when the run succeeds. The Claude profile allows only reading and the ingress and inbox commands. **W3** `claude-routine`, which posts identifiers to `https://api.anthropic.com/v1/claude_code/routines/<id>/fire` with a referenced token. **W5** `desktop-notify` (Windows toast, macOS, or `notify-send`), always logged to `.awp-runtime/notifications.log`.
+
+Not yet verified live: W2 on each host, and the W3 routine experiment. W4 has no adapter yet. The LAN relay is future work.
+
+### Setting up a hosted Claude session (W3)
+
+1. In Claude, create a routine bound to the computer that holds the project, with a prompt that tells the woken session to find the AWP project folder, run the `[AWP doorbell]` ingress command the fired text names, and then read its inbox. Add an API trigger to the routine and copy its token.
+2. On the relay's computer, save the token in `~/.awp/secrets/claude-routine` (or an environment variable the relay can see). Never commit it or paste it into the ledger.
+3. Declare the binding as the Claude participant: `python -m tools.awp_wake declare --actor actor:claude --class W3 --adapter claude-routine --param routine_id=<routine id> --secret-ref file:~/.awp/secrets/claude-routine`. Optionally also declare `--class W5 --adapter desktop-notify`.
+4. The relay probes the new binding. `python -m tools.awp_wake reach --actor actor:claude` shows the result. The acceptance test is a probe from Codex acknowledged by the woken Claude session.

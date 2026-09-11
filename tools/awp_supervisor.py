@@ -291,7 +291,21 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Legacy entry point.
+
+    Activation now starts one relay per clone (``tools/awp_relay.py``) that
+    serves every declared wake binding.  A per-actor supervisor started by
+    older code, or relaunching itself after a code change, hands over to that
+    relay.  An explicit adapter command or ``--once`` keeps the original
+    single-actor loop for tests and custom hosts.
+    """
     args = parser().parse_args(argv)
+    if not args.adapter_command and not args.once:
+        if __package__ in {None, ""}:
+            from tools.awp_relay import adopt_legacy
+        else:
+            from .awp_relay import adopt_legacy
+        return adopt_legacy(args)
     rendezvous = Rendezvous(args.project, args.ledger)
     adapter_command = parse_command(args.adapter_command)
     adapter = CommandAdapter(adapter_command) if adapter_command else CLIResumeAdapter(args.host, args.session_ref)

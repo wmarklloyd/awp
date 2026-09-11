@@ -3,7 +3,7 @@
 **Status:** Generated, non-normative bounded-context entry artifact  
 **Profile:** `agent-entry-core-v2`  
 **Source bundle:** `dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md`  
-**Source bundle SHA-256:** `d412a2522b22821787d40a1987b06c8713826406994336f34d875786877e3899`
+**Source bundle SHA-256:** `7d69a147fd3758672993487100512be59bfb6c6f87e338577a91045e38e57abc`
 
 This profile supports safe orientation, not complete interpretation. Its source bundle governs if any detail conflicts. Verify the digest before relying on this file.
 
@@ -60,7 +60,7 @@ Schemas on demand (digest in the route output):
 
 Coordination binding, COOP contract, leases, intents, or integration work.
 
-Read first: `python tools/awp_spec_entry.py --route coordination --statements` (285 statements, 127445 bytes).
+Read first: `python tools/awp_spec_entry.py --route coordination --statements` (287 statements, 128304 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -80,7 +80,7 @@ Schemas on demand (digest in the route output):
 
 Presence monitoring, multi-host scale, or COOP-3 deployment work.
 
-Read first: `python tools/awp_spec_entry.py --route coordination-scale --statements` (245 statements, 114365 bytes).
+Read first: `python tools/awp_spec_entry.py --route coordination-scale --statements` (247 statements, 115224 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -113,7 +113,7 @@ Schemas on demand (digest in the route output):
 
 Silo identity, hierarchy, pinned bases, governance, and adoption; expand coordination/security sources when those mechanisms are used.
 
-Read first: `python tools/awp_spec_entry.py --route silos --statements` (358 statements, 155255 bytes).
+Read first: `python tools/awp_spec_entry.py --route silos --statements` (360 statements, 156114 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -236,6 +236,6 @@ Schemas on demand (digest in the route output):
     }
   },
   "source_bundle": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
-  "source_bundle_sha256": "d412a2522b22821787d40a1987b06c8713826406994336f34d875786877e3899"
+  "source_bundle_sha256": "7d69a147fd3758672993487100512be59bfb6c6f87e338577a91045e38e57abc"
 }
 ```

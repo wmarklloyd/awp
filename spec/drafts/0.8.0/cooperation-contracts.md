@@ -363,3 +363,7 @@ This section generalizes the startup doorbell of Section 9 from agents whose ope
 **Hosted and forge rungs.** A `W3` or `W4` binding MUST send identifiers only. A hosted session that has to read the ledger MUST reach it through a path whose audience matches the interaction's, such as a private remote or the vendor's link to the principal's own computer.
 
 **Acceptance.** A binding claiming live wake MUST pass the reachability probe of Section 5.2 through that binding, including after a relay restart, a recipient restart, and a missed signal. A claim of any-agent support SHOULD be demonstrated across at least one local and one hosted wake class.
+
+**Adapter configuration.** A relay MUST obtain every executable command, command template, and network endpoint it uses for a binding from its own local configuration or built-in adapter profiles. A binding declaration MUST name an adapter profile and MAY carry non-secret parameters such as a session or routine identifier; a relay MUST NOT execute a command or contact an endpoint taken from the ledger. A relay that does not recognize a declared profile MUST treat the binding as unavailable and disclose why.
+
+**Wake records.** A relay MUST record each escalation, each principal notification, each suspension and resumption of a binding, and each ladder that ends without a recipient receipt, as ledger events published under the relay's own actor identity and naming the event or binding concerned. These records MUST NOT be counted as recipient receipts.

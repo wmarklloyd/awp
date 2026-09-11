@@ -4,7 +4,8 @@ Publishes a tickle (ledger event plus Git signal ref), then waits and reports
 each stage from the authoritative ledger:
 
   published      the sender's coop2.tickle.sent event
-  transport      the recipient supervisor's transport receipt (actor:awp-supervisor)
+  transport      the relay's transport receipt for each wake attempt (actor:awp-relay)
+  ladder         escalations and the recorded outcome, if the first rung did not answer
   acknowledged   the recipient's coop2.tickle.acked event and how it was produced
 
 The test passes only when the recipient acknowledges within the TTL through its
@@ -25,8 +26,10 @@ from typing import Any, Sequence
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from tools.awp_coop2 import Rendezvous
+    from tools import awp_wake
 else:
     from .awp_coop2 import Rendezvous
+    from . import awp_wake
 
 
 def _stages(rendezvous: Rendezvous, tickle_id: str) -> dict[str, Any]:
@@ -40,7 +43,11 @@ def _stages(rendezvous: Rendezvous, tickle_id: str) -> dict[str, Any]:
             stages["published"] = entry
         elif event["kind"].startswith("coop2.tickle.transport_"):
             stages["transport"] = entry | {"state": payload.get("transport_state"), "route_id": payload.get("route_id"),
-                                           "reason": payload.get("reason")}
+                                           "wake_class": payload.get("wake_class"), "reason": payload.get("reason")}
+            stages.setdefault("attempts", []).append(stages["transport"])
+        elif event["kind"] in {"coop2.wake.escalated", "coop2.wake.outcome"}:
+            stages.setdefault("ladder", []).append(entry | {"kind": event["kind"], "binding_id": payload.get("binding_id"),
+                                                            "outcome": payload.get("outcome"), "reason": payload.get("reason")})
         elif event["kind"] == "coop2.tickle.acked":
             stages["acknowledged"] = entry | {"via": payload.get("acknowledged_via")}
     return stages
@@ -48,6 +55,8 @@ def _stages(rendezvous: Rendezvous, tickle_id: str) -> dict[str, Any]:
 
 def run(project: Path, ledger: Path | None, sender: str, recipient: str, ttl: int, wait: float) -> dict[str, Any]:
     rendezvous = Rendezvous(project, ledger)
+    # Section 12: before sending, state which rung the recipient will get.
+    reach = awp_wake.reach(rendezvous._events(), recipient)["participants"].get(recipient, {}).get("best")
     key = f"tickle-test-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}"
     sent = rendezvous.tickle(sender, recipient, ttl_seconds=ttl, idempotency_key=key)
     tickle_id = sent["tickle_id"]
@@ -62,7 +71,7 @@ def run(project: Path, ledger: Path | None, sender: str, recipient: str, ttl: in
     passed = bool(ack) and ack.get("via") not in {None, "supervisor"}
     return {"profile": "awp-tickle-test-v1", "tickle_id": tickle_id, "sender": sender, "recipient": recipient,
             "ttl_seconds": ttl, "git_signal": (sent.get("doorbell") or {}).get("git_ref", {}).get("state"),
-            "stages": stages, "result": "pass" if passed else "fail"}
+            "expected_reach": reach, "stages": stages, "result": "pass" if passed else "fail"}
 
 
 def main(argv: Sequence[str] | None = None) -> int:

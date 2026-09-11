@@ -2644,6 +2644,18 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "source": "spec/drafts/0.8.0/cooperation-contracts.md",
       "line": 365,
       "statement": "**Acceptance.** A binding claiming live wake MUST pass the reachability probe of Section 5.2 through that binding, including after a relay restart, a recipient restart, and a missed signal. A claim of any-agent support SHOULD be demonstrated across at least one local and one hosted wake class."
+    },
+    {
+      "id": "AWP-COOP-101",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 367,
+      "statement": "**Adapter configuration.** A relay MUST obtain every executable command, command template, and network endpoint it uses for a binding from its own local configuration or built-in adapter profiles. A binding declaration MUST name an adapter profile and MAY carry non-secret parameters such as a session or routine identifier; a relay MUST NOT execute a command or contact an endpoint taken from the ledger. A relay that does not recognize a declared profile MUST treat the binding as unavailable and disclose why."
+    },
+    {
+      "id": "AWP-COOP-102",
+      "source": "spec/drafts/0.8.0/cooperation-contracts.md",
+      "line": 369,
+      "statement": "**Wake records.** A relay MUST record each escalation, each principal notification, each suspension and resumption of a binding, and each ladder that ends without a recipient receipt, as ledger events published under the relay's own actor identity and naming the event or binding concerned. These records MUST NOT be counted as recipient receipts."
     }
   ]
 }
