@@ -1,4 +1,4 @@
-# Agent Workshare Protocol 0.8.0
+# Agent Workstate Protocol 0.8.0
 
 **Status:** Working Draft  
 **Editor:** Mark Lloyd  

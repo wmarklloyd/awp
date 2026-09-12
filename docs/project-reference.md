@@ -1,6 +1,6 @@
 # AWP Project Reference
 
-This document collects release, validation, repository, and research information that supports the Agent Workshare Protocol without interrupting the introductory path in the main [README](../README.md).
+This document collects release, validation, repository, and research information that supports the Agent Workstate Protocol without interrupting the introductory path in the main [README](../README.md).
 
 ## Release status
 

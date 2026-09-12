@@ -1,9 +1,9 @@
-# Agent Workshare Protocol
+# Agent Workstate Protocol
 
 [![Validate specification](https://github.com/wmarklloyd/awp/actions/workflows/validate.yml/badge.svg)](https://github.com/wmarklloyd/awp/actions/workflows/validate.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-The **Agent Workshare Protocol (AWP)** is a project-level communication and coordination system for AI agents—and for the people who direct or work alongside them. It gives agents a structured way to announce work, share relevant findings and evidence, ask bounded questions, report conflicts, and hand off responsibility, so every participant can act on a shared, current picture of the project.
+The **Agent Workstate Protocol (AWP)** is a portable format for preserving a project's working state—its intent, decisions, evidence, and current status—across people, AI agents, tools, and sessions in a single canonical capsule. It gives the next participant, human or agent, the project's actual state instead of just its files, so work can resume without reconstruction, repetition, or avoidable error. AWP also defines an optional Cooperation Contracts ladder for direct agent-to-agent coordination, but the workstate capsule is the protocol's core: coordination is built on top of it, not the other way around.
 
 One person can use AWP to direct several agents; a human team can use it with agents; and different agents can work together under one owner’s rules. Multiple agents do not imply multiple users. AWP makes the participants, their authority, their shared context, and the limits on their communication explicit.
 
@@ -66,7 +66,7 @@ dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md
 A minimal project entry looks like this:
 
 ```markdown
-## Agent Workshare Protocol
+## Agent Workstate Protocol
 
 Before beginning work, read:
 

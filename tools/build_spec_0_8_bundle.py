@@ -61,7 +61,7 @@ def build_assets() -> str:
     reading the specification does not also read every schema and a verbatim
     copy of every requirement statement."""
     sections = [
-        "# Agent Workshare Protocol 0.8.0 — Working Draft Assets",
+        "# Agent Workstate Protocol 0.8.0 — Working Draft Assets",
         "",
         "**Status:** Generated working-draft artifact; not a release  ",
         "**Companion of:** `dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md`  ",
@@ -76,7 +76,7 @@ def build_assets() -> str:
 
 def build() -> str:
     sections = [
-        "# Agent Workshare Protocol 0.8.0 — Working Draft Bundle",
+        "# Agent Workstate Protocol 0.8.0 — Working Draft Bundle",
         "",
         "**Status:** Generated working-draft artifact; not a release  ",
         "**Source of truth:** `spec/drafts/0.8.0/*` and the schemas named in the draft module registry  ",

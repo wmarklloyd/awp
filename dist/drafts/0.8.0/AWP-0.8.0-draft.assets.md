@@ -1,4 +1,4 @@
-# Agent Workshare Protocol 0.8.0 — Working Draft Assets
+# Agent Workstate Protocol 0.8.0 — Working Draft Assets
 
 **Status:** Generated working-draft artifact; not a release  
 **Companion of:** `dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md`  

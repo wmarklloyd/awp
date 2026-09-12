@@ -4,7 +4,7 @@ These instructions apply to the AWP repository. User requests remain the control
 
 ## Project orientation
 
-This repository defines the Agent Workshare Protocol (AWP), a portable format for preserving semantic project state across human and AI-agent sessions and for coordinating work above source control.
+This repository defines the Agent Workstate Protocol (AWP), a portable format for preserving semantic project state across human and AI-agent sessions. Coordinating work above source control (the Cooperation Contracts / COOP ladder) is a secondary layer built on top of the workstate capsule, not the protocol's primary purpose.
 
 AWP 0.8.0 is the active operative working draft under `spec/drafts/0.8.0/`. Earlier releases are historical references only. Coordination remains normative but experimental. The repository contains specifications, schemas, validators, conformance fixtures, generated bundles, a synthetic experiment harness, and project workstate examples. It does not claim to contain a production reader/writer, complete semantic-scope analyzer, live coordination service, or independent interoperability implementation.
 

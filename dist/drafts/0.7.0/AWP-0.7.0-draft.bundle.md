@@ -1,4 +1,4 @@
-# Agent Workshare Protocol 0.7.0 — Working Draft Bundle
+# Agent Workstate Protocol 0.7.0 — Working Draft Bundle
 
 **Status:** Generated working-draft artifact; not a release  
 **Source of truth:** `spec/drafts/0.7.0/*` and the schemas named in the draft module registry  
@@ -10,7 +10,7 @@ Repository-relative links are preserved as source-location identifiers. When tho
 
 ---
 
-# Agent Workshare Protocol 0.7.0
+# Agent Workstate Protocol 0.7.0
 
 **Status:** Working Draft  
 **Editor:** Mark Lloyd  
