@@ -111,16 +111,24 @@ def head_tree(project: Path) -> str | None:
 
 
 def _divergence(project: Path, scope: Sequence[str]) -> dict[str, list[str]]:
-    """Report tracked-but-unstaged and untracked paths inside `scope`."""
+    """Report tracked-but-unstaged and untracked paths inside `scope`.
+
+    A declared scope is pushed down to Git as a pathspec.  Scanning for
+    untracked files costs time proportional to the working tree, which in a
+    build-heavy repository is minutes rather than seconds; bounded by a
+    pathspec it costs what the scope is worth.  The result is filtered again in
+    Python so the answer does not depend on pathspec interpretation.
+    """
+    pathspec = ["--", *scope] if scope else []
     unstaged = [
         line
-        for line in _git(project, "diff", "--name-only").splitlines()
+        for line in _git(project, "diff", "--name-only", *pathspec).splitlines()
         if line and _in_scope(line, scope)
     ]
     untracked = [
         line
         for line in _git(
-            project, "ls-files", "--others", "--exclude-standard"
+            project, "ls-files", "--others", "--exclude-standard", *pathspec
         ).splitlines()
         if line and _in_scope(line, scope)
     ]

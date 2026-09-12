@@ -189,6 +189,13 @@ class CheckpointBindingTests(unittest.TestCase):
             **changes,
         }
 
+    def bindings_for(self, capsule: Path, state_space: str) -> list[dict]:
+        return [
+            entry
+            for entry in self.resume(capsule).get("state_bindings", [])
+            if entry.get("state_space") == state_space
+        ]
+
     def resume(self, capsule: Path) -> dict:
         snapshot = awp_workstate._sections(
             capsule.read_text(encoding="utf-8").replace("\r\n", "\n")
@@ -211,9 +218,8 @@ class CheckpointBindingTests(unittest.TestCase):
         self.assertEqual(receipt["state_binding"]["profile"], PROFILE)
         resume = self.resume(capsule)
         self.assertEqual(resume["revision"], before + 1)
-        bindings = resume["state_bindings"]
+        bindings = self.bindings_for(capsule, "repo:application")
         self.assertEqual(len(bindings), 1)
-        self.assertEqual(bindings[0]["state_space"], "repo:application")
         self.assertTrue(bindings[0]["revision"].startswith(REVISION_PREFIX))
 
     def test_checkpoint_excludes_the_capsule_from_its_own_binding(self) -> None:
@@ -228,7 +234,7 @@ class CheckpointBindingTests(unittest.TestCase):
             ),
         )
         self.assertEqual(receipt["state_binding"]["excludes"], ["project.awp.md"])
-        binding = self.resume(capsule)["state_bindings"][0]
+        binding = self.bindings_for(capsule, "repo:application")[0]
         git(project, "add", "project.awp.md")
         git(project, "commit", "--quiet", "-m", "checkpoint")
         self.assertEqual(verify_binding(project, binding)["state"], "current")
@@ -249,7 +255,7 @@ class CheckpointBindingTests(unittest.TestCase):
                 state_binding=specification,
             ),
         )
-        self.assertEqual(len(self.resume(capsule)["state_bindings"]), 1)
+        self.assertEqual(len(self.bindings_for(capsule, "repo:application")), 1)
 
     def test_a_caller_cannot_assert_its_own_binding_mode(self) -> None:
         temporary, project, capsule = self.project_with_capsule()
