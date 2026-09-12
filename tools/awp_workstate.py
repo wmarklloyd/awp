@@ -43,6 +43,10 @@ from tools.awp_reentry import (
     _sections,
     build_reentry_view,
 )
+from tools.awp_state_binding import (
+    StateBindingError,
+    staged_tree_binding,
+)
 
 
 PROFILE = "local-workstate-projector-v1"
@@ -221,6 +225,71 @@ def _apply_module_updates(snapshot: dict[str, Any], request: dict[str, Any]) -> 
     return sorted(updated_ids)
 
 
+def _apply_state_binding(
+    snapshot: dict[str, Any],
+    request: dict[str, Any],
+    project: Path,
+    capsule_relative: str,
+    prior_resume_revision: int | None,
+) -> dict[str, Any] | None:
+    """Record a Handoff state binding for the tree this checkpoint describes.
+
+    A binding that names a commit cannot be written before the commit exists,
+    which is why hosts commit and then amend.  `mode: staged-tree` asks the host
+    to compute a `git-staged-tree-v1` binding from the staged index instead
+    (Handoff section 10), so the checkpoint and the commit it describes name the
+    same tree without rewriting either.
+
+    The host computes the binding; a caller cannot assert one, and cannot claim
+    a clean working tree the index does not support.
+    """
+    specification = request.get("state_binding")
+    if specification is None:
+        return None
+    if not isinstance(specification, dict):
+        raise CoordinationError("state_binding must be an object")
+    if specification.get("mode", "staged-tree") != "staged-tree":
+        raise CoordinationError("state_binding mode must be staged-tree")
+    state_space = specification.get("state_space")
+    if not isinstance(state_space, str) or not state_space.strip():
+        raise CoordinationError("state_binding requires a nonempty state_space")
+    scope = specification.get("scope", [])
+    if not isinstance(scope, list) or not all(isinstance(item, str) for item in scope):
+        raise CoordinationError("state_binding scope must be an array of strings")
+    # The capsule cannot be inside the tree it names: writing the identifier
+    # changes the capsule, which changes the tree (AWP-HANDOFF-029).  The host
+    # knows which path that is, so the caller never has to declare it.
+    excludes = [capsule_relative]
+    try:
+        binding = staged_tree_binding(project, state_space, scope, excludes)
+    except StateBindingError as error:
+        raise CoordinationError(f"state binding unavailable: {error}") from error
+
+    modules = snapshot.setdefault("modules", {})
+    handoff = modules.get("urn:awp:handoff")
+    if not isinstance(handoff, dict):
+        raise CoordinationError("capsule declares no urn:awp:handoff projection to bind")
+    resume = handoff.get("resume")
+    if not isinstance(resume, dict):
+        raise CoordinationError("urn:awp:handoff projection has no resume record")
+
+    bindings = [
+        entry
+        for entry in resume.get("state_bindings", [])
+        if not (isinstance(entry, dict) and entry.get("state_space") == binding["state_space"])
+    ]
+    bindings.append(binding)
+    if resume.get("state_bindings") == bindings:
+        return binding
+    resume["state_bindings"] = bindings
+    # Bump only when this request has not already advanced the resume record,
+    # so an explicit module_updates revision stays authoritative (AWP-CORE-024).
+    current = resume.get("revision")
+    if isinstance(current, int) and current == prior_resume_revision:
+        resume["revision"] = current + 1
+    return binding
+
+
 def _render_snapshot(snapshot: dict[str, Any]) -> str:
     """Render a stable Capsule snapshot without pretty-printing every record."""
     lines = ["{"]
@@ -258,7 +327,7 @@ def _replace_once(pattern: re.Pattern[str], text: str, replacement: str, label: 
     return rewritten
 
 
-def _proposal(capsule: Path, request: dict[str, Any]) -> tuple[bytes, dict[str, Any]]:
+def _proposal(capsule: Path, request: dict[str, Any], project: Path) -> tuple[bytes, dict[str, Any]]:
     original_bytes = capsule.read_bytes()
     original = original_bytes.decode("utf-8").replace("\r\n", "\n")
     old_digest = capsule_artifact_digest(capsule)
@@ -293,8 +362,21 @@ def _proposal(capsule: Path, request: dict[str, Any]) -> tuple[bytes, dict[str, 
     briefing = _briefing_from_request(request)
     sections = _sections(original)
     snapshot = sections["snapshot"]
+    prior_resume = snapshot.get("modules", {}).get("urn:awp:handoff", {})
+    prior_resume_revision = (
+        prior_resume.get("resume", {}).get("revision") if isinstance(prior_resume, dict) else None
+    )
     updated_records = _apply_records(snapshot, request)
     updated_modules = _apply_module_updates(snapshot, request)
+    try:
+        capsule_relative = capsule.resolve().relative_to(project.resolve()).as_posix()
+    except ValueError:
+        capsule_relative = capsule.name
+    state_binding = _apply_state_binding(
+        snapshot, request, project, capsule_relative, prior_resume_revision
+    )
+    if state_binding is not None and "urn:awp:handoff" not in updated_modules:
+        updated_modules = sorted([*updated_modules, "urn:awp:handoff"])
     snapshot["frontier"] = new_frontier
     snapshot["generated_at"] = request.get("generated_at") or utc_timestamp()
     generated_match = GENERATED.search(original)
@@ -346,6 +428,7 @@ def _proposal(capsule: Path, request: dict[str, Any]) -> tuple[bytes, dict[str, 
         "checkpoint": checkpoint,
         "updated_record_ids": updated_records,
         "updated_module_ids": updated_modules,
+        "state_binding": state_binding,
     }
 
 
@@ -426,7 +509,7 @@ def fill_preconditions_from_current(capsule: Path, request: dict[str, Any]) -> d
 
 def checkpoint(project: Path, capsule: Path, request: dict[str, Any]) -> dict[str, Any]:
     with _capsule_lock(project):
-        proposed, receipt = _proposal(capsule, request)
+        proposed, receipt = _proposal(capsule, request, project)
         if receipt["status"] == "no_change":
             return receipt
         journal_path = _journal_path(project)
@@ -615,6 +698,21 @@ def parser() -> argparse.ArgumentParser:
             "request are still enforced as guards"
         ),
     )
+    checkpoint_command.add_argument(
+        "--bind-staged-tree",
+        metavar="STATE_SPACE",
+        help=(
+            "record a git-staged-tree-v1 binding for this state space, computed from the "
+            "staged index, so the checkpoint and the commit it describes name the same tree "
+            "without a commit-then-amend cycle"
+        ),
+    )
+    checkpoint_command.add_argument(
+        "--binding-scope",
+        action="append",
+        default=[],
+        help="narrow which claims the binding carries; the recorded tree always covers the whole index",
+    )
     refresh_command = commands.add_parser("refresh")
     refresh_command.add_argument("--event-id", required=True)
     refresh_command.add_argument("--checkpoint", required=True)
@@ -654,6 +752,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise CoordinationError("checkpoint request must be a JSON object")
             if getattr(args, "from_current", False):
                 request = fill_preconditions_from_current(capsule, request)
+            if getattr(args, "bind_staged_tree", None) and "state_binding" not in request:
+                request["state_binding"] = {
+                    "mode": "staged-tree",
+                    "state_space": args.bind_staged_tree,
+                    "scope": args.binding_scope,
+                }
             result = checkpoint(project, capsule, request)
         print(json.dumps(result, indent=2, sort_keys=True))
         return 0 if result.get("status", result.get("state")) not in {"incomplete", "diverged"} else 2

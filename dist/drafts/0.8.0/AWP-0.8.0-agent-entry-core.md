@@ -3,7 +3,7 @@
 **Status:** Generated, non-normative bounded-context entry artifact  
 **Profile:** `agent-entry-core-v2`  
 **Source bundle:** `dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md`  
-**Source bundle SHA-256:** `84ed09980fbf262ca628c14d19d71f63b118cfbddac0f22629f4c4fdc681b937`
+**Source bundle SHA-256:** `d5f512601d33ba0017bb2ac5b56d4f384234686d836622f5fbe7705069209a51`
 
 This profile supports safe orientation, not complete interpretation. Its source bundle governs if any detail conflicts. Verify the digest before relying on this file.
 
@@ -42,7 +42,7 @@ Schemas on demand (digest in the route output):
 
 Capsule, discovery, handoff, checkpoint, or re-entry work.
 
-Read first: `python tools/awp_spec_entry.py --route workstate --statements` (116 statements, 37324 bytes).
+Read first: `python tools/awp_spec_entry.py --route workstate --statements` (126 statements, 40358 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -60,7 +60,7 @@ Schemas on demand (digest in the route output):
 
 Coordination binding, COOP contract, leases, intents, or integration work.
 
-Read first: `python tools/awp_spec_entry.py --route coordination --statements` (292 statements, 130096 bytes).
+Read first: `python tools/awp_spec_entry.py --route coordination --statements` (302 statements, 133130 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -113,7 +113,7 @@ Schemas on demand (digest in the route output):
 
 Silo identity, hierarchy, pinned bases, governance, and adoption; expand coordination/security sources when those mechanisms are used.
 
-Read first: `python tools/awp_spec_entry.py --route silos --statements` (365 statements, 157906 bytes).
+Read first: `python tools/awp_spec_entry.py --route silos --statements` (375 statements, 160940 bytes).
 
 Modules on demand:
 - `spec/drafts/0.8.0/index.md`
@@ -236,6 +236,6 @@ Schemas on demand (digest in the route output):
     }
   },
   "source_bundle": "dist/drafts/0.8.0/AWP-0.8.0-draft.bundle.md",
-  "source_bundle_sha256": "84ed09980fbf262ca628c14d19d71f63b118cfbddac0f22629f4c4fdc681b937"
+  "source_bundle_sha256": "d5f512601d33ba0017bb2ac5b56d4f384234686d836622f5fbe7705069209a51"
 }
 ```

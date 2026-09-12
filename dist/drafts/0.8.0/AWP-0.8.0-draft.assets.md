@@ -954,6 +954,66 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "statement": "A Handoff reader implements the receiver procedure and exposes limitations. A Handoff writer implements the producer procedure and makes accurate claims. A Resume Profile reader additionally implements Section 5 and declares the `resume-profile` capability. A system MAY support handoff and resume records without supporting the Capsule module; repository discovery requires Capsule support."
     },
     {
+      "id": "AWP-HANDOFF-021",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 220,
+      "statement": "A binding MAY instead name the content the producer staged for the commit rather than the commit itself. This version defines one such adapter profile, `git-staged-tree-v1`."
+    },
+    {
+      "id": "AWP-HANDOFF-022",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 232,
+      "statement": "Under `git-staged-tree-v1` the `revision` value MUST be `git-tree:` followed by the object identifier of the tree recorded by the producer's staged index, and that identifier MUST be obtained from the index itself rather than from a commit, a branch, or the working tree."
+    },
+    {
+      "id": "AWP-HANDOFF-023",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 234,
+      "statement": "A producer MUST compute that tree identifier over the whole staged index. The `scope` array narrows which claims, evidence, and verification results the binding carries; it MUST NOT be read as narrowing what the recorded identifier covers."
+    },
+    {
+      "id": "AWP-HANDOFF-024",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 236,
+      "statement": "The identifier is stable across the commit that follows it: when the index does not change between staging and committing, the resulting commit's tree is that same object. A receiver MUST therefore accept either an identical recomputed staged-tree identifier or a commit whose tree object equals the recorded identifier as a current binding, and MUST NOT report the binding stale merely because the producer's checkpoint predates the commit."
+    },
+    {
+      "id": "AWP-HANDOFF-025",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 240,
+      "statement": "A tree that is staged and never committed is unreachable and MAY be removed by repository maintenance. A producer that publishes a handoff for another participant SHOULD replace the staged-tree binding with a commit revision once the commit exists, and MUST disclose the retention limitation while the binding remains pre-commit."
+    },
+    {
+      "id": "AWP-HANDOFF-026",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 242,
+      "statement": "A producer MUST NOT record a `git-staged-tree-v1` binding as clean when tracked paths within `scope` carry unstaged modifications, because the staged tree is then not the content on disk. It MUST either stage those changes, narrow `scope` to exclude them, or record the divergence so the receiver can treat affected claims as unverified."
+    },
+    {
+      "id": "AWP-HANDOFF-027",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 244,
+      "statement": "Claims, evidence, and verification results bound to a staged tree MUST have been produced against the staged content. A producer MUST NOT bind a verification that ran against a different working-tree state, and a receiver MUST treat such a binding as unverifiable when the producer cannot establish which content was verified."
+    },
+    {
+      "id": "AWP-HANDOFF-028",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 246,
+      "statement": "A host that cannot compute a staged-index tree identifier MUST report the binding as unavailable and fall back to a commit revision rather than substitute a working-tree or branch identifier."
+    },
+    {
+      "id": "AWP-HANDOFF-029",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 248,
+      "statement": "A Capsule that carries the binding cannot be inside the tree the binding names: writing the identifier changes the Capsule, which changes the tree, which changes the identifier. A producer MUST therefore compute the identifier from the staged index as it stands before the Capsule revision is written, and MUST list the Capsule path, and any other path excluded for the same reason, in an `excludes` array on the binding."
+    },
+    {
+      "id": "AWP-HANDOFF-030",
+      "source": "spec/drafts/0.8.0/handoff.md",
+      "line": 250,
+      "statement": "A receiver MUST treat a commit whose tree differs from the recorded identifier only at excluded paths as current, and MUST report any other difference as stale. A producer MUST NOT use `excludes` to omit a work product from the binding; it carries only paths whose content depends on the identifier itself."
+    },
+    {
       "id": "AWP-ARTIFACT-001",
       "source": "spec/drafts/0.8.0/artifact.md",
       "line": 15,

@@ -997,6 +997,42 @@ Reports SHOULD record capsule size where applicable, token usage, author and rec
 
 A Handoff reader implements the receiver procedure and exposes limitations. A Handoff writer implements the producer procedure and makes accurate claims. A Resume Profile reader additionally implements Section 5 and declares the `resume-profile` capability. A system MAY support handoff and resume records without supporting the Capsule module; repository discovery requires Capsule support.
 
+## 10. Pre-commit state bindings
+
+Section 5 allows a `state_binding` to name a source-controlled revision. When that revision is a commit identifier, a producer cannot compute it until the commit exists, and the commit cannot describe the checkpoint until the checkpoint is written. Implementations resolve that ordering by committing and then amending, which rewrites the published revision and invalidates any binding a receiver already read.
+
+A binding MAY instead name the content the producer staged for the commit rather than the commit itself. This version defines one such adapter profile, `git-staged-tree-v1`.
+
+```json
+{
+  "state_space": "repo:application",
+  "revision": "git-tree:4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+  "profile": "git-staged-tree-v1",
+  "scope": ["src/", "tests/"],
+  "working_tree": "clean"
+}
+```
+
+Under `git-staged-tree-v1` the `revision` value MUST be `git-tree:` followed by the object identifier of the tree recorded by the producer's staged index, and that identifier MUST be obtained from the index itself rather than from a commit, a branch, or the working tree.
+
+A producer MUST compute that tree identifier over the whole staged index. The `scope` array narrows which claims, evidence, and verification results the binding carries; it MUST NOT be read as narrowing what the recorded identifier covers.
+
+The identifier is stable across the commit that follows it: when the index does not change between staging and committing, the resulting commit's tree is that same object. A receiver MUST therefore accept either an identical recomputed staged-tree identifier or a commit whose tree object equals the recorded identifier as a current binding, and MUST NOT report the binding stale merely because the producer's checkpoint predates the commit.
+
+Because the profile names content and not history, a matching identifier establishes only that the same tree is present. It does not establish that the tree was committed, that it is reachable from any branch, or that commit metadata such as message, author, parents, or time matches anything the checkpoint describes.
+
+A tree that is staged and never committed is unreachable and MAY be removed by repository maintenance. A producer that publishes a handoff for another participant SHOULD replace the staged-tree binding with a commit revision once the commit exists, and MUST disclose the retention limitation while the binding remains pre-commit.
+
+A producer MUST NOT record a `git-staged-tree-v1` binding as clean when tracked paths within `scope` carry unstaged modifications, because the staged tree is then not the content on disk. It MUST either stage those changes, narrow `scope` to exclude them, or record the divergence so the receiver can treat affected claims as unverified.
+
+Claims, evidence, and verification results bound to a staged tree MUST have been produced against the staged content. A producer MUST NOT bind a verification that ran against a different working-tree state, and a receiver MUST treat such a binding as unverifiable when the producer cannot establish which content was verified.
+
+A host that cannot compute a staged-index tree identifier MUST report the binding as unavailable and fall back to a commit revision rather than substitute a working-tree or branch identifier.
+
+A Capsule that carries the binding cannot be inside the tree the binding names: writing the identifier changes the Capsule, which changes the tree, which changes the identifier. A producer MUST therefore compute the identifier from the staged index as it stands before the Capsule revision is written, and MUST list the Capsule path, and any other path excluded for the same reason, in an `excludes` array on the binding.
+
+A receiver MUST treat a commit whose tree differs from the recorded identifier only at excluded paths as current, and MUST report any other difference as stale. A producer MUST NOT use `excludes` to omit a work product from the binding; it carries only paths whose content depends on the identifier itself.
+
 ---
 
 # AWP Artifact 0.5.0
@@ -3490,7 +3526,7 @@ Identified by digest; reproduced verbatim in `dist/drafts/0.8.0/AWP-0.8.0-draft.
 |---|---|---:|---|
 | Silo profile schema | `schemas/awp-silo-0.1.schema.json` | 9670 | `bc736a67a6c57ddd53e01168de1cbc193323290f65f50bfbeac675f3c4a88b5c` |
 | Module registry | `spec/drafts/0.8.0/modules.json` | 3341 | `233d381de6cac801971f93879e7db16def0f405d6fee8fc10c6f9f730e982e89` |
-| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 220288 | `716d12bb679c4449917a4dbab453a01315b7b8622986102efce5999cac4d28a6` |
+| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 224652 | `fb7b1a9afc0ff04ab53ad2eb8cdf285a9853add2a7e7fdfd641b32c502565aa1` |
 | Core schema | `schemas/awp-core-0.8.schema.json` | 14661 | `bd212815e521fefbd9757c0e3dc7c18890e936146f7065dd3ef7c54e2206454e` |
 | Cooperation schema | `schemas/awp-cooperation-0.1.schema.json` | 25432 | `3124bf5c6fdd173a97f49ac835db67ce7ddb7c0ae0d0fb9b4b857c32d5839f41` |
 | Capsule schema | `schemas/awp-capsule-0.5.schema.json` | 1289 | `8d33f83d815faf9ad7fa0b4b0823ae15b041b1d236e8c7153b60e886b18a080a` |
