@@ -439,7 +439,27 @@ class ReviewFindingTests(RelayFixture):
         self.declare("actor:claude", "W1", "git-signal",
                      params={"signal_ref": wake.signal_ref("actor:claude"), "remote_url": "https://example.invalid/r.git"})
         self.declare("actor:codex", "W1", "codex-queue", params={"session_ref": "t"})
+        self.assertEqual(self.relay.step()["heartbeats"], [])
+
+    def test_relay_only_heartbeats_a_binding_verified_by_a_probe_ack(self) -> None:
+        # A bare declaration is not evidence the session is open: no heartbeat
+        # until a probe through this specific binding is actually acknowledged.
+        self.declare("actor:codex", "W1", "codex-queue", params={"session_ref": "t"})
+        self.assertEqual(self.relay.step()["heartbeats"], [])
+        probe = next(e for e in self.rendezvous._events() if e["kind"] == "coop2.tickle.sent")
+        self.ingress("actor:codex", probe["event_id"])
         self.assertEqual(self.relay.step()["heartbeats"], ["actor:codex"])
+
+    def test_stale_reach_stops_the_relay_heartbeat(self) -> None:
+        # Once the verified probe ages past the reach TTL, the relay must stop
+        # asserting the actor is live -- a stale binding is not a live session.
+        self.declare("actor:codex", "W1", "codex-queue", params={"session_ref": "t"})
+        self.relay.step()
+        probe = next(e for e in self.rendezvous._events() if e["kind"] == "coop2.tickle.sent")
+        self.ingress("actor:codex", probe["event_id"])
+        self.assertEqual(self.relay.step()["heartbeats"], ["actor:codex"])
+        self.offset = timedelta(seconds=wake.REACH_TTL_SECONDS + 60)
+        self.assertEqual(self.relay.step()["heartbeats"], [])
 
     def test_reach_goes_stale_after_its_time_to_live(self) -> None:
         binding = self.declare("actor:codex", "W1", "codex-queue", params={"session_ref": "t"})

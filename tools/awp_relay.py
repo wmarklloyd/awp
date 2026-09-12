@@ -242,10 +242,22 @@ class Relay:
 
         # Liveness first: a slow wake adapter below must not make the relay look dead.
         heartbeats = []
-        # Only a binding that injects into a session kept open on this machine
-        # earns a heartbeat; a subscribed hosted agent's liveness is its probes.
-        for actor in sorted({item["actor"] for item in mine.values()
-                             if item["class"] == "W1" and item["adapter"] not in wake.SUBSCRIBED_ADAPTERS}):
+        # A relay-asserted heartbeat needs evidence: a probe sent through this
+        # binding was actually acknowledged within the reach TTL (wake.reach).
+        # A bare declaration of a codex-queue-style binding is not proof the
+        # session it names is still open -- that session may have closed hours
+        # ago while the declaration event sits unchanged in the ledger. A
+        # subscribed hosted agent's liveness is its own probes, never a
+        # relay-side heartbeat.
+        reach = wake.reach(events, now=now)
+        candidates = sorted({item["actor"] for item in mine.values()
+                             if item["class"] == "W1" and item["adapter"] not in wake.SUBSCRIBED_ADAPTERS})
+        for actor in candidates:
+            rows = reach.get("participants", {}).get(actor, {}).get("bindings", [])
+            verified = any(row["class"] == "W1" and row["adapter"] not in wake.SUBSCRIBED_ADAPTERS
+                          and row.get("reach") == "verified" for row in rows)
+            if not verified:
+                continue
             try:
                 self.rendezvous.heartbeat(actor, PROFILE)
                 heartbeats.append(actor)
