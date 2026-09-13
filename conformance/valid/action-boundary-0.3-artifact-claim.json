@@ -1,0 +1,15 @@
+{
+  "type": "artifact_claim",
+  "artifact": "play-store-assets/baseball/feature-graphic.png",
+  "claims": [
+    {
+      "claim": "depicted-watch-interface-exists",
+      "status": "verified",
+      "evidence": {
+        "source_artifact": "website/assets/baseball-live.svg",
+        "source_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "transformation": "literal-composite"
+      }
+    }
+  ]
+}

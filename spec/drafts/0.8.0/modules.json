@@ -146,7 +146,7 @@
     {
       "id": "urn:awp:action-boundary",
       "name": "AWP Action Boundary",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "status": "experimental",
       "document": "action-boundary.md",
       "dependencies": [
@@ -162,7 +162,8 @@
           "id": "urn:awp:security",
           "version": "0.5.x"
         }
-      ]
+      ],
+      "schema": "../../../schemas/awp-action-boundary-0.3.schema.json"
     }
   ],
   "informative_documents": [

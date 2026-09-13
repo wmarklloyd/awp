@@ -1,0 +1,17 @@
+{
+  "type": "action_resolution",
+  "action": {
+    "operation_class": "generative:freeform",
+    "resource": "google-play:baseball",
+    "artifact_class": "public-promotional-watch-imagery",
+    "actor": "actor:agent-session-7"
+  },
+  "action_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "capsule_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "selection": "complete",
+  "decision_context": "complete",
+  "applicable_guardrails": ["constraint:no-invented-product-imagery"],
+  "applicable_decisions": ["decision:public-watch-imagery-uses-literal-product-surfaces"],
+  "requirements": ["depicted screen pixels must derive from a verified product capture"],
+  "result": "deny"
+}

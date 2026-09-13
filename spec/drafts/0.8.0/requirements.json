@@ -1771,134 +1771,116 @@
     {
       "id": "AWP-ACTIONBOUNDARY-002",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 15,
-      "statement": "This module does not claim that AWP replaces runtime authorization, sandboxing, or an organization's own policy enforcement, and it does not claim that a well-formed resolution proves the resulting artifact is true, safe, or correct \u2014 only that a declared, vocabulary-matched action was checked against structured decisions, by a component the acting participant does not control, before it took effect. A deployment that records these structures without gating a real mutation path MUST NOT claim the `action-enforced` or `output-attested` levels defined in \u00a79; \u00a71 of the Adapter Framework already establishes that a portable guardrail is policy state, not proof of enforcement, and this module inherits that distinction rather than replacing it."
+      "line": 22,
+      "statement": "This module does not claim that AWP replaces runtime authorization, sandboxing, or an organization's own policy enforcement, and it does not claim that a well-formed resolution proves the resulting artifact is true, safe, or correct \u2014 only that a declared action was checked against applicable guardrails and decisions, by a component the acting participant does not control, before it took effect. A deployment that records these structures without gating a real mutation path MUST NOT claim the `action-enforced` or `output-attested` levels defined in \u00a710; security.md \u00a74 already establishes that a portable guardrail is shared policy state, not proof of enforcement, and this module inherits that distinction rather than replacing it."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-003",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 23,
-      "statement": "A **policy author** is the human role responsible for declaring protected action classes and authoring the decisions that govern them. The policy author is distinct from, and MUST NOT be, the participant whose actions are being gated \u2014 the same actor cannot both be constrained by a policy and be its sole author, or the policy constrains nothing. A project MAY name its decision owner as policy author, but MUST record that as an explicit choice, not a default."
+      "line": 47,
+      "statement": "A guardrail with `effect: deny` and `operation_classes: [\"generative:freeform\"]` against a protected resource is how a project expresses \"this artifact class MUST NOT be produced by an untraceable method\" \u2014 the normative content of \u00a75. A project MAY declare narrower or additional operation classes; `generative:freeform` and `generative:composite` are reserved so that this module's resolver and enforcement adapters have a portable convention to check without needing project-specific configuration for the tool-constraint rule in \u00a75."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-004",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 33,
-      "statement": "Reading, validating, acknowledging, or summarizing a workstate MUST NOT by itself satisfy action-boundary decision resolution; resolution is computed per action, not once at session entry."
+      "line": 49,
+      "statement": "For a guardrail governing a protected artifact class under this module, `policy_owner` MUST NOT equal the actor whose action is being resolved. This is a stricter requirement than security.md \u00a74 states in general (which allows any accepted `policy_owner`); it exists because the actor being gated authoring the rule that gates it defeats the guardrail's purpose for this module's specific use. A resolver encountering such a guardrail MUST treat it as `unresolved`, not as satisfied or absent."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-005",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 35,
-      "statement": "A participant MUST NOT describe a contemplated action in free text for resolution purposes. It MUST name: an **operation** drawn from a project's declared operation vocabulary (for example `image.composite`, `image.generate.freeform`, `asset.publish`); a **target** (a scope or scope-matching selector, not necessarily an existing path \u2014 see \u00a73.1); and an **artifact class**, when the operation produces or publishes an artifact."
+      "line": 53,
+      "statement": "A guardrail's `resources` and a decision's applicability MUST be matchable by artifact class and scope-matching selector (for example a path glob or a platform/listing identifier pattern), not only by a path that already exists. A guardrail or decision authored before a target exists (before a new product listing directory is created, for instance) MUST still match that target once it exists, provided the target falls within the declared selector."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-006",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 46,
-      "statement": "The vocabulary and the set of protected action classes are declared by the policy author in a project policy record, versioned and content-addressed the same way every other durable AWP record is. A resolver or enforcement adapter MUST treat an operation not present in the declared vocabulary as `unresolved` for a protected class, never as implicitly unprotected."
+      "line": 57,
+      "statement": "A resolver MUST report structural selection and `decision_context` as independent axes for the specific action being resolved, matching Handoff's existing two-axis requirement (handoff.md \u00a7Bounded re-entry projection) rather than reusing a stale session-entry result. Absence of either result MUST NOT be interpreted as complete. A participant MUST NOT infer that no applicable guardrail or decision exists merely because a bounded presentation omitted one \u2014 an empty selection is evidence of a budget limit, not evidence of an empty policy set."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-007",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 52,
-      "statement": "A decision's applicability MUST be expressible by artifact class and scope-matching selector (for example a path glob or a platform/listing identifier pattern), not only by a path that already exists. A decision authored before a target exists (before a new product listing directory is created, for instance) MUST still match that target once it exists, provided the target falls within the decision's declared selector."
+      "line": 78,
+      "statement": "When the capsule projection is `budget_exceeded`, when independent `decision_context` is absent, when an applicable guardrail's `policy_owner` fails the \u00a73 distinctness check, or when class or scope applicability is unknown, the result MUST be `unresolved`, never `permit`. Among applicable guardrails and decisions, security.md \u00a74's existing precedence applies: a deny is more restrictive than a requirement, and a requirement is more restrictive than no control. Delegated, tool-mediated, decomposed, retried, and derived operations MUST inherit every mandatory guardrail and decision applicable to the originating action \u2014 this is the same propagation security.md \u00a74 already requires (`propagation: mandatory`); this module does not weaken or duplicate it."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-008",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 56,
-      "statement": "A resolver MUST report structural selection and `decision_context` as independent axes for the specific action being resolved, matching Handoff's existing two-axis requirement (handoff.md \u00a7Bounded re-entry projection) rather than reusing a stale session-entry result. Absence of either result MUST NOT be interpreted as complete. A participant MUST NOT infer that no applicable decision exists merely because a bounded presentation omitted a decision, decision source, required artifact, or entry record \u2014 an empty selection is evidence of a budget limit, not evidence of an empty decision set."
+      "line": 80,
+      "statement": "A resolution's `result: permit` MAY carry binding fields \u2014 expiry, the exact input artifact digests it was granted against \u2014 directly on the resolution record. A standalone, transportable permit object, separate from the resolution that produced it, is NOT part of this module's core design; it is an extension point for a deployment whose resolution and enforcement are genuinely on different hosts or asynchronous in time (relevant to AWP's own multi-host Cooperation Contracts layer, but not required for a single-repository deployment) and is deferred to open-issues.md rather than specified here."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-009",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 77,
-      "statement": "When the capsule projection is `budget_exceeded`, when independent `decision_context` is absent, when the operation is not in the declared vocabulary, or when class or scope applicability is unknown, the result MUST be `unresolved`, never `permit`. Delegated, tool-mediated, decomposed, retried, and derived operations MUST inherit every mandatory decision and guardrail applicable to the originating action; a child tool call under a resolved parent task does not re-resolve scope independently of that parent."
+      "line": 84,
+      "statement": "For an artifact class governed by a guardrail denying `generative:freeform` (\u00a73), an enforcement adapter MUST NOT permit invocation of a freeform-generation operation. It MUST restrict invocation to a `generative:composite` (or otherwise traceable) operation whose inputs are named, verifiable source artifacts. This is the module's primary defense, not a fallback: verifying a freely generated artifact's truthfulness after the fact is a strictly harder problem than preventing the untraceable artifact from being producible at all. A generation tool that has no composite or traceable mode for a protected class MUST NOT be invocable for that class under an enforcing profile; that is a tooling gap to close, not a policy exception to grant."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-010",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 79,
-      "statement": "A resolution's `result: permit` MAY carry binding fields \u2014 expiry, the exact input artifact digests it was granted against \u2014 directly on the resolution record. A standalone, transportable permit object, separate from the resolution that produced it, is NOT part of this module's core design; it is an extension point for a deployment whose resolution and enforcement are genuinely on different hosts or asynchronous in time (relevant to AWP's own multi-host Cooperation Contracts layer, but not required for a single-repository deployment) and is deferred to open-issues.md rather than specified here."
+      "line": 90,
+      "statement": "When an externally visible artifact makes a product, provenance, safety, or compliance claim, an enforcing profile MAY require an artifact claim record before publication. For an artifact class governed by a \u00a75 guardrail, the record MUST be emitted by the transformation pipeline itself as a byproduct of a `generative:composite` or otherwise traceable operation, not authored or asserted by the participant."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-011",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 83,
-      "statement": "For a declared protected artifact class, an enforcement adapter MUST NOT permit invocation of a freeform-generation operation. It MUST restrict invocation to a composite or otherwise traceable operation whose inputs are named, verifiable source artifacts. This is the module's primary defense, not a fallback: verifying a freely generated artifact's truthfulness after the fact is a strictly harder problem than preventing the untraceable artifact from being producible at all. A generation tool that has no composite or traceable mode for a protected class MUST NOT be invocable for that class under an enforcing profile; that is a tooling gap to close, not a policy exception to grant."
+      "line": 109,
+      "statement": "If required evidence is absent or unverifiable, publication MUST remain blocked unless an authorized owner records a bounded continuation identifying the accepted risk, exact scope, and expiry \u2014 the same decision-owner escape hatch Handoff already defines for incomplete decision context, not a new authority path."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-012",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 89,
-      "statement": "When an externally visible artifact makes a product, provenance, safety, or compliance claim, an enforcing profile MAY require an artifact claim record before publication. For a protected artifact class, the record MUST be emitted by the transformation pipeline itself as a byproduct of a composite or traceable operation (\u00a75), not authored or asserted by the participant."
+      "line": 117,
+      "statement": "An enforcement adapter MUST independently verify: the action and capsule digest binding; the target and operation-class scope; required evidence records; expiry; and the absence of unresolved diagnostics. A deployment claiming enforced action-boundary conformance MUST use an enforcement point independent of the participant's unsupported assertion, and MUST document what its enforcement point does and does not prevent a determined participant from bypassing (\u00a711). The participant's own statement that it complied is evidence, not enforcement."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-013",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 108,
-      "statement": "If required evidence is absent or unverifiable, publication MUST remain blocked unless an authorized owner records a bounded continuation identifying the accepted risk, exact scope, and expiry \u2014 the same decision-owner escape hatch Handoff already defines for incomplete decision context, not a new authority path."
+      "line": 121,
+      "statement": "The resolver in \u00a74 can only find a guardrail or decision that already exists as structured, matchable state. This module does not, by itself, get a rule out of prose and history and into that state \u2014 that remains the policy owner's responsibility, assisted by projector diagnostics. A projector SHOULD disclose when a frequently referenced requirement in an authoritative artifact has no corresponding effective decision or guardrail, so the policy owner can promote it explicitly \u2014 for example: \"the authoritative artifact contains a relied-upon product-imagery rule, but no effective decision or guardrail declares applicability to public promotional assets.\" A projector MUST NOT autonomously convert arbitrary prose into a binding decision or guardrail; only the policy owner does that."
     },
     {
       "id": "AWP-ACTIONBOUNDARY-014",
       "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 116,
-      "statement": "An enforcement adapter MUST independently verify: the action and capsule digest binding; the target and operation scope; required evidence records; expiry; and the absence of unresolved diagnostics. A deployment claiming enforced action-boundary conformance MUST use an enforcement point independent of the participant's unsupported assertion, and MUST document what its enforcement point does and does not prevent a determined participant from bypassing (\u00a710). The participant's own statement that it complied is evidence, not enforcement."
+      "line": 127,
+      "statement": "| `AWP-ACTION-DECISION-RESOLUTION-REQUIRED` | Applicable guardrail/decision closure was not computed for the action. |"
     },
     {
       "id": "AWP-ACTIONBOUNDARY-015",
-      "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 120,
-      "statement": "The resolver in \u00a74 can only find a decision that already exists as structured, `affects`-scoped state. This module does not, by itself, get a rule out of prose and history and into that state \u2014 that remains the policy author's responsibility, assisted by projector diagnostics. A projector SHOULD disclose when a frequently referenced requirement in an authoritative artifact has no corresponding effective decision, so the policy author can promote it explicitly \u2014 for example: \"the authoritative artifact contains a relied-upon product-imagery rule, but no effective decision or required constraint declares applicability to public promotional assets.\" A projector MUST NOT autonomously convert arbitrary prose into a binding decision; only the policy author does that."
-    },
-    {
-      "id": "AWP-ACTIONBOUNDARY-016",
-      "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 127,
-      "statement": "| `AWP-ACTION-DECISION-RESOLUTION-REQUIRED` | Applicable decision closure was not computed for the action. |"
-    },
-    {
-      "id": "AWP-ACTIONBOUNDARY-017",
       "source": "spec/drafts/0.8.0/action-boundary.md",
       "line": 147,
       "statement": "A host MUST NOT claim a stronger level merely because a participant produced a well-formed record. `context-aware` alone describes correct entry behavior; it does not justify an `action-enforced` claim. `action-enforced` alone does not justify `output-attested` unless the tool constraint in \u00a75 is actually in place \u2014 an adapter can faithfully enforce a resolution and still gate a freeform-generation tool whose output cannot honestly carry a claim record."
     },
     {
-      "id": "AWP-ACTIONBOUNDARY-018",
+      "id": "AWP-ACTIONBOUNDARY-016",
       "source": "spec/drafts/0.8.0/action-boundary.md",
       "line": 152,
       "statement": "- No enforcement point is unconditionally bypass-proof. A CI gate depends on branch protection actually blocking a direct push; a tool gateway depends on there being no equivalent ungated tool. A conformance claim MUST document its specific enforcement point's known bypass paths rather than imply general bypass-resistance."
     },
     {
-      "id": "AWP-ACTIONBOUNDARY-019",
-      "source": "spec/drafts/0.8.0/action-boundary.md",
-      "line": 153,
-      "statement": "- Protected action classes, their vocabulary, and their policy author MUST be declared by receiver or project policy; this module does not define a default protected set or assume any project has appointed a policy author."
-    },
-    {
-      "id": "AWP-ACTIONBOUNDARY-020",
+      "id": "AWP-ACTIONBOUNDARY-017",
       "source": "spec/drafts/0.8.0/action-boundary.md",
       "line": 154,
       "statement": "- Ambiguous applicability MUST produce `unknown` and fail closed for a protected operation."
     },
     {
-      "id": "AWP-ACTIONBOUNDARY-021",
+      "id": "AWP-ACTIONBOUNDARY-018",
       "source": "spec/drafts/0.8.0/action-boundary.md",
       "line": 155,
       "statement": "- A bounded owner override MUST be exact, expiring, and auditable."
     },
     {
-      "id": "AWP-ACTIONBOUNDARY-022",
+      "id": "AWP-ACTIONBOUNDARY-019",
       "source": "spec/drafts/0.8.0/action-boundary.md",
       "line": 156,
-      "statement": "- This module MUST NOT be represented as proof that a record's subject matter is true, safe, or correct \u2014 only that a declared, vocabulary-matched action was checked against structured decisions by a component the participant does not control, before it took effect."
+      "statement": "- This module MUST NOT be represented as proof that a record's subject matter is true, safe, or correct \u2014 only that a declared action was checked against applicable guardrails and decisions by a component the participant does not control, before it took effect."
     },
     {
-      "id": "AWP-ACTIONBOUNDARY-023",
+      "id": "AWP-ACTIONBOUNDARY-020",
       "source": "spec/drafts/0.8.0/action-boundary.md",
       "line": 158,
-      "statement": "A deployment MAY remain advisory and honestly claim only `context-aware` or `decision-resolved` behavior. Enforcement and the tool constraint in \u00a75 become mandatory only when the deployment claims prevention for a declared protected action class."
+      "statement": "A deployment MAY remain advisory and honestly claim only `context-aware` or `decision-resolved` behavior. Enforcement and the tool constraint in \u00a75 become mandatory only when the deployment claims prevention for a class governed by a required guardrail."
     },
     {
       "id": "AWP-COOP-001",

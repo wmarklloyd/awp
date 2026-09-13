@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:awp:schema:action-boundary:0.3.0",
+  "title": "AWP Action Boundary 0.3 records",
+  "description": "Structural schema for action-resolution and artifact-claim records. Protected action classes and their policy owner are declared as Security 0.5 guardrails (see awp-security-0.5.schema.json); this schema does not redeclare that record.",
+  "oneOf": [
+    { "$ref": "#/$defs/actionResolution" },
+    { "$ref": "#/$defs/artifactClaim" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^\\S+$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64,}$"
+    },
+    "operationClass": {
+      "type": "string",
+      "minLength": 1
+    },
+    "action": {
+      "type": "object",
+      "required": ["operation_class", "resource"],
+      "properties": {
+        "operation_class": { "$ref": "#/$defs/operationClass" },
+        "resource": { "$ref": "#/$defs/identifier" },
+        "artifact_class": { "$ref": "#/$defs/identifier" },
+        "actor": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": true
+    },
+    "actionResolution": {
+      "type": "object",
+      "required": [
+        "type",
+        "action",
+        "action_digest",
+        "capsule_digest",
+        "selection",
+        "decision_context",
+        "applicable_guardrails",
+        "applicable_decisions",
+        "result"
+      ],
+      "properties": {
+        "type": { "const": "action_resolution" },
+        "action": { "$ref": "#/$defs/action" },
+        "action_digest": { "$ref": "#/$defs/digest" },
+        "capsule_digest": { "$ref": "#/$defs/digest" },
+        "selection": { "enum": ["complete", "incomplete", "budget_exceeded"] },
+        "decision_context": { "enum": ["complete", "incomplete", "absent"] },
+        "applicable_guardrails": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/identifier" },
+          "uniqueItems": true
+        },
+        "applicable_decisions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/identifier" },
+          "uniqueItems": true
+        },
+        "requirements": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "result": { "enum": ["permit", "deny", "unresolved"] },
+        "permit_fields": {
+          "type": "object",
+          "properties": {
+            "expires_at": { "type": "string", "format": "date-time" },
+            "input_digests": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/digest" }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "artifactClaim": {
+      "type": "object",
+      "required": ["type", "artifact", "claims"],
+      "properties": {
+        "type": { "const": "artifact_claim" },
+        "artifact": { "$ref": "#/$defs/identifier" },
+        "claims": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["claim", "status"],
+            "properties": {
+              "claim": { "$ref": "#/$defs/identifier" },
+              "status": { "enum": ["verified", "unverified", "unverifiable"] },
+              "evidence": {
+                "type": "object",
+                "properties": {
+                  "source_artifact": { "$ref": "#/$defs/identifier" },
+                  "source_digest": { "$ref": "#/$defs/digest" },
+                  "transformation": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
