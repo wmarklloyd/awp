@@ -219,7 +219,9 @@ Do not edit this generated file directly; regenerate it from the source files wh
   "$schema": "../../../schemas/awp-module-registry-0.8.schema.json",
   "family": "AWP",
   "family_version": "0.8.0",
-  "event_schema_versions": ["0.2"],
+  "event_schema_versions": [
+    "0.2"
+  ],
   "modules": [
     {
       "id": "urn:awp:core",
@@ -238,7 +240,10 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "document": "capsule.md",
       "schema": "../../../schemas/awp-capsule-0.5.schema.json",
       "dependencies": [
-        { "id": "urn:awp:core", "version": "0.8.x" }
+        {
+          "id": "urn:awp:core",
+          "version": "0.8.x"
+        }
       ]
     },
     {
@@ -248,7 +253,10 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "status": "optional",
       "document": "handoff.md",
       "dependencies": [
-        { "id": "urn:awp:core", "version": "0.8.x" }
+        {
+          "id": "urn:awp:core",
+          "version": "0.8.x"
+        }
       ]
     },
     {
@@ -258,7 +266,10 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "status": "optional",
       "document": "artifact.md",
       "dependencies": [
-        { "id": "urn:awp:core", "version": "0.8.x" }
+        {
+          "id": "urn:awp:core",
+          "version": "0.8.x"
+        }
       ]
     },
     {
@@ -268,10 +279,17 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "status": "optional",
       "document": "synchronization.md",
       "dependencies": [
-        { "id": "urn:awp:core", "version": "0.8.x" }
+        {
+          "id": "urn:awp:core",
+          "version": "0.8.x"
+        }
       ],
       "conditional_dependencies": [
-        { "when_capability": "silo-v1", "id": "urn:awp:capsule", "version": "0.5.x" }
+        {
+          "when_capability": "silo-v1",
+          "id": "urn:awp:capsule",
+          "version": "0.5.x"
+        }
       ]
     },
     {
@@ -282,8 +300,14 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "document": "coordination.md",
       "schema": "../../../schemas/awp-coordination-0.5.schema.json",
       "dependencies": [
-        { "id": "urn:awp:core", "version": "0.8.x" },
-        { "id": "urn:awp:sync", "version": "0.5.x" }
+        {
+          "id": "urn:awp:core",
+          "version": "0.8.x"
+        },
+        {
+          "id": "urn:awp:sync",
+          "version": "0.5.x"
+        }
       ]
     },
     {
@@ -294,7 +318,10 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "document": "security.md",
       "schema": "../../../schemas/awp-security-0.5.schema.json",
       "dependencies": [
-        { "id": "urn:awp:core", "version": "0.8.x" }
+        {
+          "id": "urn:awp:core",
+          "version": "0.8.x"
+        }
       ],
       "conditional_dependencies": [
         {
@@ -312,12 +339,46 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "document": "cooperation-contracts.md",
       "schema": "../../../schemas/awp-cooperation-0.1.schema.json",
       "dependencies": [
-        { "id": "urn:awp:core", "version": "0.8.x" },
-        { "id": "urn:awp:capsule", "version": "0.5.x" },
-        { "id": "urn:awp:handoff", "version": "0.5.x" }
+        {
+          "id": "urn:awp:core",
+          "version": "0.8.x"
+        },
+        {
+          "id": "urn:awp:capsule",
+          "version": "0.5.x"
+        },
+        {
+          "id": "urn:awp:handoff",
+          "version": "0.5.x"
+        }
       ],
       "conditional_dependencies": [
-        {"when_capability": "guarded-scope-coordination", "id": "urn:awp:coordination", "version": "0.5.x"}
+        {
+          "when_capability": "guarded-scope-coordination",
+          "id": "urn:awp:coordination",
+          "version": "0.5.x"
+        }
+      ]
+    },
+    {
+      "id": "urn:awp:action-boundary",
+      "name": "AWP Action Boundary",
+      "version": "0.1.0",
+      "status": "experimental",
+      "document": "action-boundary.md",
+      "dependencies": [
+        {
+          "id": "urn:awp:core",
+          "version": "0.8.x"
+        },
+        {
+          "id": "urn:awp:handoff",
+          "version": "0.5.x"
+        },
+        {
+          "id": "urn:awp:security",
+          "version": "0.5.x"
+        }
       ]
     }
   ],
@@ -362,127 +423,127 @@ Do not edit this generated file directly; regenerate it from the source files wh
     {
       "id": "AWP-FAMILY-003",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 49,
+      "line": 50,
       "statement": "Every AWP 0.8 manifest MUST contain a `modules` array. It MUST declare exactly one Core entry, and that entry MUST be required. The following is a module-declaration excerpt rather than a complete manifest:"
     },
     {
       "id": "AWP-FAMILY-004",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 83,
+      "line": 84,
       "statement": "A writer MUST declare every module whose records, events, or required processing rules affect the effective workstate. It MUST include compatible declarations for all direct dependencies. It MUST mark a module required only when ignoring that module would prevent the receiver from safely performing the declared continuation."
     },
     {
       "id": "AWP-FAMILY-005",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 85,
+      "line": 86,
       "statement": "If a module is required, every dependency needed to interpret it MUST also be required. If an optional module depends on another optional module, a receiver may ignore both while preserving their data."
     },
     {
       "id": "AWP-FAMILY-006",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 87,
+      "line": 88,
       "statement": "Core owns the unqualified Core record types and fields. A module defining a new record type MUST include a `module` field naming its module ID. A module extending a Core record MUST place its fields under that record's `modules` object, keyed by module ID. Module-owned event kinds use the common event envelope's required `module` field. These rules prevent independent subspecifications from claiming the same unqualified name."
     },
     {
       "id": "AWP-FAMILY-007",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 91,
+      "line": 92,
       "statement": "A reader that encounters an unknown optional module MAY continue using understood modules. It MUST preserve or explicitly disclose loss of the unknown data, and it MUST NOT infer semantics from unknown fields."
     },
     {
       "id": "AWP-FAMILY-008",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 93,
+      "line": 94,
       "statement": "A reader that encounters an unknown required module MUST NOT claim a complete interpretation or perform a continuation that could depend on it. It SHOULD still present the human briefing, validate understood envelopes, and report the unsupported module."
     },
     {
       "id": "AWP-FAMILY-009",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 128,
+      "line": 129,
       "statement": "The conventional project-named form is `<project-name>.awp.md`. Producers MAY retain versioned archival copies using `<project-name>.v<revision>.awp.md`, such as `project.v2.awp.md`. This filename revision is only a human-facing label; protocol and workstate identity remain defined by the capsule metadata."
     },
     {
       "id": "AWP-FAMILY-010",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 134,
+      "line": 135,
       "statement": "Every shared AWP project workstate MUST identify the exact specification artifact that governs it. A project capsule MUST carry an explicit `specification` reference in its own metadata. That reference SHOULD be an immutable, version-pinned URI to a published specification bundle. A repository-relative local copy MAY be used when network retrieval is unavailable or inappropriate."
     },
     {
       "id": "AWP-FAMILY-011",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 136,
+      "line": 137,
       "statement": "A reader MUST interpret a workstate according to its declared specification and module versions. It MUST NOT silently substitute a newer, older, or otherwise different specification, infer compatibility from a filename, or treat a moving branch URL as version-pinned. If the declared specification is unavailable or unsupported, the reader MUST report that condition rather than guess."
     },
     {
       "id": "AWP-FAMILY-012",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 138,
+      "line": 139,
       "statement": "AWP `0.x` is exploratory. A new minor family or module release MAY make incompatible changes. A patch release MUST NOT introduce incompatible normative semantics. Explicit specification binding allows protocol development to proceed without requiring backward compatibility between exploratory minor releases. Implementations MAY support multiple versions or provide explicit migrations, but conformance to one version does not imply support for another."
     },
     {
       "id": "AWP-FAMILY-013",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 140,
+      "line": 141,
       "statement": "The family version and module versions remain independent. The family version identifies a tested set of module releases, and a later family release may reuse an unchanged module version. Writers that change protocol semantics MUST publish a new versioned specification artifact and update affected workstates deliberately. Implementations MUST determine support by the declared specification, module ID, and module version, not by comparing only `awp_version`."
     },
     {
       "id": "AWP-FAMILY-014",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 160,
+      "line": 161,
       "statement": "An implementation MUST satisfy the conformance requirements in each module for every role it claims. Supporting AWP Core alone is valid AWP conformance. It does not imply support for capsules, handoffs, synchronization, coordination, signatures, encryption, or adapters."
     },
     {
       "id": "AWP-FAMILY-015",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 164,
+      "line": 165,
       "statement": "Every module and binding MUST preserve these rules:"
     },
     {
       "id": "AWP-FAMILY-016",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 173,
+      "line": 174,
       "statement": "8. Optional modules MUST NOT redefine Core field meanings."
     },
     {
       "id": "AWP-FAMILY-017",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 181,
+      "line": 182,
       "statement": "The migration is intentionally incompatible: a 0.8 project capsule identifies its exact governing specification and project discovery mode in its own metadata. The project `.awp.md` Capsule is the normative entry point and MAY reference every other required file or binding. A host-specific locator MAY point to it, but that locator is not a second workstate authority and MUST NOT override Capsule metadata. A 0.8 reader MUST NOT silently substitute another specification."
     },
     {
       "id": "AWP-FAMILY-018",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 183,
+      "line": 184,
       "statement": "An upgrader from an earlier AWP workstate MUST add the governing `specification` and `discovery: project` to capsule metadata and update Capsule to `0.5.0`. It MAY create or update a host-specific locator that points to the Capsule, but the Capsule remains authoritative. Historical events remain unchanged."
     },
     {
       "id": "AWP-FAMILY-019",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 187,
+      "line": 188,
       "statement": "A specification family MAY distribute a generated **Agent Entry Core** beside a complete specification bundle. Its purpose is to give a model or other bounded-context participant the minimum cross-cutting rules needed to orient safely before it retrieves task-specific modules. It is a derived presentation artifact, not an additional source of normative semantics."
     },
     {
       "id": "AWP-FAMILY-020",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 189,
+      "line": 190,
       "statement": "An Agent Entry Core MUST identify its exact source bundle, source bundle SHA-256 digest, family version, generator identity, and the source documents and schemas that its task-routing guidance can name. A reader MUST verify the recorded digest against the available source bundle before relying on the profile. A profile whose bundle is unavailable or whose digest does not match is unavailable, not merely advisory; the reader MUST retrieve and use the complete governing specification or decline the continuation."
     },
     {
       "id": "AWP-FAMILY-021",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 191,
+      "line": 192,
       "statement": "The Entry Core MUST include the family invariants needed before any continuation, a statement that it cannot override the source specification, and mandatory expansion triggers. Those triggers MUST include an unknown or required module, a missing or unverifiable profile, an ambiguity or conflict, a requested semantic change spanning more than one routed module, and release, migration, or cross-module integration work. A receiver MAY apply stricter triggers under its own policy."
     },
     {
       "id": "AWP-FAMILY-022",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 193,
+      "line": 194,
       "statement": "Task-routing guidance in an Entry Core is non-normative performance guidance. It MUST name the source modules and schemas that a task class normally requires, including direct dependencies, but it MUST NOT claim that the listed material is sufficient in every circumstance or weaken a reader's obligation to obtain relevant normative state. When the profile and its governing source appear to disagree, the source governs and the reader MUST expand its reading rather than choose the profile."
     },
     {
       "id": "AWP-FAMILY-023",
       "source": "spec/drafts/0.8.0/index.md",
-      "line": 195,
+      "line": 196,
       "statement": "An implementation that claims Agent Entry Core support MUST generate or verify the profile as part of the same reproducible build that produces its source bundle. It MUST expose whether profile verification succeeded and which additional source documents it selected. A gateway MAY enforce selective access, but an instruction to a model alone is not evidence that the model did not read additional material."
     },
     {
@@ -2104,6 +2165,126 @@ Do not edit this generated file directly; regenerate it from the source files wh
       "source": "spec/drafts/0.8.0/security.md",
       "line": 187,
       "statement": "When Capsule or Artifact is used, processors MUST apply their traversal, normalization, size, decompression, integrity, executable-content, and retrieval rules. A signature over an unsafe archive does not make extraction safe."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-001",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 7,
+      "statement": "The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHALL**, **SHALL NOT**, **SHOULD**, **SHOULD NOT**, **RECOMMENDED**, **NOT RECOMMENDED**, **MAY**, and **OPTIONAL** in this document are to be interpreted as described in BCP 14 when, and only when, they appear in all capitals."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-002",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 13,
+      "statement": "This module turns Decision Durability from a context-presentation obligation into a verifiable precondition for a declared class of consequential actions. It does not claim that AWP replaces runtime authorization, sandboxing, or an organization's own policy enforcement, and it does not claim that a well-formed resolution proves the resulting artifact is true, safe, or correct \u2014 only that the applicable decisions were resolved and bound to the exact action before it proceeded. A deployment that records these structures without gating a real mutation path MUST NOT claim the `action-enforced` or `output-attested` levels defined in \u00a79; \u00a71 of the Adapter Framework already establishes that a portable guardrail is policy state, not proof of enforcement, and this module inherits that distinction rather than replacing it."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-003",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 31,
+      "statement": "Before performing a governed action, a participant MUST describe the contemplated operation, semantic artifact kinds, affected scopes, external claims, inputs, and targets in an action intent sufficient to compute applicable decision closure. Reading, validating, acknowledging, or summarizing a workstate MUST NOT by itself satisfy action-boundary decision resolution; resolution is computed per action intent, not once at session entry."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-004",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 49,
+      "statement": "A resolver MUST report structural selection and `decision_context` as independent axes, matching Handoff's existing two-axis requirement (handoff.md \u00a7Bounded re-entry projection). Absence of either result MUST NOT be interpreted as complete. A participant MUST NOT infer that no applicable decision exists merely because a bounded presentation omitted a decision, decision source, required artifact, or entry record \u2014 an empty selection is evidence of a budget limit, not evidence of an empty decision set."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-005",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 64,
+      "statement": "When the capsule projection is `budget_exceeded`, when independent `decision_context` is absent, or when semantic applicability is unknown, the result MUST be `unresolved`, never `permit`. Delegated, tool-mediated, decomposed, retried, and derived operations MUST inherit every mandatory decision and guardrail applicable to the originating action intent; a child image-generation call under a permitted parent task does not re-resolve scope independently of that parent."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-006",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 68,
+      "statement": "For an operation that local policy protects, a resolution with result `permit` MAY be represented as a short-lived action permit, bound to: the action-intent digest; the capsule digest and frontier it was resolved against; the selected decision IDs and revisions; exact input artifact digests; the allowed operation and target scope; required postconditions; issuer and enforcement profile; and expiry and invalidation conditions."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-007",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 70,
+      "statement": "A permit MUST be bound to the action-intent digest, governing workstate and frontier, applicable decision revisions, permitted operation, and target scope. Material intent or context drift \u2014 the prompt, inputs, operation, target, applicable decision revisions, or capsule frontier changing after issuance \u2014 MUST invalidate the permit. A broad permit such as \"create marketing assets\" MUST NOT authorize a narrower action whose newly introduced claim was not described in the intent that produced it."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-008",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 74,
+      "statement": "When an externally visible artifact makes a product, provenance, safety, or compliance claim, an enforcing profile MAY require an artifact claim record before publication."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-009",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 93,
+      "statement": "If required evidence is absent or unverifiable, publication MUST remain blocked unless an authorized owner records a bounded continuation identifying the accepted risk, exact scope, and expiry \u2014 the same decision-owner escape hatch Handoff already defines for incomplete decision context, not a new authority path."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-010",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 97,
+      "statement": "AWP continues to distinguish policy records from enforcement (adapters.md \u00a71). This module becomes preventative only when a host, tool gateway, source-control hook, CI rule, deployment adapter, or publication service requires the bound resolution described above. An enforcement adapter MUST independently verify: the permit and action-intent digests; the current capsule/frontier binding; the target and operation scope; required evidence records; expiry and revocation; and the absence of unresolved diagnostics. A deployment claiming enforced action-boundary conformance MUST use an enforcement point independent of the participant's unsupported assertion; the enforcement point MUST reject a missing, invalid, stale, mismatched, or unresolved permit. The participant's own statement that it complied is evidence, not enforcement."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-011",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 103,
+      "statement": "| `AWP-ACTION-INTENT-REQUIRED` | A governed action lacks a sufficient contemplated-work description. |"
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-012",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 104,
+      "statement": "| `AWP-ACTION-DECISION-RESOLUTION-REQUIRED` | Applicable decision closure was not computed for the action. |"
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-013",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 113,
+      "statement": "A projector SHOULD disclose when a frequently referenced requirement in an authoritative artifact has no corresponding effective decision, so an owner can promote it explicitly \u2014 for example: \"the authoritative artifact contains a relied-upon product-imagery rule, but no effective decision or required constraint declares applicability to public promotional assets.\" A projector MUST NOT autonomously convert arbitrary prose into a binding decision."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-014",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 125,
+      "statement": "A host MUST NOT claim a stronger level merely because a participant produced a well-formed record. `context-aware` alone describes correct entry behavior; it does not justify an `action-enforced` claim."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-015",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 131,
+      "statement": "- Protected action classes MUST be declared by receiver or project policy; this module does not define a default protected set."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-016",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 132,
+      "statement": "- Ambiguous applicability MUST produce `unknown` and fail closed for a protected operation."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-017",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 133,
+      "statement": "- Enforcement MUST occur outside the model's own unsupported assertion."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-018",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 134,
+      "statement": "- A bounded owner override MUST be exact, expiring, and auditable."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-019",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 135,
+      "statement": "- This module MUST NOT be represented as proof that a record's subject matter is true, safe, or correct \u2014 only that applicable decisions were resolved and bound before the action proceeded."
+    },
+    {
+      "id": "AWP-ACTIONBOUNDARY-020",
+      "source": "spec/drafts/0.8.0/action-boundary.md",
+      "line": 137,
+      "statement": "A deployment MAY remain advisory and honestly claim only `context-aware` or `decision-resolved` behavior. A permit becomes mandatory only when the deployment claims prevention or enforcement for a declared protected action class."
     },
     {
       "id": "AWP-COOP-001",

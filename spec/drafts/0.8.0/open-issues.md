@@ -89,3 +89,12 @@ These questions are intentionally unresolved. A module must not imply that an op
 40. How can a relay address the open conversation of an agent desktop app whose sessions expose no thread identifier (for example the Codex app), so that its `W1` reaches the session the principal is watching instead of a new `W2` run?
 41. What signal transport lets a hosted agent's subscription be woken without polling a Git remote, given sandboxes that block third-party push services, and should that transport be standardized as a binding profile?
 42. How should a hosted agent re-arm its subscription automatically after its vendor recycles the workspace, rather than on its next entry?
+
+## Action boundary questions (2026-09-13)
+
+43. What vocabulary should a protected-action-class declaration use so a receiver/project policy can name "public promotional imagery" or an equivalent semantic class without enumerating file paths, and how should that declaration itself be versioned and durable?
+44. Which artifact and scope selectors let a decision authored before a target existed (for example before a new Play Store listing directory was created) still match it, without binding only to paths that existed at authoring time?
+45. What is the concrete lifecycle for an action permit — issuance, transport to the tool or enforcement point, revocation, and expiry — and should permits be portable across hosts or bound to one enforcement adapter instance?
+46. How should an enforcement adapter be authored for a first concrete tool boundary (an image-generation call, a `git commit`, a publish step) so `action-enforced` conformance has at least one reference implementation rather than remaining a claim ladder?
+47. What structural schema should `urn:awp:action-boundary` register (see silo-v1's precedent of shipping fixtures before a binding), and which of action intent, applicable-decision resolution, action permit, and artifact claim record need independent schemas versus one combined schema?
+48. How does an action intent's semantic description avoid becoming another place where a participant can honestly misdescribe scope (for example describing a product-imagery generation call as generic "marketing asset creation")? What, if anything, can validate an intent's description against its actual tool arguments?

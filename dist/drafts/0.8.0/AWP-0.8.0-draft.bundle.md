@@ -51,6 +51,7 @@ AWP does not replace an agent runtime, source control, artifact storage, or an a
 | [AWP Security](security.md) | `urn:awp:security` | `0.5.0` | optional | Core; Artifact when artifact controls are used |
 | [AWP Adapter Framework](adapters.md) | not a payload module | `0.5.0` | informative | binding-specific |
 | [AWP Cooperation Contracts](cooperation-contracts.md) | `urn:awp:cooperation` | `0.1.0` | experimental | Core, Capsule, Handoff; Coordination for COOP-1, COOP-2, and COOP-3 |
+| [AWP Action Boundary](action-boundary.md) | `urn:awp:action-boundary` | `0.1.0` | experimental | Core, Handoff, Security |
 
 The machine-readable [module registry](modules.json) is normative for the module IDs, versions, document paths, stability labels, and direct dependencies in this draft.
 
@@ -3525,8 +3526,8 @@ Identified by digest; reproduced verbatim in `dist/drafts/0.8.0/AWP-0.8.0-draft.
 | Asset | Path | Bytes | SHA-256 |
 |---|---|---:|---|
 | Silo profile schema | `schemas/awp-silo-0.1.schema.json` | 9670 | `bc736a67a6c57ddd53e01168de1cbc193323290f65f50bfbeac675f3c4a88b5c` |
-| Module registry | `spec/drafts/0.8.0/modules.json` | 3341 | `233d381de6cac801971f93879e7db16def0f405d6fee8fc10c6f9f730e982e89` |
-| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 224652 | `fb7b1a9afc0ff04ab53ad2eb8cdf285a9853add2a7e7fdfd641b32c502565aa1` |
+| Module registry | `spec/drafts/0.8.0/modules.json` | 4178 | `11ac04bd462e4caaf87e886b0fd0f6f756967c9c2b57b17abb8a7f6673cf854f` |
+| Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 234062 | `d57fe5e3634a570042a95a369c111c962ac0f9149e667d21541680cfbe77fbb4` |
 | Core schema | `schemas/awp-core-0.8.schema.json` | 14661 | `bd212815e521fefbd9757c0e3dc7c18890e936146f7065dd3ef7c54e2206454e` |
 | Cooperation schema | `schemas/awp-cooperation-0.1.schema.json` | 25432 | `3124bf5c6fdd173a97f49ac835db67ce7ddb7c0ae0d0fb9b4b857c32d5839f41` |
 | Capsule schema | `schemas/awp-capsule-0.5.schema.json` | 1289 | `8d33f83d815faf9ad7fa0b4b0823ae15b041b1d236e8c7153b60e886b18a080a` |

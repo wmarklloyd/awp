@@ -21,6 +21,7 @@ SOURCES = {
     "COORD": "coordination.md",
     "COORDSCALE": "coordination-scale.md",
     "SECURITY": "security.md",
+    "ACTIONBOUNDARY": "action-boundary.md",
     "COOP": "cooperation-contracts.md",
 }
 KEYWORDS = re.compile(
