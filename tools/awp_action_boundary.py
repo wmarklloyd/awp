@@ -84,12 +84,35 @@ def _guardrail_applies(guardrail: dict, action: dict) -> bool:
     return any(_matches_selector(resources, target) for target in targets)
 
 
+MODULE_ID = "urn:awp:action-boundary"
+
+
+def _module_extension(decision: dict) -> dict:
+    """Return this module's extension object on a decision record, per
+    core.md's `modules.{module-id}` convention (core.md section "Records":
+    "An optional module extending a Core record places its fields under
+    `modules.{module-id}`."). Core's own `affects` field is a record/artifact
+    reference array for Core's decision-closure algorithm -- it is not a
+    glob-matchable selector, and this module MUST NOT reinterpret it
+    (core.md, same section: "Optional modules MAY extend applicability, but
+    they MUST NOT replace or reinterpret the Core `affects` and `supersedes`
+    fields."). A decision with no `modules.urn:awp:action-boundary` entry
+    simply does not participate in this module's action resolution -- it
+    may still matter to Core's own closure, independently.
+    """
+    modules = decision.get("modules")
+    if not isinstance(modules, dict):
+        return {}
+    extension = modules.get(MODULE_ID)
+    return extension if isinstance(extension, dict) else {}
+
+
 def _decision_applies(decision: dict, action: dict) -> bool:
-    affects = _as_list(decision.get("affects"))
-    if not affects:
+    selectors = _as_list(_module_extension(decision).get("selectors"))
+    if not selectors:
         return False
     targets = [t for t in (action.get("resource"), action.get("artifact_class")) if t]
-    return any(_matches_selector(affects, target) for target in targets)
+    return any(_matches_selector(selectors, target) for target in targets)
 
 
 def resolve_action(
@@ -155,7 +178,7 @@ def resolve_action(
 
     requirements = []
     for decision in applicable_decisions:
-        requirements.extend(_as_list(decision.get("requirements")))
+        requirements.extend(_as_list(_module_extension(decision).get("requirements")))
 
     resolution = {
         "type": "action_resolution",

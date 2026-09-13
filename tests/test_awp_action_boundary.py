@@ -36,8 +36,29 @@ DECISION = {
     "id": "decision:public-watch-imagery-uses-literal-product-surfaces",
     "type": "decision",
     "status": "accepted",
+    "choice": "Public product imagery MUST depict only real, source-matched watch displays.",
+    # Core's own `affects` names the specific artifact this decision already
+    # governs, per core.md's decision-closure semantics -- it is a record/
+    # artifact reference, not a selector, and the resolver does not read it.
+    "affects": ["artifact:play-store-assets/baseball/feature-graphic.png"],
+    # This module's own extension namespace (core.md: "modules.{module-id}"),
+    # carrying the glob-matchable selector and requirements this resolver
+    # actually reads -- see action-boundary.md section 3.1.
+    "modules": {
+        "urn:awp:action-boundary": {
+            "selectors": ["artifact-class:public-promotional-watch-imagery"],
+            "requirements": ["depicted screen pixels must derive from a verified product capture"],
+        }
+    },
+}
+
+DECISION_WITH_UNQUALIFIED_AFFECTS_ONLY = {
+    "id": "decision:core-only-affects-no-module-extension",
+    "type": "decision",
+    "status": "accepted",
+    "choice": "A decision that only sets Core's plain `affects` and never "
+    "declares this module's extension.",
     "affects": ["artifact-class:public-promotional-watch-imagery"],
-    "requirements": ["depicted screen pixels must derive from a verified product capture"],
 }
 
 COMPLETE_ENTRY = {"selection": "complete", "decision_context": "complete"}
@@ -141,6 +162,22 @@ class ActionResolutionTests(unittest.TestCase):
             entry_status=COMPLETE_ENTRY,
         )
         self.assertEqual(resolution["result"], RESULT_UNRESOLVED)
+
+    def test_core_affects_alone_does_not_make_a_decision_apply(self) -> None:
+        """core.md: an optional module MUST NOT reinterpret Core's `affects`
+        field. A decision that sets plain `affects` but never declares this
+        module's own `modules.urn:awp:action-boundary` extension must not be
+        matched by the resolver, even though its `affects` value textually
+        equals the action's artifact_class.
+        """
+        resolution = resolve_action(
+            _action("generative:composite"),
+            guardrails=[GUARDRAIL],
+            decisions=[DECISION_WITH_UNQUALIFIED_AFFECTS_ONLY],
+            entry_status=COMPLETE_ENTRY,
+        )
+        self.assertEqual(resolution["applicable_decisions"], [])
+        self.assertEqual(resolution["requirements"], [])
 
     def test_resolution_is_digest_bound_and_deterministic(self) -> None:
         first = resolve_action(
