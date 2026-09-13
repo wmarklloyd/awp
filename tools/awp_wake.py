@@ -273,6 +273,20 @@ def enter(rendezvous: Any, actor: str, host: str | None = None,
     events = rendezvous._events()
     best = reach(events, actor)["participants"].get(actor, {}).get("best")
     result = {"profile": PROFILE, "actor": actor, "declared": declared, "best": best}
+    self_poll = next((item for item in declared if item["class"] == "W1" and item["adapter"] == "self-poll"), None)
+    if self_poll:
+        # "Never silent": self-poll works, but a hosted agent with no watcher of
+        # its own (Cowork, for one) has a strictly better option -- an
+        # externally-pushed W3 routine wake -- that nothing can auto-declare
+        # because it needs a human to create the routine and its token first.
+        result["upgrade_hint"] = (
+            f"actor:{actor} can only be reached by polling its own ledger every {SELF_POLL_SECONDS}s "
+            "(W1 self-poll) because this host has no watcher process of its own and no wake-signal "
+            "remote is configured. For an event-driven wake instead: create a routine bound to this "
+            "project in the Claude Code web UI, generate its bearer token, then declare it once -- "
+            f"python -m tools.awp_wake declare --actor {actor} --class W3 --adapter claude-routine "
+            "--param routine_id=<routine_id> --secret-ref file:~/.awp/secrets/claude-routine"
+        )
     signal = next((b for b in active_bindings(events).values() if b["actor"] == actor and b["adapter"] == "git-signal"), None)
     if signal:
         # A hosted agent arms its own watcher in its own workspace, then asks

@@ -20,8 +20,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$(git rev-parse --show-toplevel)/tools/awp_prompt_receipt.py\"",
-            "commandWindows": "powershell -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& python (Join-Path (git rev-parse --show-toplevel) 'tools\\awp_prompt_receipt.py')\"",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/tools/awp_prompt_receipt.py\" --host codex --actor actor:codex",
+            "commandWindows": "powershell -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& python (Join-Path (git rev-parse --show-toplevel) 'tools\\awp_prompt_receipt.py') --host codex --actor actor:codex\"",
             "timeout": 15
           }
         ]

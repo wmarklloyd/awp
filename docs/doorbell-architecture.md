@@ -140,3 +140,35 @@ Claude in the desktop app (Cowork) has no endpoint that a local process can call
 ### Hardening after the 2026-09-11 review
 
 See the [review record](reviews/2026-09-11-notification-architecture.md). The relay is a singleton per clone and is kept running by a per-user watchdog installed at activation; reach expires and states what each rung reaches; consultations that are received but not taken up escalate to the principal; identifiers are validated before they reach a notice; probes back off exponentially and run read-only; and the hosted-agent signal is a single force-updated commit.
+
+### Closing two 2026-09-13 gaps
+
+Two concrete symptoms from the 2026-09-10 doorbell work -- "you have to type
+`hello` in Codex to make it wake up" and "the Cowork session has to poll
+instead of being woken" -- turned out to be gaps in the existing mechanisms
+above, not missing architecture:
+
+- **Codex cold start.** `SessionStart` is what registers a session's W1
+  binding; it does not always fire. Nothing else used to register the
+  session in that case, so it stayed unreachable until some other event
+  happened to register it. `UserPromptSubmit`'s hook
+  (`tools/awp_prompt_receipt.py`, `ensure_session_registered`) now treats
+  every prompt as a backstop: a cheap `session_status` check, and only when
+  this session is not yet registered, a detached, throttled re-run of the
+  same `awp_session.py enter` bootstrap `SessionStart` would have run. One
+  cooldown file per actor keeps a burst of prompts from spawning a burst of
+  registration attempts. `.codex/hooks.json` and `.claude/settings.json` both
+  pass `--host`/`--actor` to the hook so it has what it needs on either host.
+- **Cowork self-poll.** The W3 `claude-routine` adapter already existed (see
+  section 11 above) and needs no watcher at all -- the relay pushes to it --
+  but is never auto-declared, since it needs a human to create the routine
+  and its token first. That left `self-poll` a silent dead end for a hosted
+  actor with no readable remote. `wake.enter()` now discloses an
+  `upgrade_hint` alongside the `self-poll` declaration: the exact
+  `python -m tools.awp_wake declare --class W3 --adapter claude-routine`
+  invocation and what it needs, so the better path is named instead of
+  omitted.
+
+Neither closes the underlying constraint (a host that never calls
+`UserPromptSubmit` either stays uncovered; the W3 routine still needs a human
+to provision it) -- see open-issues.md items 33 and 34.

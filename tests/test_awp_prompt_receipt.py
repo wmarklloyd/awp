@@ -8,7 +8,7 @@ import time
 import unittest
 
 from tools.awp_activation import delivery_message
-from tools.awp_prompt_receipt import handle, parse_notice
+from tools.awp_prompt_receipt import ensure_session_registered, handle, parse_notice
 from tools.awp_request_spool import RequestSpool
 
 
@@ -96,6 +96,99 @@ class PromptReceiptTests(unittest.TestCase):
         self.assertEqual(request["via"], "host-prompt-hook")
         self.assertEqual(request["evidence"], {"hook_event_name": "UserPromptSubmit", "session_id": "s-1", "turn_id": "t-1"})
         self.assertIn("recorded automatically", context)
+
+
+class RegistrationRepairTests(unittest.TestCase):
+    """The prompt hook must repair *this session's own* W1 reachability, not
+
+    just the relay's liveness -- otherwise a host whose SessionStart hook
+    never fires (the Codex "type hello to wake it up" symptom) stays
+    unreachable no matter how many prompts follow.
+    """
+
+    def _project(self, directory: str) -> Path:
+        project = Path(directory)
+        (project / ".awp.json").write_text("{}", encoding="utf-8")
+        return project
+
+    def test_does_nothing_without_host_or_actor(self) -> None:
+        from unittest import mock
+        launcher = mock.Mock()
+        with tempfile.TemporaryDirectory() as directory:
+            project = self._project(directory)
+            payload = {"session_id": "s-1", "cwd": str(project)}
+            self.assertIsNone(ensure_session_registered(payload, host=None, actor="actor:codex", launcher=launcher))
+            self.assertIsNone(ensure_session_registered(payload, host="codex", actor=None, launcher=launcher))
+        launcher.assert_not_called()
+
+    def test_does_nothing_for_a_headless_run(self) -> None:
+        from unittest import mock
+        launcher = mock.Mock()
+        with tempfile.TemporaryDirectory() as directory:
+            project = self._project(directory)
+            payload = {"session_id": "s-1", "cwd": str(project)}
+            with mock.patch.dict("os.environ", {"AWP_HEADLESS_RUN": "run:1"}):
+                result = ensure_session_registered(payload, host="codex", actor="actor:codex", launcher=launcher)
+        self.assertIsNone(result)
+        launcher.assert_not_called()
+
+    def test_does_nothing_once_the_session_is_already_active(self) -> None:
+        from unittest import mock
+        from tools import awp_session
+        launcher = mock.Mock()
+        with tempfile.TemporaryDirectory() as directory:
+            project = self._project(directory)
+            payload = {"session_id": "s-1", "cwd": str(project)}
+            with mock.patch.object(awp_session, "session_status", return_value={"state": "active"}):
+                result = ensure_session_registered(payload, host="codex", actor="actor:codex", launcher=launcher)
+        self.assertIsNone(result)
+        launcher.assert_not_called()
+
+    def test_launches_the_bootstrap_when_not_registered(self) -> None:
+        from unittest import mock
+        from tools import awp_session
+        launcher = mock.Mock()
+        with tempfile.TemporaryDirectory() as directory:
+            project = self._project(directory)
+            payload = {"session_id": "s-1", "cwd": str(project)}
+            with mock.patch.object(awp_session, "session_status", return_value={"state": "unavailable"}):
+                result = ensure_session_registered(payload, host="codex", actor="actor:codex", launcher=launcher)
+        self.assertEqual(result, {"outcome": "registration-repair-started", "session_id": "s-1"})
+        launcher.assert_called_once()
+        command, launched_project = launcher.call_args[0]
+        self.assertIn("awp_session.py", command[1])
+        self.assertIn("enter", command)
+        self.assertIn("s-1", command)
+        self.assertEqual(launched_project, project)
+
+    def test_cooldown_skips_a_repeat_attempt_for_the_same_session(self) -> None:
+        from unittest import mock
+        from tools import awp_session
+        launcher = mock.Mock()
+        with tempfile.TemporaryDirectory() as directory:
+            project = self._project(directory)
+            payload = {"session_id": "s-1", "cwd": str(project)}
+            with mock.patch.object(awp_session, "session_status", return_value={"state": "unavailable"}):
+                first = ensure_session_registered(payload, host="codex", actor="actor:codex", launcher=launcher)
+                second = ensure_session_registered(payload, host="codex", actor="actor:codex", launcher=launcher)
+        self.assertIsNotNone(first)
+        self.assertIsNone(second)
+        launcher.assert_called_once()
+
+    def test_a_different_session_id_is_not_held_back_by_another_sessions_cooldown(self) -> None:
+        from unittest import mock
+        from tools import awp_session
+        launcher = mock.Mock()
+        with tempfile.TemporaryDirectory() as directory:
+            project = self._project(directory)
+            with mock.patch.object(awp_session, "session_status", return_value={"state": "unavailable"}):
+                first = ensure_session_registered({"session_id": "s-1", "cwd": str(project)}, host="codex",
+                                                  actor="actor:codex", launcher=launcher)
+                second = ensure_session_registered({"session_id": "s-2", "cwd": str(project)}, host="codex",
+                                                    actor="actor:codex", launcher=launcher)
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+        self.assertEqual(launcher.call_count, 2)
 
 
 if __name__ == "__main__":

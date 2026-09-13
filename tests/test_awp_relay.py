@@ -111,6 +111,11 @@ class AutomaticBindingTests(RelayFixture):
     def test_hosted_agent_polls_itself_and_the_relay_waits_its_window(self) -> None:
         entered = wake.enter(self.rendezvous, "actor:claude", "cowork", which=lambda name: None)
         self.assertEqual([item["class"] for item in entered["declared"]], ["W1", "W5"])
+        # Never silent: self-poll is disclosed as a fallback, not a quiet default --
+        # the better, externally-pushed W3 option is named along with how to get it.
+        self.assertIn("actor:claude", entered["upgrade_hint"])
+        self.assertIn("W3", entered["upgrade_hint"])
+        self.assertIn("--adapter claude-routine", entered["upgrade_hint"])
         binding = next(b for b in wake.active_bindings(self.rendezvous._events()).values() if b["adapter"] == "self-poll")
         self.assertEqual(binding["ack_window_seconds"], wake.SELF_POLL_SECONDS + 120)
         self.assertGreater(wake.suggested_ttl(self.rendezvous._events(), "actor:claude"), binding["ack_window_seconds"])
@@ -124,6 +129,16 @@ class AutomaticBindingTests(RelayFixture):
         self.assertEqual(wake.pending(self.rendezvous._events(), "actor:claude"), [])
         best = wake.reach(self.rendezvous._events())["participants"]["actor:claude"]["best"]
         self.assertEqual(best["state"], "wake-verified")
+
+    def test_a_git_signal_binding_carries_no_upgrade_hint(self) -> None:
+        import subprocess as _subprocess
+
+        bare = self.project / "signals-hint.git"
+        _subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+        with mock.patch("tools.awp_wake.signal_remote_url", return_value="https://example.invalid/repo.git"):
+            entered = wake.enter(self.rendezvous, "actor:claude", "cowork", which=lambda name: None)
+        self.assertEqual([item["adapter"] for item in entered["declared"] if item["class"] == "W1"], ["git-signal"])
+        self.assertNotIn("upgrade_hint", entered)
 
     def test_hosted_agent_with_a_remote_gets_an_event_driven_signal(self) -> None:
         import subprocess, time
