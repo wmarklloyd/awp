@@ -146,7 +146,7 @@
     {
       "id": "urn:awp:action-boundary",
       "name": "AWP Action Boundary",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "status": "experimental",
       "document": "action-boundary.md",
       "dependencies": [
