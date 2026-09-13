@@ -37,7 +37,7 @@ AWP does not replace an agent runtime, source control, artifact storage, or an a
 | [AWP Synchronization](synchronization.md) | `urn:awp:sync` | `0.5.0` | optional | Core |
 | [AWP Coordination](coordination.md) | `urn:awp:coordination` | `0.5.0` | experimental | Core, Synchronization |
 | [AWP Security](security.md) | `urn:awp:security` | `0.5.0` | optional | Core; Artifact when artifact controls are used |
-| [AWP Adapter Framework](adapters.md) | not a payload module | `0.5.0` | informative | binding-specific |
+| [AWP Adapter Framework](adapters.md) | not a payload module | `0.6.0` | informative | binding-specific |
 | [AWP Cooperation Contracts](cooperation-contracts.md) | `urn:awp:cooperation` | `0.1.0` | experimental | Core, Capsule, Handoff; Coordination for COOP-1, COOP-2, and COOP-3 |
 | [AWP Action Boundary](action-boundary.md) | `urn:awp:action-boundary` | `0.3.1` | experimental | Core, Handoff, Security |
 

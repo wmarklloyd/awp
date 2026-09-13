@@ -49,7 +49,7 @@ AWP does not replace an agent runtime, source control, artifact storage, or an a
 | [AWP Synchronization](synchronization.md) | `urn:awp:sync` | `0.5.0` | optional | Core |
 | [AWP Coordination](coordination.md) | `urn:awp:coordination` | `0.5.0` | experimental | Core, Synchronization |
 | [AWP Security](security.md) | `urn:awp:security` | `0.5.0` | optional | Core; Artifact when artifact controls are used |
-| [AWP Adapter Framework](adapters.md) | not a payload module | `0.5.0` | informative | binding-specific |
+| [AWP Adapter Framework](adapters.md) | not a payload module | `0.6.0` | informative | binding-specific |
 | [AWP Cooperation Contracts](cooperation-contracts.md) | `urn:awp:cooperation` | `0.1.0` | experimental | Core, Capsule, Handoff; Coordination for COOP-1, COOP-2, and COOP-3 |
 | [AWP Action Boundary](action-boundary.md) | `urn:awp:action-boundary` | `0.3.1` | experimental | Core, Handoff, Security |
 
@@ -3036,13 +3036,13 @@ A Security writer minimizes sensitive data, reports scan and redaction state acc
 
 ---
 
-# AWP Adapter Framework 0.5.0
+# AWP Adapter Framework 0.6.0
 
 **Status:** Informative framework  
 **Payload module:** None  
 **Document status:** Working Draft  
 **Editor:** Mark Lloyd  
-**Updated:** 2026-09-03  
+**Updated:** 2026-09-13  
 **License:** GPL-3.0-only
 
 ## 1. Purpose
@@ -3134,6 +3134,21 @@ Private runtime state should use a namespaced module or artifact type and identi
 A future registry entry should contain binding ID, version, publisher, external protocol range, AWP module ranges, specification URI, schemas, security profile, test vectors, and stability.
 
 Private bindings use collision-resistant IDs. An unknown binding may be ignored only when every resulting module and field is optional and preserved or its loss disclosed.
+
+## 8. Action Boundary harness bindings
+
+Section 2's binding-requirements checklist applies in full to a runtime binding of `urn:awp:action-boundary`. This section adds one further principle specific to that module: because action-boundary's own purpose is enforcement independent of the gated participant's cooperation (action-boundary.md section 7), a binding to one agent runtime's hook or plugin API is necessarily advisory, not enforcement, no matter how well it is built -- the participant's own host executing the check is exactly the case action-boundary.md section 7 already excludes from an "enforcement adapter." A binding that wants to make an `action-enforced` conformance claim (action-boundary.md section 10) needs a component outside every agent's control, most concretely a CI gate on the protected branch, evaluated identically regardless of which agent, or human, produced the change.
+
+This repository's own reference implementation of the above is `tools/awp_harness.py` (the host-agnostic resolution/binding/compliance-report core, callable by any agent or CI system that can start a subprocess) plus two concrete profiles built on it:
+
+- **`claude-code-hooks-v1`** (`adapters/claude-code-hooks/` in this repository) -- advisory. Maps Claude Code's PreToolUse, PostToolUse, and Stop hooks (verified against the current Claude Code hooks reference, 2026-09-13) to `tools/awp_harness.py`'s `gate`, `enforce`, and `session_compliance_report` respectively. Declares, per the checklist above: external system Claude Code, hook JSON contract as observed 2026-09-13; supported modules `urn:awp:action-boundary` 0.3.1, `urn:awp:core` 0.8.x; identity mapping is a project-local `actor` string in `config.json`, not an authenticated identity; lifecycle mapping is the three hooks above; artifact/evidence retrieval is filesystem-local, relative to the repository root; authority boundary is none -- this binding grants no authority, it only reports a resolution; ordering is per-tool-call, correlated by Claude Code's `tool_use_id`; no deduplication or retry handling is attempted in this prototype; lossy fields: the hook contract's `permissionDecisionReason` truncates a resolution's full diagnostics to one string; errors and recovery: a missing or unparsable `config.json` fails open (allow), by design, since this binding is advisory and a broken local hook must not be able to freeze a session -- see Known bypasses below and in `adapters/claude-code-hooks/README.md`; security considerations and known bypasses are enumerated in that README rather than duplicated here; conformance fixtures are `tests/test_awp_harness.py`'s `GateTests` and `EnforceTests`.
+- **`action-boundary-ci-gate-v1`** (`tools/awp_ci_gate.py`) -- the binding this repository's own `action-enforced` claim, if made, would rest on. It is agent-blind by construction: its only inputs are a changed-files list, a declared protected-paths configuration, the current guardrail and decision set, and artifact-claim records, none of which name or depend on which agent produced the change. It mechanically re-verifies each protected artifact's claim evidence against the actual current repository content (recomputing a source digest, not trusting a recorded one) and re-resolves the action against a freshly loaded guardrail/decision set, per `tools/awp_action_boundary.py`'s own stated principle that an enforcement adapter must recompute, never trust a resolution handed to it. Conformance fixtures: `tests/test_awp_harness.py`'s `CiGateTests`.
+
+Both profiles report against action-boundary.md section 10's existing five-level conformance ladder (`context-aware` / `decision-resolved` / `action-bound` / `action-enforced` / `output-attested`) -- see `tools/awp_harness.py`'s `_conformance_levels_observed` -- rather than defining a second, parallel taxonomy; an earlier harness proposal's own draft H0-H4 levels were reframed out during reconciliation for exactly this reason (`research/model-assisted-reviews/codex-harness-reconciliation-evaluation.md`, correction 3).
+
+Neither profile is a payload module: per section 1, an adapter receives a module ID only if it introduces a portable record that must survive outside the external system. `invocation_binding` is owned by `urn:awp:action-boundary` itself (it is meaningful independent of any one host); small descriptive fields this harness needs that neither Core nor action-boundary define (a reviewer's actor string, a source event-log path, and similar) are namespaced under `modules."urn:awp:harness-runtime"`, an informative, host-local convention, not a registered module -- deliberately following the same `modules.{module-id}` discipline core.md requires of real modules, so this harness does not repeat the unqualified-field mistake action-boundary 0.3.1 itself had to correct.
+
+Known limitations, stated up front rather than discovered later: this prototype does not implement a tool-call gateway stronger than a hook (action-boundary.md section 5's protected-kind tool constraint, for a tool that cannot be wrapped at all, remains open per open-issues.md item 48); it does not implement the decision-capture UX's "detect a candidate from a corrective commit or review comment" step, only the propose/accept pair once a candidate has been identified by some other means; and it has not been run against a real CI system in this repository -- `tools/awp_ci_gate.py` is tested directly (`tests/test_awp_harness.py`) but not yet wired into an actual protected-branch check here.
 
 ---
 
@@ -3526,7 +3541,7 @@ Identified by digest; reproduced verbatim in `dist/drafts/0.8.0/AWP-0.8.0-draft.
 | Asset | Path | Bytes | SHA-256 |
 |---|---|---:|---|
 | Silo profile schema | `schemas/awp-silo-0.1.schema.json` | 9670 | `bc736a67a6c57ddd53e01168de1cbc193323290f65f50bfbeac675f3c4a88b5c` |
-| Module registry | `spec/drafts/0.8.0/modules.json` | 4250 | `1ce37e0cb0101e483014b6521570b7a77f0871d98057ced428e02608c33cc993` |
+| Module registry | `spec/drafts/0.8.0/modules.json` | 4250 | `af2f7f738367c52cf48a80ce63de56840ff4e3e10c825622a01fcc6d869a30a6` |
 | Requirement inventory | `spec/drafts/0.8.0/requirements.json` | 239547 | `bba5e5e49f2f96eb05ea041a2e929d7c31a078706f12cf005253cc7d3f1a729b` |
 | Core schema | `schemas/awp-core-0.8.schema.json` | 14661 | `bd212815e521fefbd9757c0e3dc7c18890e936146f7065dd3ef7c54e2206454e` |
 | Cooperation schema | `schemas/awp-cooperation-0.1.schema.json` | 25432 | `3124bf5c6fdd173a97f49ac835db67ce7ddb7c0ae0d0fb9b4b857c32d5839f41` |

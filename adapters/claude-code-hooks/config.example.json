@@ -1,0 +1,19 @@
+{
+  "_comment": "Project-local config for adapters/claude-code-hooks/*.py. Copy to config.json (git-ignored or committed, project's choice) and fill in real paths. tool_name -> operation_class/artifact_class mapping is inherently project-specific -- this file is the only place that project-specific knowledge lives; the hooks themselves and tools/awp_harness.py are generic.",
+  "actor": "actor:agent-session",
+  "guardrails": ".awp-runtime/guardrails.json",
+  "decisions": ".awp-runtime/decisions.json",
+  "entry_status": ".awp-runtime/entry-status.json",
+  "event_log": ".awp-runtime/action-boundary-events.jsonl",
+  "pending_dir": ".awp-runtime/pending",
+  "capsule_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000",
+  "mappings": [
+    {
+      "tool_name": "image-generation",
+      "operation_class": "generative:freeform",
+      "artifact_class": "artifact-class:public-promotional-watch-imagery",
+      "resource_from_argument": "target_path",
+      "default_resource": "image-generation:unspecified-target"
+    }
+  ]
+}

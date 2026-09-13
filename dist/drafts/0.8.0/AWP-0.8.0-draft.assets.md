@@ -386,7 +386,7 @@ Do not edit this generated file directly; regenerate it from the source files wh
   "informative_documents": [
     {
       "name": "AWP Adapter Framework",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "document": "adapters.md"
     },
     {
