@@ -1,0 +1,22 @@
+[
+  {
+    "id": "decision:protected-artifacts-traceability",
+    "type": "decision",
+    "question": "How may protected generated artifacts be produced?",
+    "status": "accepted",
+    "choice": "Protected generated artifacts must use traceable composite production.",
+    "rationale": "A protected artifact must be reproducible from named, verifiable source artifacts.",
+    "modules": {
+      "urn:awp:action-boundary": {
+        "selectors": [
+          "protected-artifacts/**",
+          "artifact-class:protected-generated-assets"
+        ],
+        "requirements": [
+          "Use named, verifiable source artifacts.",
+          "Emit a mechanically produced artifact claim before publication."
+        ]
+      }
+    }
+  }
+]

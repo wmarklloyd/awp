@@ -1,0 +1,18 @@
+[
+  {
+    "id": "constraint:protected-artifacts-no-freeform",
+    "profile": "awp-security-guardrail-v1",
+    "effect": "deny",
+    "applies_to": "all_actors",
+    "operation_classes": ["generative:freeform"],
+    "resources": ["protected-artifacts/**", "artifact-class:protected-generated-assets"],
+    "conditions": ["Protected generated artifacts require traceable composite production."],
+    "policy_owner": "actor:user",
+    "provenance": {
+      "issued_by": "actor:user",
+      "basis": "decision:protected-artifacts-traceability"
+    },
+    "enforcement": "protected_adapter",
+    "propagation": "mandatory"
+  }
+]

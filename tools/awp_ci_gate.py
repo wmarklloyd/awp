@@ -47,6 +47,10 @@ import sys
 from pathlib import Path
 from typing import Any, Sequence
 
+# Keep both invocation forms working: `python tools/awp_ci_gate.py` and
+# `python -m tools.awp_ci_gate`.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from tools.awp_action_boundary import RESULT_PERMIT, resolve_action
 
 

@@ -1,0 +1,9 @@
+{
+  "protected_paths": [
+    {
+      "path_globs": ["protected-artifacts/**"],
+      "resource": "protected-artifacts/**",
+      "artifact_class": "artifact-class:protected-generated-assets"
+    }
+  ]
+}

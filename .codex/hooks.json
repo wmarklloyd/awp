@@ -26,6 +26,42 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/adapters/codex-hooks/pretooluse.py\"",
+            "commandWindows": "powershell -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& python (Join-Path (git rev-parse --show-toplevel) 'adapters\\codex-hooks\\pretooluse.py')\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/adapters/codex-hooks/posttooluse.py\"",
+            "commandWindows": "powershell -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& python (Join-Path (git rev-parse --show-toplevel) 'adapters\\codex-hooks\\posttooluse.py')\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/adapters/codex-hooks/stop.py\"",
+            "commandWindows": "powershell -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"& python (Join-Path (git rev-parse --show-toplevel) 'adapters\\codex-hooks\\stop.py')\"",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   }
 }

@@ -1,0 +1,46 @@
+name: AWP Action Boundary gate
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  action-boundary:
+    name: Verify protected artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: List changed files
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-files.txt
+          elif [ "$BASE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > changed-files.txt
+          else
+            git ls-tree -r --name-only "$HEAD_SHA" > changed-files.txt
+          fi
+
+      - name: Run agent-blind Action Boundary gate
+        run: >-
+          python tools/awp_ci_gate.py check
+          --changed-files changed-files.txt
+          --protected-paths config/awp-action-boundary/protected-paths.json
+          --artifact-claims config/awp-action-boundary/artifact-claims.json
+          --guardrails config/awp-action-boundary/guardrails.json
+          --decisions config/awp-action-boundary/decisions.json
+          --repo-root .

@@ -1,0 +1,11 @@
+{
+  "actor": "actor:claude",
+  "guardrails": "config/awp-action-boundary/guardrails.json",
+  "decisions": "config/awp-action-boundary/decisions.json",
+  "entry_status": "config/awp-action-boundary/entry-status.json",
+  "protected_paths": "config/awp-action-boundary/protected-paths.json",
+  "event_log": ".awp-runtime/action-boundary-events-claude.jsonl",
+  "pending_dir": ".awp-runtime/pending/claude",
+  "capsule_digest": "sha256:b135a8e58b76c279772df386bf1f5aa0ec3b1594435f5212b00edc96fd00b5e1",
+  "mappings": []
+}
