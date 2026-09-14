@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -157,6 +158,61 @@ class StagedTreeBindingTests(unittest.TestCase):
         result = verify_binding(project, {"profile": "git-state-v1", "revision": "git:91ab4e7"})
         self.assertEqual(result["state"], "unavailable")
 
+    def test_a_large_untracked_count_is_capped_not_embedded_in_full(self) -> None:
+        """Regression test for the ~40MB-capsule failure mode.
+
+        A project whose .gitignore has a gap around a build/dependency cache
+        can leave a huge number of files untracked.  The binding must still
+        record a correct tree, but its divergence report should be bounded --
+        a small sample plus an honest total -- not sized to the whole working
+        tree.
+        """
+        temporary, project = self.repository()
+        self.addCleanup(temporary.cleanup)
+        (project / "build-cache").mkdir()
+        for index in range(10):
+            (project / "build-cache" / f"artifact-{index}.bin").write_text(
+                "x", encoding="utf-8"
+            )
+        binding = staged_tree_binding(
+            project, "repo:application", divergence_limit=3
+        )
+        divergence = binding["divergence"]
+        self.assertEqual(len(divergence["untracked"]), 3)
+        self.assertEqual(divergence["untracked_total"], 10)
+        self.assertTrue(divergence["untracked_truncated"])
+
+    def test_divergence_limit_defaults_from_the_environment(self) -> None:
+        temporary, project = self.repository()
+        self.addCleanup(temporary.cleanup)
+        (project / "build-cache").mkdir()
+        for index in range(5):
+            (project / "build-cache" / f"artifact-{index}.bin").write_text(
+                "x", encoding="utf-8"
+            )
+        previous = os.environ.get("AWP_DIVERGENCE_LIMIT")
+        os.environ["AWP_DIVERGENCE_LIMIT"] = "2"
+        try:
+            binding = staged_tree_binding(project, "repo:application")
+        finally:
+            if previous is None:
+                os.environ.pop("AWP_DIVERGENCE_LIMIT", None)
+            else:
+                os.environ["AWP_DIVERGENCE_LIMIT"] = previous
+        divergence = binding["divergence"]
+        self.assertEqual(len(divergence["untracked"]), 2)
+        self.assertEqual(divergence["untracked_total"], 5)
+
+    def test_a_small_untracked_count_is_reported_in_full(self) -> None:
+        temporary, project = self.repository()
+        self.addCleanup(temporary.cleanup)
+        (project / "notes.txt").write_text("scratch\n", encoding="utf-8")
+        binding = staged_tree_binding(project, "repo:application", divergence_limit=3)
+        divergence = binding["divergence"]
+        self.assertEqual(divergence["untracked"], ["notes.txt"])
+        self.assertNotIn("untracked_total", divergence)
+        self.assertNotIn("untracked_truncated", divergence)
+
     def test_outside_a_repository_it_declines(self) -> None:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
@@ -238,6 +294,35 @@ class CheckpointBindingTests(unittest.TestCase):
         git(project, "add", "project.awp.md")
         git(project, "commit", "--quiet", "-m", "checkpoint")
         self.assertEqual(verify_binding(project, binding)["state"], "current")
+
+    def test_checkpoint_request_can_override_the_divergence_limit(self) -> None:
+        temporary, project, capsule = self.project_with_capsule()
+        self.addCleanup(temporary.cleanup)
+        (project / "build-cache").mkdir()
+        for index in range(6):
+            (project / "build-cache" / f"artifact-{index}.bin").write_text(
+                "x", encoding="utf-8"
+            )
+        receipt = awp_workstate.checkpoint(
+            project,
+            capsule,
+            self.request(
+                capsule,
+                state_binding={
+                    "mode": "staged-tree",
+                    "state_space": "repo:application",
+                    "divergence_limit": 2,
+                },
+            ),
+        )
+        divergence = receipt["state_binding"]["divergence"]
+        # checkpoint() takes .awp-runtime/workstate.lock while it runs, which
+        # is itself an untracked path in this from-scratch fixture repo (a
+        # real project's own .gitignore normally covers .awp-runtime/), so
+        # the 6 build-cache files plus that lock file total 7.
+        self.assertEqual(len(divergence["untracked"]), 2)
+        self.assertEqual(divergence["untracked_total"], 7)
+        self.assertTrue(divergence["untracked_truncated"])
 
     def test_rebinding_the_same_state_space_replaces_rather_than_appends(self) -> None:
         temporary, project, capsule = self.project_with_capsule()

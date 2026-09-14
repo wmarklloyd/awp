@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -28,6 +29,19 @@ from typing import Any, Sequence
 
 PROFILE = "git-staged-tree-v1"
 REVISION_PREFIX = "git-tree:"
+
+# A project whose .gitignore has a gap around build/dependency caches can leave
+# hundreds of thousands of paths untracked.  Recording all of them in a Capsule
+# turned one real project's `.awp.md` into ~40MB (github issue: capsule bloat
+# from un-gitignored Gradle/Go build-cache directories, Sept 2026) -- the tree
+# identifier itself was still correct, but the *divergence report* embedded
+# next to it was not bounded, so a project's own ignore-pattern gap became a
+# capsule-processing cost paid by every later reader.  `_divergence` below caps
+# each category and reports the true count instead of embedding it in full, so
+# a gap like that fails loud (a small list plus an honest total) rather than
+# quietly producing an unusably large capsule.
+DEFAULT_DIVERGENCE_LIMIT = 2000
+DIVERGENCE_LIMIT_ENV = "AWP_DIVERGENCE_LIMIT"
 
 
 class StateBindingError(RuntimeError):
@@ -110,7 +124,34 @@ def head_tree(project: Path) -> str | None:
         return None
 
 
-def _divergence(project: Path, scope: Sequence[str]) -> dict[str, list[str]]:
+def _resolve_divergence_limit(explicit: int | None) -> int:
+    """Resolve the per-category divergence cap.
+
+    Precedence: an explicit argument, then the AWP_DIVERGENCE_LIMIT
+    environment variable, then DEFAULT_DIVERGENCE_LIMIT.  An override that
+    fails to parse or is not positive is ignored rather than disabling the
+    cap silently -- a typo in the environment should not reopen the failure
+    mode this guards against.
+    """
+    if explicit is not None:
+        return explicit
+    raw = os.environ.get(DIVERGENCE_LIMIT_ENV)
+    if raw:
+        try:
+            value = int(raw)
+        except ValueError:
+            value = 0
+        if value > 0:
+            return value
+    return DEFAULT_DIVERGENCE_LIMIT
+
+
+def _divergence(
+    project: Path,
+    scope: Sequence[str],
+    excluded: Sequence[str] = (),
+    limit: int | None = None,
+) -> dict[str, Any]:
     """Report tracked-but-unstaged and untracked paths inside `scope`.
 
     A declared scope is pushed down to Git as a pathspec.  Scanning for
@@ -118,21 +159,35 @@ def _divergence(project: Path, scope: Sequence[str]) -> dict[str, list[str]]:
     build-heavy repository is minutes rather than seconds; bounded by a
     pathspec it costs what the scope is worth.  The result is filtered again in
     Python so the answer does not depend on pathspec interpretation.
+
+    Each category (`unstaged`, `untracked`) is capped at `limit` paths (see
+    DEFAULT_DIVERGENCE_LIMIT).  Beyond the cap, the list is truncated but the
+    true count is still reported as `<category>_total`, with
+    `<category>_truncated: True` -- so a project whose ignore rules have a gap
+    (an un-gitignored build cache, a vendored dependency tree) produces a
+    small, bounded report with an honest count attached, instead of a
+    divergence list sized to its whole working tree.
     """
     pathspec = ["--", *scope] if scope else []
-    unstaged = [
-        line
-        for line in _git(project, "diff", "--name-only", *pathspec).splitlines()
-        if line and _in_scope(line, scope)
-    ]
-    untracked = [
-        line
-        for line in _git(
-            project, "ls-files", "--others", "--exclude-standard", *pathspec
-        ).splitlines()
-        if line and _in_scope(line, scope)
-    ]
-    return {"unstaged": sorted(unstaged), "untracked": sorted(untracked)}
+    cap = _resolve_divergence_limit(limit)
+    result: dict[str, Any] = {}
+    for key, args in (
+        ("unstaged", ("diff", "--name-only", *pathspec)),
+        ("untracked", ("ls-files", "--others", "--exclude-standard", *pathspec)),
+    ):
+        values = sorted(
+            line
+            for line in _git(project, *args).splitlines()
+            if line and _in_scope(line, scope) and line not in excluded
+        )
+        total = len(values)
+        if total > cap:
+            result[key] = values[:cap]
+            result[f"{key}_total"] = total
+            result[f"{key}_truncated"] = True
+        else:
+            result[key] = values
+    return result
 
 
 def staged_tree_binding(
@@ -140,6 +195,7 @@ def staged_tree_binding(
     state_space: str,
     scope: Sequence[str] | None = None,
     excludes: Sequence[str] | None = None,
+    divergence_limit: int | None = None,
 ) -> dict[str, Any]:
     """Build a `git-staged-tree-v1` state binding for the current index.
 
@@ -152,6 +208,13 @@ def staged_tree_binding(
     the tree it names.  A receiver treats a commit that differs only at those
     paths as current (AWP-HANDOFF-030).  It is not a way to leave a work product
     out of the binding.
+
+    `divergence_limit` bounds how many unstaged/untracked paths per category
+    the `divergence` block records (default DEFAULT_DIVERGENCE_LIMIT, override
+    via AWP_DIVERGENCE_LIMIT).  It bounds the report, never the identifier: a
+    project with an ignore-pattern gap that leaves huge numbers of files
+    untracked still gets a correct tree object, just not a Capsule sized to
+    its whole working tree.
     """
     if not isinstance(state_space, str) or not state_space.strip():
         raise StateBindingError("state_space must be a nonempty string")
@@ -159,27 +222,36 @@ def staged_tree_binding(
         raise StateBindingError("project is not inside a Git work tree")
     normalized = _normalize_scope(scope)
     excluded = _normalize_scope(excludes)
-    divergence = _divergence(project, normalized)
-    unstaged = [path for path in divergence["unstaged"] if path not in excluded]
-    untracked = [path for path in divergence["untracked"] if path not in excluded]
+    divergence = _divergence(project, normalized, excluded, divergence_limit)
+    unstaged = divergence["unstaged"]
+    untracked = divergence["untracked"]
+    unstaged_present = bool(unstaged) or bool(divergence.get("unstaged_total"))
     binding: dict[str, Any] = {
         "state_space": state_space.strip(),
         "revision": REVISION_PREFIX + staged_tree(project),
         "profile": PROFILE,
         "covers": "staged-index",
-        "working_tree": "clean" if not unstaged else "modified",
+        "working_tree": "clean" if not unstaged_present else "modified",
         "retention": "pre-commit: the staged tree is unreachable until a commit names it",
     }
     if normalized:
         binding["scope"] = normalized
     if excluded:
         binding["excludes"] = excluded
-    if unstaged or untracked:
-        binding["divergence"] = {
-            key: value
-            for key, value in (("unstaged", unstaged), ("untracked", untracked))
-            if value
-        }
+    truncated = divergence.get("unstaged_truncated") or divergence.get("untracked_truncated")
+    if unstaged_present or untracked or divergence.get("untracked_total"):
+        binding["divergence"] = {key: value for key, value in divergence.items() if value}
+        if truncated:
+            print(
+                "awp_state_binding: divergence truncated for state_space "
+                f"{state_space.strip()!r} "
+                f"(unstaged {len(unstaged)}/{divergence.get('unstaged_total', len(unstaged))}, "
+                f"untracked {len(untracked)}/{divergence.get('untracked_total', len(untracked))}); "
+                "the recorded tree is still correct, but this project has an "
+                "ignore-pattern gap worth fixing -- see divergence.*_total in "
+                "the binding, or override with AWP_DIVERGENCE_LIMIT.",
+                file=sys.stderr,
+            )
     return binding
 
 
@@ -234,7 +306,10 @@ def verify_binding(project: Path, binding: dict[str, Any]) -> dict[str, Any]:
                 result["differing_paths"] = differing[:50]
     scope = _normalize_scope(binding.get("scope"))
     divergence = _divergence(project, scope)
-    if divergence["unstaged"] or divergence["untracked"]:
+    if any(
+        divergence.get(key)
+        for key in ("unstaged", "untracked", "unstaged_truncated", "untracked_truncated")
+    ):
         result["divergence"] = {
             key: value for key, value in divergence.items() if value
         }
@@ -254,6 +329,15 @@ def parser() -> argparse.ArgumentParser:
         default=[],
         help="path whose content depends on the identifier itself, such as the capsule holding the binding",
     )
+    stage_command.add_argument(
+        "--divergence-limit",
+        type=int,
+        default=None,
+        help=(
+            "cap on unstaged/untracked paths recorded per category "
+            f"(default {DEFAULT_DIVERGENCE_LIMIT}, or ${DIVERGENCE_LIMIT_ENV})"
+        ),
+    )
     verify_command = commands.add_parser("verify", help="compare a recorded binding with this repository")
     verify_command.add_argument("--binding", type=Path, help="file holding the binding JSON; omit to read stdin")
     return root
@@ -264,7 +348,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         project = args.project.resolve()
         if args.command == "stage":
-            result = staged_tree_binding(project, args.state_space, args.scope, args.exclude)
+            result = staged_tree_binding(
+                project,
+                args.state_space,
+                args.scope,
+                args.exclude,
+                args.divergence_limit,
+            )
         else:
             raw = args.binding.read_text(encoding="utf-8") if args.binding else sys.stdin.read()
             result = verify_binding(project, json.loads(raw))

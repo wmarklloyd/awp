@@ -256,12 +256,17 @@ def _apply_state_binding(
     scope = specification.get("scope", [])
     if not isinstance(scope, list) or not all(isinstance(item, str) for item in scope):
         raise CoordinationError("state_binding scope must be an array of strings")
+    divergence_limit = specification.get("divergence_limit")
+    if divergence_limit is not None and not isinstance(divergence_limit, int):
+        raise CoordinationError("state_binding divergence_limit must be an integer")
     # The capsule cannot be inside the tree it names: writing the identifier
     # changes the capsule, which changes the tree (AWP-HANDOFF-029).  The host
     # knows which path that is, so the caller never has to declare it.
     excludes = [capsule_relative]
     try:
-        binding = staged_tree_binding(project, state_space, scope, excludes)
+        binding = staged_tree_binding(
+            project, state_space, scope, excludes, divergence_limit
+        )
     except StateBindingError as error:
         raise CoordinationError(f"state binding unavailable: {error}") from error
 
