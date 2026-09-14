@@ -9,15 +9,30 @@ which is agent-blind and does not trust anything this hook did or logged.
 Codex CLI's PreToolUse hook contract, as researched 2026-09-13/14 (the
 official docs at developers.openai.com/codex/hooks and
 learn.chatgpt.com/docs/hooks repeatedly failed to fetch during that research;
-this is reconstructed from three independently-fetched third-party sources
-and should be re-verified against the official docs when they become
-fetchable): one JSON object arrives on stdin with `turn_id`, `tool_name`,
-`tool_use_id`, `tool_input.command`, plus common fields `session_id`,
-`transcript_path`, `cwd`, `hook_event_name`, `model`. To deny, print
+reconstructed then from three independently-fetched third-party sources):
+one JSON object arrives on stdin with `turn_id`, `tool_name`, `tool_use_id`,
+`tool_input.command`, plus common fields `session_id`, `transcript_path`,
+`cwd`, `hook_event_name`, `model`. To deny, print
 `{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision":
-"deny", "permissionDecisionReason": "..."}}` to stdout and exit 0 -- the same
-shape as Claude Code's contract (or exit code 2, which also blocks but
-bypasses the JSON reason).
+"deny", "permissionDecisionReason": "..."}}` to stdout and exit 0.
+
+CORRECTION (2026-09-14, confirmed against a real "Hook failed" error a user
+hit running this binding): unlike Claude Code, Codex CLI's PreToolUse hook
+can only *deny* -- it has no way to *grant* permission. An earlier version
+of this file printed `{"hookSpecificOutput": {"hookEventName": "PreToolUse",
+"permissionDecision": "allow"}}` for the allow case, mirroring Claude Code's
+contract; Codex CLI rejected that at runtime with "Hook failed: PreToolUse
+hook returned unsupported permissionDecision:allow" (reproduced independently
+in https://github.com/safishamsi/graphify/issues/249 against codex-cli
+0.120.0, and documented at
+https://codex.danielvaughan.com/2026/04/15/codex-cli-hooks-complete-guide-events-policy-patterns/,
+which states plainly: "Hooks can only deny, never grant permissions" -- note
+this contradicts the "allow" example shown on learn.chatgpt.com/docs/hooks
+at the time of that same research pass, so treat the runtime behavior, not
+that page, as authoritative until reconciled). The correct way to let a call
+proceed is to print **nothing** to stdout and exit 0 -- empty output is
+treated as a no-op success, not a decision. This file no longer prints an
+explicit allow.
 
 IMPORTANT COVERAGE LIMITATION (why this binding leans on the classifier, not
 a tool_name table, more than the Claude binding does): Codex's
@@ -64,13 +79,6 @@ def _load(path: str) -> dict:
     return json.loads((_REPO_ROOT / path).read_text(encoding="utf-8"))
 
 
-def _allow(reason: str | None = None) -> dict:
-    output = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}}
-    if reason:
-        output["hookSpecificOutput"]["permissionDecisionReason"] = reason
-    return output
-
-
 def _deny(reason: str) -> dict:
     return {
         "hookSpecificOutput": {
@@ -88,7 +96,7 @@ def main() -> int:
     tool_use_id = payload.get("tool_use_id")
 
     if not CONFIG_PATH.exists():
-        print(json.dumps(_allow()))
+        # No output = proceed normally, per the empirical fix below.
         return 0
 
     config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
@@ -105,7 +113,6 @@ def main() -> int:
     else:
         classification = classify(tool_name, tool_input, protected_paths)
         if classification is None:
-            print(json.dumps(_allow()))
             return 0
 
     decisions = _load(config["decisions"]) if config.get("decisions") else []
@@ -136,7 +143,8 @@ def main() -> int:
         )
 
     if resolution["result"] == "permit":
-        print(json.dumps(_allow()))
+        # No output = proceed normally (see module docstring: Codex CLI
+        # rejects an explicit permissionDecision:"allow").
         return 0
 
     reason = (
