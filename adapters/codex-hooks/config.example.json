@@ -1,0 +1,12 @@
+{
+  "_comment": "Template for adapters/codex-hooks/config.json. Copy to config.json and fill in real paths for a specific project. Can point at the same policy files as adapters/claude-code-hooks/config.json -- one project policy, multiple host bindings. Classification here is effectively classifier-only in practice: Codex's PreToolUse tool_name is documented to be generic ('Bash'/'exec_command') for locally-executed calls regardless of intent, so an explicit tool_name mapping is unlikely to ever match -- see pretooluse.py's docstring. pending_dir is host-scoped (pending/codex) to avoid any tool_use_id collision with a claude-code-hooks binding sharing the same project. event_log CAN be shared across host bindings -- action_resolution entries carry an actor field so a reader can filter by host -- but tools/awp_harness.py's session_compliance_report summarizes the WHOLE log regardless of which host's Stop hook asked for the report (that function's existing behavior, not something either binding changes); point event_log at a host-specific file instead if per-host compliance reports need to be exact.",
+  "actor": "actor:codex-session",
+  "guardrails": ".awp-runtime/guardrails.json",
+  "decisions": ".awp-runtime/decisions.json",
+  "entry_status": ".awp-runtime/entry-status.json",
+  "protected_paths": ".awp-runtime/protected-paths.json",
+  "event_log": ".awp-runtime/action-boundary-events.jsonl",
+  "pending_dir": ".awp-runtime/pending/codex",
+  "capsule_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000",
+  "mappings": []
+}

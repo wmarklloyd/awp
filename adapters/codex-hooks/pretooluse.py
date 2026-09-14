@@ -1,37 +1,46 @@
 #!/usr/bin/env python3
-"""Illustrative PreToolUse binding: Claude Code -> AWP Action Boundary.
+"""PreToolUse binding: Codex CLI -> AWP Action Boundary.
 
-Advisory only. action-boundary.md section 7 already states that a hook the
+Advisory only, same caveat as ../claude-code-hooks/pretooluse.py: a hook the
 gated participant's own host executes is not an independent enforcement
-point -- the same reason a commit hook is inadequate there. This exists for
-fast local feedback and to populate the event log tools/awp_harness.py
-compliance-report reads at session end. The actual enforcement point is
-tools/awp_ci_gate.py, run in CI, which does not trust anything this hook
-did or logged.
+point. The actual enforcement point is tools/awp_ci_gate.py, run in CI,
+which is agent-blind and does not trust anything this hook did or logged.
 
-Claude Code's PreToolUse hook contract (verified against
-https://code.claude.com/docs/en/hooks, 2026-09-13): one JSON object arrives
-on stdin, including `tool_name`, `tool_input`, and `tool_use_id`. To block,
-print `{"hookSpecificOutput": {"hookEventName": "PreToolUse",
-"permissionDecision": "deny", "permissionDecisionReason": "..."}}` to stdout
-and exit 0. (Exit 2 also blocks, via stderr, but bypasses this JSON contract
-and the reason would not reach the agent as structured context.)
+Codex CLI's PreToolUse hook contract, as researched 2026-09-13/14 (the
+official docs at developers.openai.com/codex/hooks and
+learn.chatgpt.com/docs/hooks repeatedly failed to fetch during that research;
+this is reconstructed from three independently-fetched third-party sources
+and should be re-verified against the official docs when they become
+fetchable): one JSON object arrives on stdin with `turn_id`, `tool_name`,
+`tool_use_id`, `tool_input.command`, plus common fields `session_id`,
+`transcript_path`, `cwd`, `hook_event_name`, `model`. To deny, print
+`{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision":
+"deny", "permissionDecisionReason": "..."}}` to stdout and exit 0 -- the same
+shape as Claude Code's contract (or exit code 2, which also blocks but
+bypasses the JSON reason).
 
-Classification is two-tiered: an explicit tool_name entry in config.json's
-`mappings` (precise, but only as good as the tool_name it names -- a host
-may report a generic name for some or all calls, or a project may never
-confirm the real tool_name for a given capability), then a fallback to
-../protected_write_classifier.py, which asks whether the call's target path
-matches something protected-paths.json declares, regardless of which tool
-made the call. See that module's docstring for why this is the more robust
-default. ../codex-hooks/ shares the same classifier so every host binding
-protects a project's declared paths the same way.
+IMPORTANT COVERAGE LIMITATION (why this binding leans on the classifier, not
+a tool_name table, more than the Claude binding does): Codex's
+PreToolUse/PostToolUse are documented, across all three sources, to fire
+only for locally-executed tool calls -- commonly surfaced with a generic
+`tool_name` such as "Bash" or "exec_command" regardless of what the
+underlying command actually does, and hosted/remote tool calls may not be
+covered at all. A tool_name -> operation_class mapping table is therefore
+close to useless here even in principle: unlike a host where the gap is
+simply an unconfirmed tool_name, Codex's tool_name is reported to be
+uninformative by design for this hook. This binding's classification is
+genuinely dependent on ../protected_write_classifier.py, which inspects
+`tool_input.command` text (and any path-like arguments) for a protected
+path, regardless of tool identity. config.json's `mappings` list is kept
+only for parity with the Claude binding and for the rare case Codex someday
+reports a specific, confirmed tool_name -- do not expect it to carry real
+coverage here.
 
-Project-specific policy (guardrails/decisions/protected-paths, and
-optionally a precise tool_name mapping) lives in config.json next to this
-file (see config.example.json), never in this script -- this script,
-../protected_write_classifier.py, and tools/awp_harness.py stay
-project-agnostic.
+Given the "Bash-only" scope, this hook mainly protects hand-run or
+agent-run shell commands (cp/mv/a generator script piping to a protected
+path) invoked through Codex's exec tool. It does not claim to see everything
+Codex can do; tools/awp_ci_gate.py is what actually blocks a bad commit
+regardless of what this hook did or did not observe.
 """
 
 from __future__ import annotations
@@ -109,7 +118,7 @@ def main() -> int:
         "operation_class": classification["operation_class"],
         "resource": classification["resource"],
         "artifact_class": classification["artifact_class"],
-        "actor": config.get("actor", "actor:agent-session"),
+        "actor": config.get("actor", "actor:codex-session"),
     }
 
     resolution, _exit_code = gate(

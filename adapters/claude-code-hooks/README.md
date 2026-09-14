@@ -21,7 +21,19 @@ reads -- not as a substitute for the CI gate.
 - `pretooluse.py` -- gates a tool call before it runs; maps to `tools/awp_harness.py`'s `gate()`.
 - `posttooluse.py` -- recomputes the invocation binding against the call that actually ran; maps to `enforce()`.
 - `stop.py` -- session-end fresh-context-style reviewer; maps to `session_compliance_report()`.
-- `config.example.json` -- copy to `config.json` and fill in real paths and tool-name mappings. The tool_name -> operation_class/artifact_class mapping is inherently project-specific; it is the only project-specific knowledge in this binding.
+- `config.example.json` -- copy to `config.json` and fill in real paths for a specific project.
+- `../protected_write_classifier.py` -- shared with `../codex-hooks/`, not duplicated. Primary classification: matches a tool call's target path (path-like `tool_input` arguments, or command text) against a project's `protected_paths` config, regardless of the calling tool's name. `config.json`'s `mappings` list is kept only as an optional, more-precise override for a *confirmed* tool_name -- see that module's docstring for why a name-keyed table alone is fragile in general (a host may never confirm a stable tool_name for a given capability, or may report one too generic to key off, as `../codex-hooks/README.md` documents for Codex CLI specifically).
+
+See `../codex-hooks/README.md` for the equivalent Codex CLI binding, which
+can share a project's policy files (guardrails/decisions/protected-paths)
+and the same classifier, with its own host-specific caveats.
+
+**Note (2026-09-14):** this binding was revised from a tool_name-mapping-only
+design to the classifier-based one described above. `spec/drafts/0.8.0/adapters.md`
+section 8, referenced above as this binding's normative-adjacent description,
+has not yet been revised to match and may still describe the older,
+mapping-only shape -- reconcile that doc against this directory before
+treating section 8 as authoritative on the current classification logic.
 
 ## Wiring into a project
 

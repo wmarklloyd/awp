@@ -1,11 +1,12 @@
 {
-  "_comment": "Project-local config for adapters/claude-code-hooks/*.py. Copy to config.json (git-ignored or committed, project's choice) and fill in real paths. tool_name -> operation_class/artifact_class mapping is inherently project-specific -- this file is the only place that project-specific knowledge lives; the hooks themselves and tools/awp_harness.py are generic.",
+  "_comment": "Template for adapters/claude-code-hooks/config.json. Copy to config.json and fill in real paths for a specific project. Primary classification is ../protected_write_classifier.py (shared with adapters/codex-hooks/), which matches a tool call's target path against protected_paths below, regardless of the calling tool's identity. 'mappings' is an optional, more-precise override for a confirmed tool_name; leave it empty if none is confirmed -- an unconfirmed placeholder tool_name is worse than no mapping, since it can never match and just looks like coverage that isn't there.",
   "actor": "actor:agent-session",
   "guardrails": ".awp-runtime/guardrails.json",
   "decisions": ".awp-runtime/decisions.json",
   "entry_status": ".awp-runtime/entry-status.json",
+  "protected_paths": ".awp-runtime/protected-paths.json",
   "event_log": ".awp-runtime/action-boundary-events.jsonl",
-  "pending_dir": ".awp-runtime/pending",
+  "pending_dir": ".awp-runtime/pending/claude",
   "capsule_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000",
   "mappings": [
     {
@@ -13,7 +14,8 @@
       "operation_class": "generative:freeform",
       "artifact_class": "artifact-class:public-promotional-watch-imagery",
       "resource_from_argument": "target_path",
-      "default_resource": "image-generation:unspecified-target"
+      "default_resource": "image-generation:unspecified-target",
+      "_comment": "Example only -- only add an entry here once a project has actually confirmed this is the real tool_name its host reports for this capability."
     }
   ]
 }
