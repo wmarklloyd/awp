@@ -9,6 +9,7 @@ This file records protocol-family changes. Released artifacts remain immutable; 
 - Drafts portable cross-model consultations and model-independent shared guardrails.
 - Drafts explicit governing-specification binding, embedded discovery, cross-model consultations, and shared guardrails.
 - Draft validation and conformance assets are available for review; this is not a published release.
+- Prototyped Action Boundary semantic-concept inheritance (tools/awp_taxonomy.py, resolve_action's concept_resolution): a validated descendant concept ("a Collie is a dog") can inherit a guardrail or decision declared against its parent, strictly additive and observe-only by default -- see spec/drafts/0.8.0/open-issues.md #54 and android_sports_watches/docs/awp-semantic-inheritance-design-note.md.
 - `awp_state_binding.staged_tree_binding` now caps per-category divergence (unstaged/untracked) at a configurable limit (default 2000, `AWP_DIVERGENCE_LIMIT`, or a checkpoint request's `state_binding.divergence_limit`), reporting a truncated sample plus an honest total instead of embedding an unbounded file list -- a project with an ignore-pattern gap around a build/dependency cache no longer produces a Capsule sized to its whole working tree.
 
 ## 0.6.0 — 2026-09-03

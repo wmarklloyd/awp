@@ -290,16 +290,30 @@ def gate(
     action_digest: str | None = None,
     capsule_digest: str | None = None,
     event_log_path: str | Path | None = None,
+    taxonomy: "Any | None" = None,
+    concept_mode: str | None = None,
 ) -> tuple[dict, int]:
     """Resolve one action, optionally bind it to a concrete tool call, and
     optionally log it. Returns (resolution, exit_code) -- exit_code follows
     tools/awp_action_boundary.py's convention (0 permit, 1 deny, 2
     unresolved) so a caller (hook, CI step, or a human at a shell) can use
     this function's result directly as a process exit status.
+
+    `taxonomy`/`concept_mode` pass straight through to
+    tools.awp_action_boundary.resolve_action's semantic-inheritance
+    resolution; omitting `taxonomy` reproduces this function's prior
+    behavior unchanged. `concept_mode` defaults to resolve_action's own
+    default ("observe") when a taxonomy is given but no mode is specified.
     """
+    resolve_kwargs: dict[str, Any] = {}
+    if taxonomy is not None:
+        resolve_kwargs["taxonomy"] = taxonomy
+        if concept_mode is not None:
+            resolve_kwargs["concept_mode"] = concept_mode
     resolution = resolve_action(
         action, guardrails, decisions, entry_status,
         action_digest=action_digest, capsule_digest=capsule_digest,
+        **resolve_kwargs,
     )
     if tool_name is not None:
         resolution["invocation_binding"] = compute_invocation_binding(

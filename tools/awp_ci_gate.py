@@ -51,7 +51,8 @@ from typing import Any, Sequence
 # `python -m tools.awp_ci_gate`.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.awp_action_boundary import RESULT_PERMIT, resolve_action
+from tools.awp_action_boundary import CONCEPT_MODE_OBSERVE, RESULT_PERMIT, resolve_action
+from tools.awp_taxonomy import Taxonomy, TaxonomyError
 
 
 def _load_json(path: str) -> Any:
@@ -120,14 +121,32 @@ def run_gate(
     decisions: Sequence[dict],
     repo_root: Path,
     entry_status: dict | None = None,
-) -> tuple[bool, list[str]]:
+    taxonomy: "Taxonomy | None" = None,
+    concept_mode: str = CONCEPT_MODE_OBSERVE,
+) -> tuple[bool, list[str], list[dict]]:
     """`entry_status` defaults to complete/complete because a CI job that
     freshly loads the whole guardrail and decision set genuinely has
     complete structural selection and decision context -- unlike a
     budget-bounded agent session, nothing here is a bounded projection.
+
+    `taxonomy` is an optional awp_taxonomy.Taxonomy for semantic-inheritance
+    resolution (design note: android_sports_watches/docs/
+    awp-semantic-inheritance-design-note.md). A protected-paths entry may
+    declare which concept its artifact class corresponds to via an optional
+    `"concept"` key; omitting it (or omitting `taxonomy` entirely) leaves
+    this gate's behavior exactly as before. `concept_mode` defaults to
+    `"observe"` -- per the design note's own step 7, this gate reports what
+    concept inheritance would have matched without gating on it until a
+    policy owner reviews the observations and opts a scope into
+    `concept_mode="enforce"`.
+
+    Returns (ok, violations, concept_observations) -- observations are
+    always returned (possibly empty) so a caller can log or inspect them
+    even when the gate itself passes.
     """
     entry_status = entry_status or {"selection": "complete", "decision_context": "complete"}
     violations: list[str] = []
+    concept_observations: list[dict] = []
     for changed_path in changed_paths:
         for entry in matching_protected_paths(changed_path, protected_paths):
             claim = find_claim_for_artifact(changed_path, artifact_claims)
@@ -144,13 +163,22 @@ def run_gate(
                 "artifact_class": entry.get("artifact_class"),
                 "actor": "actor:ci-gate",
             }
-            resolution = resolve_action(action, guardrails, decisions, entry_status)
+            if entry.get("concept"):
+                action["concept"] = entry["concept"]
+            resolution = resolve_action(
+                action, guardrails, decisions, entry_status,
+                taxonomy=taxonomy, concept_mode=concept_mode,
+            )
+            if "concept_resolution" in resolution:
+                concept_observations.append(
+                    {"changed_path": changed_path, **resolution["concept_resolution"]}
+                )
             if resolution["result"] != RESULT_PERMIT:
                 violations.append(
                     f"{changed_path}: composite production of {entry.get('artifact_class')} does not resolve to "
                     f"permit (result={resolution['result']}, diagnostics={resolution.get('diagnostics')})"
                 )
-    return (len(violations) == 0), violations
+    return (len(violations) == 0), violations, concept_observations
 
 
 def _cmd_check(args: argparse.Namespace) -> int:
@@ -163,18 +191,27 @@ def _cmd_check(args: argparse.Namespace) -> int:
     artifact_claims = _load_json(args.artifact_claims) if args.artifact_claims else []
     guardrails = _load_json(args.guardrails) if args.guardrails else []
     decisions = _load_json(args.decisions) if args.decisions else []
-    ok, violations = run_gate(
+    taxonomy = Taxonomy.from_file(args.taxonomy) if args.taxonomy else None
+    ok, violations, concept_observations = run_gate(
         changed_paths=changed_paths,
         protected_paths=protected_paths,
         artifact_claims=artifact_claims,
         guardrails=guardrails,
         decisions=decisions,
         repo_root=Path(args.repo_root),
+        taxonomy=taxonomy,
+        concept_mode=args.concept_mode,
     )
     if ok:
-        print(json.dumps({"result": "pass", "violations": []}, indent=2))
+        payload = {"result": "pass", "violations": []}
+        if concept_observations:
+            payload["concept_observations"] = concept_observations
+        print(json.dumps(payload, indent=2))
         return 0
-    print(json.dumps({"result": "fail", "violations": violations}, indent=2), file=sys.stderr)
+    payload = {"result": "fail", "violations": violations}
+    if concept_observations:
+        payload["concept_observations"] = concept_observations
+    print(json.dumps(payload, indent=2), file=sys.stderr)
     return 1
 
 
@@ -192,6 +229,20 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--guardrails", help="JSON array of Security guardrails.")
     c.add_argument("--decisions", help="JSON array of Core decisions.")
     c.add_argument("--repo-root", default=".")
+    c.add_argument(
+        "--taxonomy",
+        help="Path to an awp_taxonomy.py concept-taxonomy JSON file, for semantic-inheritance "
+        "resolution (design note: android_sports_watches/docs/awp-semantic-inheritance-design-note.md). "
+        "Omit to reproduce plain selector-only resolution unchanged.",
+    )
+    c.add_argument(
+        "--concept-mode",
+        choices=["observe", "enforce"],
+        default="observe",
+        help="'observe' (default) records concept-inheritance matches in concept_observations "
+        "without changing the gate's pass/fail result; 'enforce' folds a concept-matched "
+        "guardrail/decision into the resolution. Ignored unless --taxonomy is also given.",
+    )
     c.set_defaults(func=_cmd_check)
 
     return parser

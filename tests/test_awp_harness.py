@@ -26,10 +26,12 @@ from tools.awp_harness import (
     session_compliance_report,
 )
 from tests.test_awp_action_boundary import (
+    ANIMAL_TAXONOMY,
     BUDGET_EXCEEDED_ENTRY,
     COMPLETE_ENTRY,
     DECISION,
     DECISION_WITH_UNQUALIFIED_AFFECTS_ONLY,
+    DOG_GUARDRAIL,
     GUARDRAIL,
     _action,
 )
@@ -256,7 +258,7 @@ class CiGateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             self._write(repo / "play-store-assets/baseball/feature-graphic.png", b"fake-png-bytes")
-            ok, violations = run_gate(
+            ok, violations, _concept_observations = run_gate(
                 changed_paths=["play-store-assets/baseball/feature-graphic.png"],
                 protected_paths=[{
                     "artifact_class": "artifact-class:public-promotional-watch-imagery",
@@ -288,7 +290,7 @@ class CiGateTests(unittest.TestCase):
                     "status": "verified",
                 }],
             }
-            ok, violations = run_gate(
+            ok, violations, _concept_observations = run_gate(
                 changed_paths=["play-store-assets/baseball/feature-graphic.png"],
                 protected_paths=[{
                     "artifact_class": "artifact-class:public-promotional-watch-imagery",
@@ -325,6 +327,125 @@ class CiGateTests(unittest.TestCase):
             }
             problems = verify_artifact_claim(claim, repo_root=repo)
             self.assertTrue(any("does not match the current content" in p for p in problems))
+
+
+class CiGateConceptObservationTests(unittest.TestCase):
+    """The CI gate is the enforcement point action-boundary.md section 7
+    asks for; concept observation must be wired there per the design
+    note's step 5 ("Extend the independent CI or deployment gate...") and
+    default to observe-only per step 7.
+    """
+
+    def _write(self, path: Path, content: bytes) -> str:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        import hashlib
+
+        return "sha256:" + hashlib.sha256(content).hexdigest()
+
+    COMPOSITE_DOG_GUARDRAIL = {
+        **DOG_GUARDRAIL,
+        "id": "constraint:composite-dog-imagery-still-requires-review",
+        "operation_classes": ["generative:composite"],
+    }
+
+    def _valid_claim(self, repo: Path, artifact: str) -> dict:
+        source_digest = self._write(repo / "website/assets/collie-source.svg", b"real-source-svg")
+        return {
+            "artifact": artifact,
+            "claims": [{
+                "claim": "depicted-subject-exists",
+                "evidence": {
+                    "source_artifact": "website/assets/collie-source.svg",
+                    "source_digest": source_digest,
+                    "transformation": "literal-composite",
+                },
+                "status": "verified",
+            }],
+        }
+
+    def test_observe_mode_records_a_concept_match_without_failing_the_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self._write(repo / "gallery/pets/collie.png", b"fake-png-bytes")
+            claim = self._valid_claim(repo, "gallery/pets/collie.png")
+            ok, violations, observations = run_gate(
+                changed_paths=["gallery/pets/collie.png"],
+                protected_paths=[{
+                    "artifact_class": "artifact-class:collie-gallery-imagery",
+                    "path_globs": ["gallery/pets/*.png"],
+                    "resource": "gallery:pets",
+                    "concept": "concept:collie",
+                }],
+                artifact_claims=[claim],
+                # run_gate always resolves composite production, so this
+                # freeform-only guardrail's concept selector must NOT match
+                # (operation_class scoping applies to a concept match exactly
+                # as it does to an ordinary resource-selector match) -- the
+                # gate passes even though the concept match is recorded.
+                guardrails=[DOG_GUARDRAIL],
+                decisions=[],
+                repo_root=repo,
+                taxonomy=ANIMAL_TAXONOMY,
+            )
+            self.assertTrue(ok, violations)
+            self.assertEqual(len(observations), 1)
+            self.assertEqual(observations[0]["state"], "resolved")
+            self.assertEqual(observations[0]["matched_guardrails"], [])
+
+    def test_enforce_mode_can_fail_the_gate_on_a_concept_matched_deny(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self._write(repo / "gallery/pets/collie.png", b"fake-png-bytes")
+            claim = self._valid_claim(repo, "gallery/pets/collie.png")
+            ok, violations, observations = run_gate(
+                changed_paths=["gallery/pets/collie.png"],
+                protected_paths=[{
+                    "artifact_class": "artifact-class:collie-gallery-imagery",
+                    "path_globs": ["gallery/pets/*.png"],
+                    "resource": "gallery:pets",
+                    "concept": "concept:collie",
+                }],
+                artifact_claims=[claim],
+                guardrails=[self.COMPOSITE_DOG_GUARDRAIL],
+                decisions=[],
+                repo_root=repo,
+                taxonomy=ANIMAL_TAXONOMY,
+                concept_mode="enforce",
+            )
+            self.assertFalse(ok)
+            self.assertTrue(any("does not resolve to permit" in v for v in violations))
+            self.assertEqual(observations[0]["state"], "resolved")
+            self.assertIn(
+                "constraint:composite-dog-imagery-still-requires-review",
+                observations[0]["matched_guardrails"],
+            )
+
+    def test_observe_mode_does_not_change_the_result_even_when_enforce_would_deny(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            self._write(repo / "gallery/pets/collie.png", b"fake-png-bytes")
+            claim = self._valid_claim(repo, "gallery/pets/collie.png")
+            ok, violations, observations = run_gate(
+                changed_paths=["gallery/pets/collie.png"],
+                protected_paths=[{
+                    "artifact_class": "artifact-class:collie-gallery-imagery",
+                    "path_globs": ["gallery/pets/*.png"],
+                    "resource": "gallery:pets",
+                    "concept": "concept:collie",
+                }],
+                artifact_claims=[claim],
+                guardrails=[self.COMPOSITE_DOG_GUARDRAIL],
+                decisions=[],
+                repo_root=repo,
+                taxonomy=ANIMAL_TAXONOMY,
+                # concept_mode omitted: defaults to "observe".
+            )
+            self.assertTrue(ok, violations)
+            self.assertIn(
+                "constraint:composite-dog-imagery-still-requires-review",
+                observations[0]["matched_guardrails"],
+            )
 
 
 if __name__ == "__main__":
